@@ -1,30 +1,33 @@
-use winit::{
-    event::*,
-    event_loop::EventLoop,
-    keyboard::{KeyCode, PhysicalKey},
-    window::{Window, WindowBuilder},
-};
+use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
+use sdl2::video::Window;
 
 struct State<'a> {
     surface: wgpu::Surface<'a>,
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
-    size: winit::dpi::PhysicalSize<u32>,
+    size: (u32, u32),
     window: &'a Window,
     render_pipeline: wgpu::RenderPipeline,
 }
 
 impl<'a> State<'a> {
     async fn new(window: &'a Window) -> State<'a> {
-        let size = window.inner_size();
+        let size = window.size();
+        let width = size.0;
+        let height = size.1;
 
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: wgpu::Backends::PRIMARY,
             ..Default::default()
         });
 
-        let surface = instance.create_surface(window).unwrap();
+        let surface = unsafe {
+            instance
+                .create_surface_unsafe(wgpu::SurfaceTargetUnsafe::from_window(window).unwrap())
+                .unwrap()
+        };
 
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
@@ -60,8 +63,8 @@ impl<'a> State<'a> {
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
-            width: size.width,
-            height: size.height,
+            width,
+            height,
             present_mode: surface_caps.present_modes[0], // PresentMode::Fifo?
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
@@ -130,16 +133,16 @@ impl<'a> State<'a> {
         &self.window
     }
 
-    pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
-        if new_size.width > 0 && new_size.height > 0 {
+    pub fn resize(&mut self, new_size: (u32, u32)) {
+        if new_size.0 > 0 && new_size.1 > 0 {
             self.size = new_size;
-            self.config.width = new_size.width;
-            self.config.height = new_size.height;
+            self.config.width = new_size.0;
+            self.config.height = new_size.1;
             self.surface.configure(&self.device, &self.config);
         }
     }
 
-    fn input(&mut self, _: &WindowEvent) -> bool {
+    fn input(&mut self, _: &Event) -> bool {
         false
     }
 
@@ -187,68 +190,56 @@ impl<'a> State<'a> {
     }
 }
 
-pub async fn run() {
+pub async fn run() -> Result<(), String> {
     env_logger::init();
-    let event_loop = EventLoop::new().unwrap();
-    let window = WindowBuilder::new()
-        .with_title("ft_vox")
-        .build(&event_loop)
-        .unwrap(); // TODO: resizable
+
+    let sdl = sdl2::init()?;
+    let video = sdl.video()?;
+    let window = video
+        .window("ft_vox", 800, 600)
+        .position_centered()
+        .resizable()
+        .vulkan()
+        .build()
+        .map_err(|e| e.to_string())?;
+
     let mut state = State::new(&window).await;
-    let mut surface_configured = false;
+    let mut event_pump = sdl.event_pump()?;
 
-    let _ = event_loop.run(move |event, control_flow| match event {
-        Event::WindowEvent {
-            ref event,
-            window_id,
-        } if window_id == state.window().id() => {
-            if !state.input(event) {
-                match event {
-                    WindowEvent::CloseRequested
-                    | WindowEvent::KeyboardInput {
-                        event:
-                            KeyEvent {
-                                state: ElementState::Pressed,
-                                physical_key: PhysicalKey::Code(KeyCode::Escape),
-                                ..
-                            },
-                        ..
-                    } => control_flow.exit(),
-                    WindowEvent::Resized(physical_size) => {
-                        log::info!("physical_size: {physical_size:?}");
-                        surface_configured = true;
-                        state.resize(*physical_size);
-                    }
-                    WindowEvent::RedrawRequested => {
-                        state.window().request_redraw();
-
-                        if !surface_configured {
-                            return;
-                        }
-
-                        state.update();
-                        match state.render() {
-                            Ok(_) => {}
-                            Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
-                                state.resize(state.size)
-                            }
-                            Err(wgpu::SurfaceError::OutOfMemory | wgpu::SurfaceError::Other) => {
-                                log::error!("OutOfMemory");
-                                control_flow.exit();
-                            }
-                            Err(wgpu::SurfaceError::Timeout) => {
-                                log::warn!("Surface timeout")
-                            }
-                        }
-                    }
-                    _ => {}
+    'running: loop {
+        for event in event_pump.poll_iter() {
+            match event {
+                Event::Quit { .. }
+                | Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => {
+                    break 'running;
                 }
+                Event::Window { .. } => {
+                    let size = state.window.size();
+                    state.resize((size.0 as u32, size.1 as u32));
+                }
+                _ => {}
             }
         }
-        _ => {}
-    });
+
+        match state.render() {
+            Ok(_) => {}
+            Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
+                state.resize(state.size);
+            }
+            Err(wgpu::SurfaceError::OutOfMemory) => {
+                eprintln!("Out of memory");
+                break 'running;
+            }
+            Err(e) => eprintln!("Render error: {:?}", e),
+        }
+    }
+
+    Ok(())
 }
 
 fn main() {
-    pollster::block_on(run());
+    let _ = pollster::block_on(run());
 }
