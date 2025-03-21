@@ -192,8 +192,10 @@ pub async fn run() {
     let event_loop = EventLoop::new().unwrap();
     let window = WindowBuilder::new()
         .with_title("ft_vox")
+        .with_resizable(true)
         .build(&event_loop)
-        .unwrap(); // TODO: resizable
+        .unwrap();
+    
     let mut state = State::new(&window).await;
     let mut surface_configured = false;
 
