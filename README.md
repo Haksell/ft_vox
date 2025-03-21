@@ -1,5 +1,9 @@
 # ft_vox
 
+## todo
+
+- `winit` -> `sdl`
+
 ## tutorials
 
 - https://sotrh.github.io/learn-wgpu/
