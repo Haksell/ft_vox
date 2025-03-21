@@ -90,7 +90,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn input(&mut self, event: &WindowEvent) -> bool {
+    fn input(&mut self, _: &WindowEvent) -> bool {
         false
     }
 
@@ -106,27 +106,27 @@ impl<'a> State<'a> {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render Encoder"),
             });
-        {
-            let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Render Pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.1,
-                            g: 0.2,
-                            b: 0.3,
-                            a: 1.0,
-                        }),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                occlusion_query_set: None,
-                timestamp_writes: None,
-            });
-        }
+
+        let render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Render Pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                        r: 0.1,
+                        g: 0.2,
+                        b: 0.3,
+                        a: 1.0,
+                    }),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        drop(render_pass);
 
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
@@ -168,7 +168,6 @@ pub async fn run() {
                         state.resize(*physical_size);
                     }
                     WindowEvent::RedrawRequested => {
-                        // This tells winit that we want another frame after this one
                         state.window().request_redraw();
 
                         if !surface_configured {
@@ -178,17 +177,13 @@ pub async fn run() {
                         state.update();
                         match state.render() {
                             Ok(_) => {}
-                            // Reconfigure the surface if it's lost or outdated
                             Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
                                 state.resize(state.size)
                             }
-                            // The system is out of memory, we should probably quit
                             Err(wgpu::SurfaceError::OutOfMemory | wgpu::SurfaceError::Other) => {
                                 log::error!("OutOfMemory");
                                 control_flow.exit();
                             }
-
-                            // This happens when the a frame takes too long to present
                             Err(wgpu::SurfaceError::Timeout) => {
                                 log::warn!("Surface timeout")
                             }
