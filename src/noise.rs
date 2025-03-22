@@ -18,11 +18,11 @@ impl TerrainGenerator {
 
         for y in 0..self.chunk_size {
             for x in 0..self.chunk_size {
-                let world_x = chunk_x * self.chunk_size + x as usize;
-                let world_y = chunk_z * self.chunk_size + y as usize;
+                let world_x = chunk_x as f64 * self.chunk_size as f64 + x as f64;
+                let world_y = chunk_z as f64 * self.chunk_size as f64 + y as f64;
 
-                let nx = world_x as f64 / 128.0;
-                let ny = world_y as f64 / 128.0;
+                let nx = world_x / 64.0;
+                let ny = world_y / 64.0;
 
                 grid[y][x] = self.noise.perlin(nx, ny).clamp(0.0, 1.0);
             }
@@ -72,9 +72,9 @@ impl PerlinNoise {
         // Pseudo Random Number Generator
         let mut hash = seed;
         for i in (0..=255).rev() {
-            hash ^= hash << 13;
-            hash ^= hash >> 7;
-            hash ^= hash << 17;
+            hash = (hash ^ hash.overflowing_shl(13).0) & 0xFFFFFFFFFFFFFFFF;
+            hash = (hash ^ hash.overflowing_shr(7).0) & 0xFFFFFFFFFFFFFFFF;
+            hash = (hash ^ hash.overflowing_shl(17).0) & 0xFFFFFFFFFFFFFFFF;
 
             let j = (hash % (i + 1)) as usize;
             temp.swap(i as usize, j);
@@ -123,17 +123,19 @@ impl PerlinNoise {
     }
 
     fn grad(&self, hash: usize, x: f64, y: f64) -> f64 {
-        match hash % 8 {
-            0 => x + y,
-            1 => -x + y,
-            2 => x - y,
-            3 => -x - y,
-            4 => x,
-            5 => -x,
-            6 => y,
-            7 => -y,
+        let (gx, gy) = match hash % 8 {
+            0 => (1.0, 1.0),    // 45°
+            1 => (-1.0, 1.0),   // 135°
+            2 => (1.0, -1.0),   // 315°
+            3 => (-1.0, -1.0),  // 225°
+            4 => (1.0, 0.0),    // 0°
+            5 => (-1.0, 0.0),   // 180°
+            6 => (0.0, 1.0),    // 90°
+            7 => (0.0, -1.0),   // 270°
             _ => unreachable!(),
-        }
+        };
+        
+        (gx * x + gy * y) * 0.7071 // 1/√2 for diagonal vectors
     }
 
     fn lerp(a: f64, b: f64, t: f64) -> f64 {

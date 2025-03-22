@@ -334,5 +334,5 @@ fn main() {
     // let _ = pollster::block_on(run());
 
     let generator = TerrainGenerator::new(42, 256);
-    let _ = generator.save_as_image(2, 4, "example.png");
+    let _ = generator.save_as_image(0, 0, "example.png");
 }
