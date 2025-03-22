@@ -6,6 +6,8 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
+use ft_vox::TerrainGenerator;
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct Vertex {
@@ -329,5 +331,8 @@ pub async fn run() {
 }
 
 fn main() {
-    pollster::block_on(run());
+    // let _ = pollster::block_on(run());
+
+    let generator = TerrainGenerator::new(42, 256);
+    let _ = generator.save_as_image(2, 4, "example.png");
 }
