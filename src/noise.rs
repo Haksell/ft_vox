@@ -31,7 +31,7 @@ impl PerlinNoise {
 
         PerlinNoise {
             permutations,
-            frequency: 0.01,
+            frequency: 0.005,
             octaves: 4,
             persistence: 0.5,
             lacunarity: 2.0,
@@ -253,26 +253,26 @@ impl PerlinNoise {
     }
 
     #[rustfmt::skip]
-    const GRADIENT_3D: [glam::Vec3; 12] = [
-        glam::Vec3::new( 0.70710677,  0.70710677,  0.0),         // ( 1,  1,  0) normalized
-        glam::Vec3::new(-0.70710677,  0.70710677,  0.0),         // (-1,  1,  0) normalized
-        glam::Vec3::new( 0.70710677, -0.70710677,  0.0),         // ( 1, -1,  0) normalized
-        glam::Vec3::new(-0.70710677, -0.70710677,  0.0),         // (-1, -1,  0) normalized
-        glam::Vec3::new( 0.70710677,  0.0,         0.70710677),  // ( 1,  0,  1) normalized
-        glam::Vec3::new(-0.70710677,  0.0,         0.70710677),  // (-1,  0,  1) normalized
-        glam::Vec3::new( 0.70710677,  0.0,        -0.70710677),  // ( 1,  0, -1) normalized
-        glam::Vec3::new(-0.70710677,  0.0,        -0.70710677),  // (-1,  0, -1) normalized
-        glam::Vec3::new( 0.0,         0.70710677,  0.70710677),  // ( 0,  1,  1) normalized
-        glam::Vec3::new( 0.0,        -0.70710677,  0.70710677),  // ( 0, -1,  1) normalized
-        glam::Vec3::new( 0.0,         0.70710677, -0.70710677),  // ( 0,  1, -1) normalized
-        glam::Vec3::new( 0.0,        -0.70710677, -0.70710677),  // ( 0, -1, -1) normalized
+    const GRADIENT_3D: [glam::DVec3; 12] = [
+        glam::DVec3::new( 0.70710677,  0.70710677,  0.0),         // ( 1,  1,  0) normalized
+        glam::DVec3::new(-0.70710677,  0.70710677,  0.0),         // (-1,  1,  0) normalized
+        glam::DVec3::new( 0.70710677, -0.70710677,  0.0),         // ( 1, -1,  0) normalized
+        glam::DVec3::new(-0.70710677, -0.70710677,  0.0),         // (-1, -1,  0) normalized
+        glam::DVec3::new( 0.70710677,  0.0,         0.70710677),  // ( 1,  0,  1) normalized
+        glam::DVec3::new(-0.70710677,  0.0,         0.70710677),  // (-1,  0,  1) normalized
+        glam::DVec3::new( 0.70710677,  0.0,        -0.70710677),  // ( 1,  0, -1) normalized
+        glam::DVec3::new(-0.70710677,  0.0,        -0.70710677),  // (-1,  0, -1) normalized
+        glam::DVec3::new( 0.0,         0.70710677,  0.70710677),  // ( 0,  1,  1) normalized
+        glam::DVec3::new( 0.0,        -0.70710677,  0.70710677),  // ( 0, -1,  1) normalized
+        glam::DVec3::new( 0.0,         0.70710677, -0.70710677),  // ( 0,  1, -1) normalized
+        glam::DVec3::new( 0.0,        -0.70710677, -0.70710677),  // ( 0, -1, -1) normalized
     ];
 
     fn grad3d(&self, hash: usize, x: f64, y: f64, z: f64) -> f64 {
         let gradient = Self::GRADIENT_3D[hash % 12];
-        let position = glam::Vec3::new(x as f32, y as f32, z as f32);
+        let position = glam::DVec3::new(x, y, z);
 
-        gradient.dot(position) as f64
+        gradient.dot(position)
     }
 
     fn lerp(a: f64, b: f64, t: f64) -> f64 {
