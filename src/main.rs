@@ -6,7 +6,7 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
-use ft_vox::PerlinNoise;
+use ft_vox::PerlinNoiseBuilder;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -333,6 +333,11 @@ pub async fn run() {
 fn main() {
     // let _ = pollster::block_on(run());
 
-    let noise = PerlinNoise::new(42);
+    let noise = PerlinNoiseBuilder::new(42)
+        .frequency(0.005)
+        .lacunarity(2.0)
+        .persistence(0.5)
+        .octaves(6)
+        .build();
     let _ = noise.generate(1024, 1024, "example.png");
 }

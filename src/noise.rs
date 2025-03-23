@@ -1,20 +1,55 @@
 use image::{ImageBuffer, Rgb, RgbImage};
 
-pub struct PerlinNoise {
-    permutations: [u8; 512],
+pub struct PerlinNoiseBuilder {
+    seed: u64,
     frequency: f64,
     octaves: usize,
     persistence: f64,
     lacunarity: f64,
 }
 
-impl PerlinNoise {
+impl PerlinNoiseBuilder {
     pub fn new(seed: u64) -> Self {
+        PerlinNoiseBuilder {
+            seed,
+            frequency: 0.005,
+            octaves: 4,
+            persistence: 0.5,
+            lacunarity: 2.0,
+        }
+    }
+
+    pub fn frequency(mut self, frequency: f64) -> Self {
+        self.frequency = frequency.max(0.0001); // Prevent values too close to zero
+
+        self
+    }
+
+    pub fn octaves(mut self, octaves: usize) -> Self {
+        self.octaves = octaves.max(1).min(16); // Reasonable bounds
+
+        self
+    }
+
+    pub fn persistence(mut self, persistence: f64) -> Self {
+        self.persistence = persistence.max(0.0).min(1.0); // Clamp to valid range
+
+        self
+    }
+
+    pub fn lacunarity(mut self, lacunarity: f64) -> Self {
+        self.lacunarity = lacunarity.max(1.0); // Must be at least 1.0
+
+        self
+    }
+
+    // Build method that creates the actual PerlinNoise instance
+    pub fn build(self) -> PerlinNoise {
         let mut permutations = [0u8; 512];
         let mut temp = (0..256).map(|x| x as u8).collect::<Vec<u8>>();
 
-        // Pseudo Random Number Generator
-        let mut hash = seed;
+        // Pseudo Random Number Generator for permutation table
+        let mut hash = self.seed;
         for i in (0..256).rev() {
             hash = (hash ^ hash.overflowing_shl(13).0) & 0xFFFFFFFFFFFFFFFF;
             hash = (hash ^ hash.overflowing_shr(7).0) & 0xFFFFFFFFFFFFFFFF;
@@ -31,18 +66,26 @@ impl PerlinNoise {
 
         PerlinNoise {
             permutations,
-            frequency: 0.005,
-            octaves: 4,
-            persistence: 0.5,
-            lacunarity: 2.0,
+            frequency: self.frequency,
+            octaves: self.octaves,
+            persistence: self.persistence,
+            lacunarity: self.lacunarity,
         }
     }
+}
 
+pub struct PerlinNoise {
+    permutations: [u8; 512],
+    frequency: f64,
+    octaves: usize,
+    persistence: f64,
+    lacunarity: f64,
+}
+
+impl PerlinNoise {
     pub fn generate(&self, width: u32, height: u32, path: &str) -> Result<(), image::ImageError> {
-        // Create a new image buffer
         let mut img: RgbImage = ImageBuffer::new(width, height);
 
-        // Fill the image with the noise values
         for y in 0..height {
             for x in 0..width {
                 let nx = x as f64;
@@ -55,7 +98,6 @@ impl PerlinNoise {
             }
         }
 
-        // Save the image
         img.save(path)
     }
 
