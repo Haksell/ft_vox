@@ -6,7 +6,7 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
-use ft_vox::TerrainGenerator;
+use ft_vox::PerlinNoise;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -333,6 +333,6 @@ pub async fn run() {
 fn main() {
     // let _ = pollster::block_on(run());
 
-    let generator = TerrainGenerator::new(42, 256);
-    let _ = generator.save_as_image(0, 0, "example.png");
+    let noise = PerlinNoise::new(42);
+    let _ = noise.generate(1024, 1024, "example.png");
 }

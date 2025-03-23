@@ -1,77 +1,21 @@
 use image::{ImageBuffer, Rgb, RgbImage};
 
-pub struct TerrainGenerator {
-    noise: PerlinNoise,
-    chunk_size: usize,
-}
-
-impl TerrainGenerator {
-    pub fn new(seed: u64, chunk_size: usize) -> Self {
-        TerrainGenerator {
-            noise: PerlinNoise::new(seed),
-            chunk_size,
-        }
-    }
-
-    pub fn generate(&self, chunk_x: usize, chunk_z: usize) -> Vec<Vec<f64>> {
-        let mut grid = vec![vec![0.0; self.chunk_size]; self.chunk_size];
-
-        for z in 0..self.chunk_size {
-            for x in 0..self.chunk_size {
-                let world_x = chunk_x as f64 * self.chunk_size as f64 + x as f64;
-                let world_z = chunk_z as f64 * self.chunk_size as f64 + z as f64;
-
-                let nx = world_x / 64.0;
-                let nz = world_z / 64.0;
-
-                grid[z][x] = self.noise.perlin2d(nx, nz).clamp(0.0, 1.0);
-            }
-        }
-
-        grid
-    }
-
-    pub fn save_as_image(
-        &self,
-        chunk_x: usize,
-        chunk_z: usize,
-        path: &str,
-    ) -> Result<(), image::ImageError> {
-        let grid = self.generate(chunk_x, chunk_z);
-
-        // Create a new image buffer
-        let mut img: RgbImage = ImageBuffer::new(self.chunk_size as u32, self.chunk_size as u32);
-
-        // Fill the image with the noise values
-        for z in 0..self.chunk_size {
-            for x in 0..self.chunk_size {
-                let noise_value = grid[z][x];
-                let pixel_value = (noise_value * 255.0) as u8;
-                img.put_pixel(
-                    x as u32,
-                    z as u32,
-                    Rgb([pixel_value, pixel_value, pixel_value]),
-                );
-            }
-        }
-
-        // Save the image
-        img.save(path)
-    }
-}
-
 pub struct PerlinNoise {
     permutations: [u8; 512],
+    frequency: f64,
+    octaves: usize,
+    persistence: f64,
+    lacunarity: f64,
 }
 
 impl PerlinNoise {
     pub fn new(seed: u64) -> Self {
         let mut permutations = [0u8; 512];
-        let mut temp = (0..=255).collect::<Vec<u8>>();
+        let mut temp = (0..256).map(|x| x as u8).collect::<Vec<u8>>();
 
         // Pseudo Random Number Generator
         let mut hash = seed;
-        for i in (0..=255).rev() {
+        for i in (0..256).rev() {
             hash = (hash ^ hash.overflowing_shl(13).0) & 0xFFFFFFFFFFFFFFFF;
             hash = (hash ^ hash.overflowing_shr(7).0) & 0xFFFFFFFFFFFFFFFF;
             hash = (hash ^ hash.overflowing_shl(17).0) & 0xFFFFFFFFFFFFFFFF;
@@ -85,7 +29,53 @@ impl PerlinNoise {
             permutations[i] = temp[i % 256];
         }
 
-        PerlinNoise { permutations }
+        PerlinNoise {
+            permutations,
+            frequency: 0.01,
+            octaves: 4,
+            persistence: 0.5,
+            lacunarity: 2.0,
+        }
+    }
+
+    pub fn generate(&self, width: u32, height: u32, path: &str) -> Result<(), image::ImageError> {
+        // Create a new image buffer
+        let mut img: RgbImage = ImageBuffer::new(width, height);
+
+        // Fill the image with the noise values
+        for y in 0..height {
+            for x in 0..width {
+                let nx = x as f64;
+                let ny = y as f64;
+
+                let noise_value = self.noise2d(nx, ny);
+                let pixel_value = (noise_value * 255.0) as u8;
+
+                img.put_pixel(x, y, Rgb([pixel_value, pixel_value, pixel_value]));
+            }
+        }
+
+        // Save the image
+        img.save(path)
+    }
+
+    pub fn noise2d(&self, x: f64, y: f64) -> f64 {
+        let mut value = 0.0;
+        let mut amplitude = 1.0;
+        let mut frequency = self.frequency;
+
+        for _ in 0..self.octaves {
+            let sample_x = x * frequency;
+            let sample_y = y * frequency;
+
+            let noise_value = self.perlin2d(sample_x, sample_y);
+            value += noise_value * amplitude;
+
+            amplitude *= self.persistence;
+            frequency *= self.lacunarity;
+        }
+
+        value.clamp(-1.0, 1.0) * 0.5 + 0.5
     }
 
     fn perlin2d(&self, x: f64, z: f64) -> f64 {
@@ -123,8 +113,7 @@ impl PerlinNoise {
             v,
         );
 
-        // Normalization [-1..1] -> [0..1]
-        (value * 0.5 + 0.5).clamp(0.0, 1.0)
+        value
     }
 
     #[rustfmt::skip]
@@ -144,6 +133,26 @@ impl PerlinNoise {
         let position = glam::Vec2::new(x as f32, y as f32);
 
         gradient.dot(position) as f64
+    }
+
+    pub fn noise3d(&self, x: f64, y: f64, z: f64) -> f64 {
+        let mut value = 0.0;
+        let mut amplitude = 1.0;
+        let mut frequency = self.frequency;
+
+        for _ in 0..self.octaves {
+            let sample_x = x * frequency;
+            let sample_y = y * frequency;
+            let sample_z = z * frequency;
+
+            let noise_value = self.perlin3d(sample_x, sample_y, sample_z);
+            value += noise_value * amplitude;
+
+            amplitude *= self.persistence;
+            frequency *= self.lacunarity;
+        }
+
+        value.clamp(-1.0, 1.0) * 0.5 + 0.5
     }
 
     fn perlin3d(&self, x: f64, y: f64, z: f64) -> f64 {
@@ -168,8 +177,8 @@ impl PerlinNoise {
         let ba = self.permutations[b as usize] as i32 + zi;
         let bb = self.permutations[(b + 1) as usize] as i32 + zi;
 
-        // Interpolate between 8 corners
         #[rustfmt::skip]
+        // Interpolate between 8 corners
         let value = Self::lerp(
             Self::lerp(
                 Self::lerp(
@@ -240,7 +249,7 @@ impl PerlinNoise {
             w,
         );
 
-        (value * 0.5 + 0.5).clamp(0.0, 1.0)
+        value
     }
 
     #[rustfmt::skip]
