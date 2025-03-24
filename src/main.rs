@@ -6,7 +6,7 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
-use ft_vox::{Camera, CameraUniform, Texture, Vertex};
+use ft_vox::{Camera, CameraController, CameraUniform, Texture, Vertex};
 
 const VERTICES: &[Vertex] = &[
     Vertex {
@@ -53,6 +53,7 @@ struct State<'a> {
     camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
+    camera_controller: CameraController,
 }
 
 impl<'a> State<'a> {
@@ -196,6 +197,8 @@ impl<'a> State<'a> {
             }],
         });
 
+        let camera_controller = CameraController::new(0.2);
+
         let shader = device.create_shader_module(wgpu::include_wgsl!("../shaders/shader.wgsl"));
 
         let render_pipeline_layout =
@@ -274,6 +277,7 @@ impl<'a> State<'a> {
             camera_uniform,
             camera_buffer,
             camera_bind_group,
+            camera_controller,
         }
     }
 
@@ -290,11 +294,19 @@ impl<'a> State<'a> {
         }
     }
 
-    fn input(&mut self, _: &WindowEvent) -> bool {
-        false
+    fn input(&mut self, event: &WindowEvent) -> bool {
+        self.camera_controller.process_events(event)
     }
 
-    fn update(&mut self) {}
+    fn update(&mut self) {
+        self.camera_controller.update(&mut self.camera);
+        self.camera_uniform.update(&self.camera);
+        self.queue.write_buffer(
+            &self.camera_buffer,
+            0,
+            bytemuck::cast_slice(&[self.camera_uniform]),
+        );
+    }
 
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
@@ -397,9 +409,6 @@ pub async fn run() {
                     _ => {}
                 }
             }
-        }
-        Event::AboutToWait => {
-            state.window().request_redraw();
         }
         _ => {}
     });
