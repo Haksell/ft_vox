@@ -11,3 +11,4 @@ wgpu = "24.0"
 pollster = "0.3"
 bytemuck = { version = "1.16", features = [ "derive" ] }
 image = "0.25.5"
+glam = "0.30.1"
