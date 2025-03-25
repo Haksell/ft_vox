@@ -415,5 +415,5 @@ pub async fn run() {
 }
 
 fn main() {
-    pollster::block_on(run());
+    let _ = pollster::block_on(run());
 }
