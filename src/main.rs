@@ -6,32 +6,7 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
-use ft_vox::{Camera, CameraController, CameraUniform, Texture, Vertex};
-
-const VERTICES: &[Vertex] = &[
-    Vertex {
-        position: [-0.0868241, 0.49240386, 0.0],
-        tex_coords: [0.4131759, 0.00759614],
-    }, // A
-    Vertex {
-        position: [-0.49513406, 0.06958647, 0.0],
-        tex_coords: [0.0048659444, 0.43041354],
-    }, // B
-    Vertex {
-        position: [-0.21918549, -0.44939706, 0.0],
-        tex_coords: [0.28081453, 0.949397],
-    }, // C
-    Vertex {
-        position: [0.35966998, -0.3473291, 0.0],
-        tex_coords: [0.85967, 0.84732914],
-    }, // D
-    Vertex {
-        position: [0.44147372, 0.2347359, 0.0],
-        tex_coords: [0.9414737, 0.2652641],
-    }, // E
-];
-
-const INDICES: &[u16] = &[0, 1, 4, 1, 2, 4, 2, 3, 4];
+use ft_vox::{Camera, CameraController, CameraUniform, Chunk, PerlinNoiseBuilder, Texture, Vertex};
 
 #[allow(unused)]
 struct State<'a> {
@@ -47,6 +22,7 @@ struct State<'a> {
     num_indices: u32,
 
     diffuse_texture: Texture,
+    depth_texture: Texture,
     diffuse_bind_group: wgpu::BindGroup,
 
     camera: Camera,
@@ -115,6 +91,7 @@ impl<'a> State<'a> {
         let diffuse_texture =
             Texture::from_bytes(&device, &queue, diffuse_bytes, "../assets/happy-tree.png")
                 .unwrap();
+        let depth_texture = Texture::create_depth_texture(&device, &config);
 
         let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -155,13 +132,13 @@ impl<'a> State<'a> {
         });
 
         let camera = Camera::new(
-            glam::Vec3::new(0.0, 1.0, 2.0),
+            glam::Vec3::new(0.0, 0.0, 30.0),
             glam::Vec3::new(0.0, 0.0, 0.0),
             glam::Vec3::new(0.0, 1.0, 0.0),
             config.width as f32 / config.height as f32,
             45.0,
             0.1,
-            100.0,
+            500.0,
         );
 
         let mut camera_uniform = CameraUniform::new();
@@ -231,12 +208,18 @@ impl<'a> State<'a> {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
-                cull_mode: Some(wgpu::Face::Back),
+                cull_mode: None,
                 polygon_mode: wgpu::PolygonMode::Fill,
                 unclipped_depth: false,
                 conservative: false,
             },
-            depth_stencil: None,
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: Texture::DEPTH_FORMAT,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Less,
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState::default(),
+            }),
             multisample: wgpu::MultisampleState {
                 count: 1,
                 mask: !0,
@@ -246,19 +229,25 @@ impl<'a> State<'a> {
             cache: None,
         });
 
+        let seed = 42;
+        let pn = PerlinNoiseBuilder::new(seed).build();
+        let chunk = Chunk::new(pn);
+
+        let (chunk_vertices, chunk_indices) = chunk.mesh();
+
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(VERTICES),
+            contents: bytemuck::cast_slice(&chunk_vertices),
             usage: wgpu::BufferUsages::VERTEX,
         });
 
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Index Buffer"),
-            contents: bytemuck::cast_slice(INDICES),
+            contents: bytemuck::cast_slice(&chunk_indices),
             usage: wgpu::BufferUsages::INDEX,
         });
 
-        let num_indices = INDICES.len() as u32;
+        let num_indices = chunk_indices.len() as u32;
 
         Self {
             surface,
@@ -273,6 +262,7 @@ impl<'a> State<'a> {
             num_indices,
             diffuse_bind_group,
             diffuse_texture,
+            depth_texture,
             camera,
             camera_uniform,
             camera_buffer,
@@ -290,6 +280,7 @@ impl<'a> State<'a> {
             self.size = new_size;
             self.config.width = new_size.width;
             self.config.height = new_size.height;
+            self.depth_texture = Texture::create_depth_texture(&self.device, &self.config);
             self.surface.configure(&self.device, &self.config);
         }
     }
@@ -335,7 +326,14 @@ impl<'a> State<'a> {
                         store: wgpu::StoreOp::Store,
                     },
                 })],
-                depth_stencil_attachment: None,
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.depth_texture.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
