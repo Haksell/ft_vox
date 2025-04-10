@@ -26,8 +26,9 @@ impl CameraUniform {
 
 pub struct Camera {
     eye: glam::Vec3,
-    target: glam::Vec3,
     up: glam::Vec3,
+    yaw: f32,
+    pitch: f32,
     aspect: f32,
     fovy: f32,
     near: f32,
@@ -37,7 +38,6 @@ pub struct Camera {
 impl Camera {
     pub fn new(
         eye: glam::Vec3,
-        target: glam::Vec3,
         up: glam::Vec3,
         aspect: f32,
         fovy: f32,
@@ -46,9 +46,10 @@ impl Camera {
     ) -> Self {
         Self {
             eye,
-            target,
             up,
             aspect,
+            yaw: -90.0,
+            pitch: 0.0,
             fovy,
             near,
             far,
@@ -56,34 +57,57 @@ impl Camera {
     }
 
     pub fn look_at(&self) -> glam::Mat4 {
-        glam::Mat4::look_at_rh(self.eye, self.target, self.up)
+        let forward = self.direction();
+        let target = self.eye + forward;
+
+        glam::Mat4::look_at_rh(self.eye, target, self.up)
     }
 
     pub fn projection(&self) -> glam::Mat4 {
         glam::Mat4::perspective_rh(self.fovy.to_radians(), self.aspect, self.near, self.far)
     }
+
+    pub fn direction(&self) -> glam::Vec3 {
+        glam::Vec3::new(
+            self.yaw.to_radians().cos() * self.pitch.to_radians().cos(),
+            self.pitch.to_radians().sin(),
+            self.yaw.to_radians().sin() * self.pitch.to_radians().cos(),
+        )
+        .normalize()
+    }
 }
 
 pub struct CameraController {
     speed: f32,
+    sensitivity: f32,
     is_forward_pressed: bool,
     is_backward_pressed: bool,
     is_left_pressed: bool,
     is_right_pressed: bool,
+    mouse_delta: (f32, f32),
 }
 
 impl CameraController {
-    pub fn new(speed: f32) -> Self {
+    pub fn new(speed: f32, sensitivity: f32) -> Self {
         Self {
             speed,
+            sensitivity,
             is_forward_pressed: false,
             is_backward_pressed: false,
             is_left_pressed: false,
             is_right_pressed: false,
+            mouse_delta: (0.0, 0.0),
         }
     }
 
-    pub fn process_events(&mut self, event: &WindowEvent) -> bool {
+    pub fn process_mouse(&mut self, delta_x: f32, delta_y: f32) -> bool {
+        self.mouse_delta.0 += delta_x;
+        self.mouse_delta.1 += delta_y;
+
+        true
+    }
+
+    pub fn process_keyboard(&mut self, event: &WindowEvent) -> bool {
         match event {
             WindowEvent::KeyboardInput {
                 event:
@@ -119,28 +143,44 @@ impl CameraController {
         }
     }
 
-    pub fn update(&self, camera: &mut Camera) {
-        let forward = camera.target - camera.eye;
-        let forward_norm = forward.normalize();
-        let forward_mag = forward.length();
+    pub fn update(&mut self, camera: &mut Camera, dt: f32) {
+        // Apply rotation from mouse movement
+        if self.mouse_delta.0 != 0.0 || self.mouse_delta.1 != 0.0 {
+            // Adjust yaw and pitch based on mouse movement
+            camera.yaw += self.mouse_delta.0 * self.sensitivity;
+            camera.pitch -= self.mouse_delta.1 * self.sensitivity; // Invert Y for natural feel
 
-        if self.is_forward_pressed && forward_mag > self.speed {
-            camera.eye += forward_norm * self.speed;
+            // Clamp pitch to avoid gimbal lock
+            camera.pitch = camera.pitch.clamp(-89.0, 89.0);
+
+            // Reset mouse delta
+            self.mouse_delta = (0.0, 0.0);
+        }
+
+        // Calculate movement directions
+        let forward = camera.direction();
+        let right = forward.cross(camera.up);
+
+        // Calculate movement
+        let mut movement = glam::Vec3::ZERO;
+
+        if self.is_forward_pressed {
+            movement += forward;
         }
         if self.is_backward_pressed {
-            camera.eye -= forward_norm * self.speed;
+            movement -= forward;
         }
-
-        let right = forward_norm.cross(camera.up);
-
-        let forward = camera.target - camera.eye;
-        let forward_mag = forward.length();
-
         if self.is_right_pressed {
-            camera.eye = camera.target - (forward + right * self.speed).normalize() * forward_mag;
+            movement += right;
         }
         if self.is_left_pressed {
-            camera.eye = camera.target - (forward - right * self.speed).normalize() * forward_mag;
+            movement -= right;
+        }
+
+        // Normalize movement vector if not zero and apply speed
+        if movement != glam::Vec3::ZERO {
+            movement = movement.normalize() * self.speed * dt;
+            camera.eye += movement;
         }
     }
 }

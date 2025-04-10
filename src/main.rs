@@ -1,3 +1,5 @@
+use std::time::{Duration, Instant};
+
 use wgpu::util::DeviceExt as _;
 use winit::{
     event::*,
@@ -133,10 +135,9 @@ impl<'a> State<'a> {
 
         let camera = Camera::new(
             glam::Vec3::new(0.0, 0.0, 30.0),
-            glam::Vec3::new(0.0, 0.0, 0.0),
             glam::Vec3::new(0.0, 1.0, 0.0),
             config.width as f32 / config.height as f32,
-            45.0,
+            80.0,
             0.1,
             500.0,
         );
@@ -174,7 +175,7 @@ impl<'a> State<'a> {
             }],
         });
 
-        let camera_controller = CameraController::new(0.2);
+        let camera_controller = CameraController::new(20.0, 0.2);
 
         let shader = device.create_shader_module(wgpu::include_wgsl!("../shaders/shader.wgsl"));
 
@@ -275,6 +276,12 @@ impl<'a> State<'a> {
         &self.window
     }
 
+    pub fn reset_cursor(&self) {
+        let size = self.window.inner_size();
+        let center = winit::dpi::PhysicalPosition::new(size.width / 2, size.height / 2);
+        self.window.set_cursor_position(center).unwrap();
+    }
+
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         if new_size.width > 0 && new_size.height > 0 {
             self.size = new_size;
@@ -286,11 +293,15 @@ impl<'a> State<'a> {
     }
 
     fn input(&mut self, event: &WindowEvent) -> bool {
-        self.camera_controller.process_events(event)
+        self.camera_controller.process_keyboard(event)
     }
 
-    fn update(&mut self) {
-        self.camera_controller.update(&mut self.camera);
+    fn update(&mut self, dt: Duration) {
+        let dt = dt.as_secs_f32();
+
+        self.camera_controller.update(&mut self.camera, dt);
+        self.reset_cursor();
+
         self.camera_uniform.update(&self.camera);
         self.queue.write_buffer(
             &self.camera_buffer,
@@ -363,9 +374,26 @@ pub async fn run() {
         .build(&event_loop)
         .unwrap();
 
+    // Hide the cursor
+    window.set_cursor_visible(false);
+    // Lock the cursor inside the window
+    if let Err(e) = window.set_cursor_grab(winit::window::CursorGrabMode::Locked) {
+        eprintln!("Failed to grab cursor: {:?}", e);
+    };
+
     let mut state = State::new(&window).await;
+    let mut last_render = Instant::now();
 
     let _ = event_loop.run(move |event, control_flow| match event {
+        Event::DeviceEvent {
+            event: DeviceEvent::MouseMotion { delta },
+            ..
+        } => {
+            state
+                .camera_controller
+                .process_mouse(delta.0 as f32, delta.1 as f32);
+        }
+
         Event::WindowEvent {
             ref event,
             window_id,
@@ -387,9 +415,12 @@ pub async fn run() {
                         state.resize(*physical_size);
                     }
                     WindowEvent::RedrawRequested => {
-                        state.window().request_redraw();
+                        let now = Instant::now();
+                        let dt = now - last_render;
+                        last_render = now;
 
-                        state.update();
+                        state.update(dt);
+
                         match state.render() {
                             Ok(_) => {}
                             Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
@@ -403,6 +434,8 @@ pub async fn run() {
                                 log::warn!("Surface timeout")
                             }
                         }
+
+                        state.window().request_redraw();
                     }
                     _ => {}
                 }
