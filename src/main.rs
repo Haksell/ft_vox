@@ -8,7 +8,7 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
-use ft_vox::{Camera, CameraController, CameraUniform, Chunk, PerlinNoiseBuilder, Texture, Vertex};
+use ft_vox::{Camera, CameraController, CameraUniform, Texture, Vertex, World};
 
 #[allow(unused)]
 struct State<'a> {
@@ -231,8 +231,8 @@ impl<'a> State<'a> {
         });
 
         let seed = 42;
-        let pn = PerlinNoiseBuilder::new(seed).build();
-        let chunk = Chunk::new(pn);
+        let mut world = World::new(seed);
+        let chunk = world.get_chunk(0, 0, 0);
 
         let (chunk_vertices, chunk_indices) = chunk.mesh();
 

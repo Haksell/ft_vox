@@ -1,22 +1,32 @@
 use crate::{PerlinNoise, Vertex};
 
-const CHUNK_SIZE: usize = 16;
+pub const CHUNK_SIZE: usize = 16;
 
 pub struct Chunk {
     blocks: [[[bool; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE],
+    chunk_x: i32,
+    chunk_y: i32,
+    chunk_z: i32,
 }
 
 impl Chunk {
-    pub fn new(pn: PerlinNoise) -> Self {
+    pub fn new(pn: &PerlinNoise, chunk_x: i32, chunk_y: i32, chunk_z: i32) -> Self {
         let mut blocks = [[[false; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE];
 
         for x in 0..CHUNK_SIZE {
-            let nx = x as f64;
-            for y in 0..CHUNK_SIZE {
-                let ny = y as f64;
-                for z in 0..CHUNK_SIZE {
-                    let nz = z as f64;
+            // Convert local chunk coordinates to world coordinates
+            let wx = (chunk_x * CHUNK_SIZE as i32) + x as i32;
+            let nx = wx as f64;
 
+            for y in 0..CHUNK_SIZE {
+                let wy = (chunk_y * CHUNK_SIZE as i32) + y as i32;
+                let ny = wy as f64;
+
+                for z in 0..CHUNK_SIZE {
+                    let wz = (chunk_z * CHUNK_SIZE as i32) + z as i32;
+                    let nz = wz as f64;
+
+                    // Use world coordinates for noise generation
                     let noise_value = pn.noise3d(nx, ny, nz);
 
                     if noise_value > 0.5 {
@@ -26,7 +36,12 @@ impl Chunk {
             }
         }
 
-        Self { blocks }
+        Self {
+            blocks,
+            chunk_x,
+            chunk_y,
+            chunk_z,
+        }
     }
 
     pub fn mesh(&self) -> (Vec<Vertex>, Vec<u16>) {
