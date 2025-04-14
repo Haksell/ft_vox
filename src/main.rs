@@ -1,3 +1,5 @@
+use ft_vox::run;
+
 fn main() {
-    println!("Hello, world!");
+    run();
 }
