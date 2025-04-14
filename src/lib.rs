@@ -33,6 +33,44 @@ impl<'a> State<'a> {
             })
             .await
             .unwrap();
+
+        let (device, queue) = adapter
+            .request_device(&wgpu::DeviceDescriptor {
+                required_features: wgpu::Features::empty(),
+                required_limits: wgpu::Limits::default(),
+                label: None,
+                memory_hints: Default::default(),
+                trace: wgpu::Trace::Off,
+            })
+            .await
+            .unwrap();
+
+        let surface_caps = surface.get_capabilities(&adapter);
+        let surface_format = surface_caps
+            .formats
+            .iter()
+            .find(|f| f.is_srgb())
+            .copied()
+            .unwrap_or(surface_caps.formats[0]);
+        let config = wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            format: surface_format,
+            width: size.width,
+            height: size.height,
+            present_mode: wgpu::PresentMode::Fifo,
+            alpha_mode: surface_caps.alpha_modes[0],
+            view_formats: vec![],
+            desired_maximum_frame_latency: 2,
+        };
+
+        Self {
+            surface,
+            device,
+            queue,
+            config,
+            size,
+            window,
+        }
     }
 
     pub fn window(&self) -> &Window {
@@ -56,16 +94,17 @@ impl<'a> State<'a> {
     }
 }
 
-pub fn run() {
+pub async fn run() {
     env_logger::init();
     let event_loop = EventLoop::new().unwrap();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
+    let mut state = State::new(&window).await;
 
     event_loop.run(move |event, control_flow| match event {
         Event::WindowEvent {
             ref event,
             window_id,
-        } if window_id == window.id() => match event {
+        } if window_id == state.window().id() => match event {
             WindowEvent::CloseRequested
             | WindowEvent::KeyboardInput {
                 event:
