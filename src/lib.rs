@@ -2,7 +2,6 @@ mod texture;
 
 use {
     bytemuck::{Pod, Zeroable},
-    image::GenericImageView as _,
     texture::Texture,
     wgpu::util::DeviceExt as _,
     winit::{
