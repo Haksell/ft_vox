@@ -2,7 +2,7 @@ mod texture;
 
 use {
     bytemuck::{Pod, Zeroable, cast_slice},
-    cgmath::{Deg, Matrix4, Point3, SquareMatrix, Vector3},
+    cgmath::{Deg, InnerSpace, Matrix4, Point3, SquareMatrix, Vector3},
     texture::Texture,
     wgpu::util::DeviceExt as _,
     winit::{
@@ -102,6 +102,86 @@ impl CameraUniform {
     }
 }
 
+struct CameraController {
+    speed: f32,
+    is_forward_pressed: bool,
+    is_backward_pressed: bool,
+    is_left_pressed: bool,
+    is_right_pressed: bool,
+}
+
+impl CameraController {
+    fn new(speed: f32) -> Self {
+        Self {
+            speed,
+            is_forward_pressed: false,
+            is_backward_pressed: false,
+            is_left_pressed: false,
+            is_right_pressed: false,
+        }
+    }
+
+    fn process_events(&mut self, event: &WindowEvent) -> bool {
+        match event {
+            WindowEvent::KeyboardInput {
+                event:
+                    KeyEvent {
+                        state,
+                        physical_key: PhysicalKey::Code(keycode),
+                        ..
+                    },
+                ..
+            } => {
+                let is_pressed = *state == ElementState::Pressed;
+                match keycode {
+                    KeyCode::KeyW | KeyCode::ArrowUp => {
+                        self.is_forward_pressed = is_pressed;
+                        true
+                    }
+                    KeyCode::KeyA | KeyCode::ArrowLeft => {
+                        self.is_left_pressed = is_pressed;
+                        true
+                    }
+                    KeyCode::KeyS | KeyCode::ArrowDown => {
+                        self.is_backward_pressed = is_pressed;
+                        true
+                    }
+                    KeyCode::KeyD | KeyCode::ArrowRight => {
+                        self.is_right_pressed = is_pressed;
+                        true
+                    }
+                    _ => false,
+                }
+            }
+            _ => false,
+        }
+    }
+
+    fn update_camera(&self, camera: &mut Camera) {
+        let forward = camera.target - camera.eye;
+        let forward_norm = forward.normalize();
+        let forward_mag = forward.magnitude();
+
+        if self.is_forward_pressed && forward_mag > self.speed {
+            camera.eye += forward_norm * self.speed;
+        }
+        if self.is_backward_pressed {
+            camera.eye -= forward_norm * self.speed;
+        }
+
+        let right = forward_norm.cross(camera.up);
+        let forward = camera.target - camera.eye;
+        let forward_mag = forward.magnitude();
+
+        if self.is_right_pressed {
+            camera.eye = camera.target - (forward + right * self.speed).normalize() * forward_mag;
+        }
+        if self.is_left_pressed {
+            camera.eye = camera.target - (forward - right * self.speed).normalize() * forward_mag;
+        }
+    }
+}
+
 struct State<'a> {
     surface: wgpu::Surface<'a>,
     device: wgpu::Device,
@@ -120,6 +200,7 @@ struct State<'a> {
     camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
+    camera_controller: CameraController,
 }
 
 impl<'a> State<'a> {
@@ -253,6 +334,7 @@ impl<'a> State<'a> {
                 resource: camera_buffer.as_entire_binding(),
             }],
         });
+        let camera_controller = CameraController::new(0.2);
 
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -334,6 +416,7 @@ impl<'a> State<'a> {
             camera_uniform,
             camera_buffer,
             camera_bind_group,
+            camera_controller,
         }
     }
 
@@ -350,11 +433,16 @@ impl<'a> State<'a> {
         }
     }
 
-    fn input(&mut self, _event: &WindowEvent) -> bool {
-        false
+    fn input(&mut self, event: &WindowEvent) -> bool {
+        self.camera_controller.process_events(event)
     }
 
-    fn update(&mut self) {}
+    fn update(&mut self) {
+        self.camera_controller.update_camera(&mut self.camera);
+        self.camera_uniform.update_view_proj(&self.camera);
+        self.queue
+            .write_buffer(&self.camera_buffer, 0, cast_slice(&[self.camera_uniform]));
+    }
 
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
