@@ -14,5 +14,6 @@ image = { version = "0.24", default-features = false, features = [
 ] }
 log = "0.4"
 pollster = "0.3"
+tobj = { version = "4.0.3", default-features = false, features = ["async"] }
 winit = { version = "0.29", features = ["android-native-activity"] }
 wgpu = "25.0"
