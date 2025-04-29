@@ -6,10 +6,10 @@ use {
     assets::load_model,
     bytemuck::{Pod, Zeroable, cast_slice},
     cgmath::{
-        Deg, InnerSpace, Matrix4, Point3, Quaternion, Rotation3 as _, SquareMatrix, Vector3,
-        Zero as _,
+        Deg, InnerSpace, Matrix3, Matrix4, Point3, Quaternion, Rotation3 as _, SquareMatrix,
+        Vector3, Zero as _,
     },
-    model::{DrawLight, DrawModel as _, Model, ModelVertex, Vertex as _},
+    model::{DrawLight, DrawModel as _, Model, ModelVertex, Vertex},
     texture::Texture,
     wgpu::util::DeviceExt as _,
     winit::{
@@ -160,6 +160,7 @@ impl Instance {
     fn to_raw(&self) -> InstanceRaw {
         InstanceRaw {
             model: (Matrix4::from_translation(self.position) * Matrix4::from(self.rotation)).into(),
+            normal: Matrix3::from(self.rotation).into(),
         }
     }
 }
@@ -168,16 +169,25 @@ impl Instance {
 #[derive(Copy, Clone, Pod, Zeroable)]
 struct InstanceRaw {
     model: [[f32; 4]; 4],
+    normal: [[f32; 3]; 3],
 }
 
 impl InstanceRaw {
-    const ATTRIBUTES: [wgpu::VertexAttribute; 4] =
-        wgpu::vertex_attr_array![5 => Float32x4, 6 => Float32x4, 7 => Float32x4, 8 => Float32x4];
+    const ATTRIBUTES: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_array![
+        5 => Float32x4,
+        6 => Float32x4,
+        7 => Float32x4,
+        8 => Float32x4,
+        9 => Float32x3,
+        10 => Float32x3,
+        11 => Float32x3,
+    ];
+}
 
+impl Vertex for InstanceRaw {
     fn desc() -> wgpu::VertexBufferLayout<'static> {
-        use std::mem;
         wgpu::VertexBufferLayout {
-            array_stride: mem::size_of::<InstanceRaw>() as wgpu::BufferAddress,
+            array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Instance,
             attributes: &Self::ATTRIBUTES,
         }
