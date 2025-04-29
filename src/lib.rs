@@ -491,7 +491,7 @@ impl<'a> State<'a> {
             &[ModelVertex::desc(), InstanceRaw::desc()],
             wgpu::ShaderModuleDescriptor {
                 label: Some("Normal Shader"),
-                source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
+                source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/shader.wgsl").into()),
             },
         );
 
@@ -507,7 +507,7 @@ impl<'a> State<'a> {
             &[ModelVertex::desc()],
             wgpu::ShaderModuleDescriptor {
                 label: Some("Light Shader"),
-                source: wgpu::ShaderSource::Wgsl(include_str!("light.wgsl").into()),
+                source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/light.wgsl").into()),
             },
         );
 
