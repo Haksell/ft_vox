@@ -76,11 +76,10 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let half_dir = normalize(view_dir + light_dir);
     let specular_strength = pow(max(dot(in.world_normal, half_dir), 0.0), 32.0);
     
-    let ambient = ambient_strength * light.color * object_color.xyz;
-    let diffuse = diffuse_strength * light.color * object_color.xyz;
-    let specular = specular_strength * light.color;
-
-    let result = ambient + diffuse + specular;
+    let result = (
+        (ambient_strength + diffuse_strength) * object_color.xyz
+        + specular_strength
+    ) * light.color;
 
     return vec4<f32>(result, object_color.a);
 }
