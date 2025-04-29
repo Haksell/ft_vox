@@ -1,4 +1,5 @@
 struct Camera {
+    view_pos: vec4<f32>,
     view_proj: mat4x4<f32>,
 }
 @group(1) @binding(0)
@@ -67,13 +68,19 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let object_color: vec4<f32> = textureSample(t_diffuse, s_diffuse, in.tex_coords);
     
     let ambient_strength = 0.1;
-    let ambient_color = light.color * ambient_strength;
 
     let light_dir = normalize(light.position - in.world_position);
     let diffuse_strength = max(dot(in.world_normal, light_dir), 0.0);
-    let diffuse_color = light.color * diffuse_strength;
+
+    let view_dir = normalize(camera.view_pos.xyz - in.world_position);
+    let half_dir = normalize(view_dir + light_dir);
+    let specular_strength = pow(max(dot(in.world_normal, half_dir), 0.0), 32.0);
     
-    let result = (ambient_color + diffuse_color) * object_color.xyz;
+    let ambient = ambient_strength * light.color * object_color.xyz;
+    let diffuse = diffuse_strength * light.color * object_color.xyz;
+    let specular = specular_strength * light.color;
+
+    let result = ambient + diffuse + specular;
 
     return vec4<f32>(result, object_color.a);
 }
