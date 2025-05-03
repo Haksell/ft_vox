@@ -72,7 +72,6 @@ impl Vertex for InstanceRaw {
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Pod, Zeroable)]
 struct LightUniform {
-    // Due to uniforms requiring 16 byte (4 float) spacing, we need to add padding fields
     position: [f32; 3],
     _padding1: u32,
     color: [f32; 3],
