@@ -1,8 +1,11 @@
 use {
-    bytemuck::{Pod, Zeroable},
-    cgmath::{InnerSpace, Matrix4, Point3, Rad, SquareMatrix, Vector3, perspective},
+    cgmath::{InnerSpace as _, Matrix4, Point3, Rad, Vector3, perspective},
     std::{f32::consts::FRAC_PI_2, time::Duration},
-    winit::{dpi::PhysicalPosition, event::*, keyboard::KeyCode},
+    winit::{
+        dpi::PhysicalPosition,
+        event::{ElementState, MouseScrollDelta},
+        keyboard::KeyCode,
+    },
 };
 
 #[rustfmt::skip]
@@ -23,10 +26,10 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new<Position: Into<Point3<f32>>, Yaw: Into<Rad<f32>>, Pitch: Into<Rad<f32>>>(
-        position: Position,
-        yaw: Yaw,
-        pitch: Pitch,
+    pub fn new<V: Into<Point3<f32>>, Y: Into<Rad<f32>>, P: Into<Rad<f32>>>(
+        position: V,
+        yaw: Y,
+        pitch: P,
     ) -> Self {
         Self {
             position: position.into(),
@@ -86,10 +89,11 @@ pub struct CameraController {
     scroll: f32,
     speed: f32,
     sensitivity: f32,
+    scroll_speed: f32,
 }
 
 impl CameraController {
-    pub fn new(speed: f32, sensitivity: f32) -> Self {
+    pub fn new(speed: f32, sensitivity: f32, scroll_speed: f32) -> Self {
         Self {
             amount_left: 0.0,
             amount_right: 0.0,
@@ -102,6 +106,7 @@ impl CameraController {
             scroll: 0.0,
             speed,
             sensitivity,
+            scroll_speed,
         }
     }
 
@@ -146,10 +151,10 @@ impl CameraController {
     }
 
     pub fn process_scroll(&mut self, delta: &MouseScrollDelta) {
-        self.scroll = -match delta {
-            MouseScrollDelta::LineDelta(_, scroll) => scroll * 100.0,
-            MouseScrollDelta::PixelDelta(PhysicalPosition { y: scroll, .. }) => *scroll as f32,
-        };
+        self.scroll = match delta {
+            MouseScrollDelta::LineDelta(_, scroll) => scroll * -100.0,
+            MouseScrollDelta::PixelDelta(PhysicalPosition { y: scroll, .. }) => -*scroll as f32,
+        } * self.scroll_speed;
     }
 
     pub fn update_camera(&mut self, camera: &mut Camera, dt: Duration) {
@@ -164,42 +169,17 @@ impl CameraController {
         let (pitch_sin, pitch_cos) = camera.pitch.0.sin_cos();
         let scrollward =
             Vector3::new(pitch_cos * yaw_cos, pitch_sin, pitch_cos * yaw_sin).normalize();
-        camera.position += scrollward * self.scroll * self.speed * self.sensitivity * dt;
+        camera.position -= scrollward * self.scroll * self.speed * self.sensitivity * dt;
         self.scroll = 0.0;
 
         camera.position.y += (self.amount_up - self.amount_down) * self.speed * dt;
 
-        camera.yaw += Rad(self.rotate_horizontal) * self.sensitivity * dt;
-        camera.pitch += Rad(-self.rotate_vertical) * self.sensitivity * dt;
+        camera.yaw -= Rad(self.rotate_horizontal) * self.sensitivity * dt;
+        camera.pitch -= Rad(-self.rotate_vertical) * self.sensitivity * dt;
 
         self.rotate_horizontal = 0.0;
         self.rotate_vertical = 0.0;
 
-        if camera.pitch < -Rad(SAFE_FRAC_PI_2) {
-            camera.pitch = -Rad(SAFE_FRAC_PI_2);
-        } else if camera.pitch > Rad(SAFE_FRAC_PI_2) {
-            camera.pitch = Rad(SAFE_FRAC_PI_2);
-        }
-    }
-}
-
-#[repr(C)]
-#[derive(Debug, Copy, Clone, Pod, Zeroable)]
-pub struct CameraUniform {
-    view_pos: [f32; 4],
-    view_proj: [[f32; 4]; 4],
-}
-
-impl CameraUniform {
-    pub fn new() -> Self {
-        Self {
-            view_pos: [0.; 4],
-            view_proj: Matrix4::identity().into(),
-        }
-    }
-
-    pub fn update_view_proj(&mut self, camera: &Camera, projection: &Projection) {
-        self.view_pos = camera.position.to_homogeneous().into();
-        self.view_proj = (projection.calc_matrix() * camera.calc_matrix()).into();
+        camera.pitch.0 = camera.pitch.0.clamp(-SAFE_FRAC_PI_2, SAFE_FRAC_PI_2);
     }
 }

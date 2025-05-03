@@ -18,7 +18,7 @@ struct VertexInput {
     @location(2) normal: vec3<f32>,
     @location(3) tangent: vec3<f32>,
     @location(4) bitangent: vec3<f32>,
-};
+}
 
 struct InstanceInput {
     @location(5) model_matrix_0: vec4<f32>,
@@ -36,7 +36,7 @@ struct VertexOutput {
     @location(1) tangent_position: vec3<f32>,
     @location(2) tangent_light_position: vec3<f32>,
     @location(3) tangent_view_position: vec3<f32>,
-};
+}
 
 @vertex
 fn vs_main(model: VertexInput, instance: InstanceInput) -> VertexOutput {
@@ -95,7 +95,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let ambient_strength = 0.1;
     let diffuse_strength = max(dot(tangent_normal, light_dir), 0.0);
     let specular_strength = pow(max(dot(tangent_normal, half_dir), 0.0), 32.0);
-    
+
     let result = (
         (ambient_strength + diffuse_strength) * object_color.xyz
         + specular_strength

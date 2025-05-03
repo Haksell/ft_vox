@@ -23,9 +23,8 @@ struct VertexOutput {
 
 @vertex
 fn vs_main(model: VertexInput) -> VertexOutput {
-    let scale = 0.25;
     return VertexOutput(
-        camera.view_proj * vec4<f32>(model.position * scale + light.position, 1.0),
+        camera.view_proj * vec4<f32>(model.position * 0.25 + light.position, 1.0),
         light.color,
     );
 }
