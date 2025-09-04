@@ -20,7 +20,6 @@ use {
     },
 };
 
-#[allow(unused)]
 struct State<'a> {
     surface: wgpu::Surface<'a>,
     device: wgpu::Device,
