@@ -1,7 +1,7 @@
 use crate::{noise::PerlinNoise, vertex::Vertex};
 
 pub const CHUNK_WIDTH: usize = 16;
-pub const CHUNK_HEIGHT: usize = 256;
+pub const CHUNK_HEIGHT: usize = 64;
 
 pub struct Chunk {
     blocks: [[[bool; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH],

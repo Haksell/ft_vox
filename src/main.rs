@@ -408,6 +408,7 @@ pub async fn run() {
     let window = WindowBuilder::new()
         .with_title("ft_vox")
         .with_resizable(true)
+        .with_inner_size(winit::dpi::PhysicalSize::new(1280.0, 720.0))
         // .with_fullscreen(Some(Fullscreen::Borderless(Some(monitor))))
         .build(&event_loop)
         .unwrap();
