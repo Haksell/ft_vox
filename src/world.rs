@@ -1,5 +1,10 @@
-use crate::{Chunk, PerlinNoise, PerlinNoiseBuilder};
-use std::collections::HashMap;
+use {
+    crate::{
+        chunk::Chunk,
+        noise::{PerlinNoise, PerlinNoiseBuilder},
+    },
+    std::collections::HashMap,
+};
 
 pub struct World {
     seed: u64,

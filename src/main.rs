@@ -1,14 +1,24 @@
-use std::time::{Duration, Instant};
+mod camera;
+mod chunk;
+mod noise;
+mod texture;
+mod vertex;
+mod world;
 
-use wgpu::util::DeviceExt as _;
-use winit::{
-    event::*,
-    event_loop::EventLoop,
-    keyboard::{KeyCode, PhysicalKey},
-    window::{Window, WindowBuilder},
+use {
+    crate::{
+        camera::Camera, camera::CameraController, camera::CameraUniform, texture::Texture,
+        vertex::Vertex, world::World,
+    },
+    std::time::{Duration, Instant},
+    wgpu::util::DeviceExt as _,
+    winit::{
+        event::*,
+        event_loop::EventLoop,
+        keyboard::{KeyCode, PhysicalKey},
+        window::{Window, WindowBuilder},
+    },
 };
-
-use ft_vox::{Camera, CameraController, CameraUniform, Texture, Vertex, World};
 
 #[allow(unused)]
 struct State<'a> {

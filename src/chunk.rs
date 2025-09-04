@@ -1,4 +1,4 @@
-use crate::{PerlinNoise, Vertex};
+use crate::{noise::PerlinNoise, vertex::Vertex};
 
 pub const CHUNK_SIZE: usize = 16;
 
