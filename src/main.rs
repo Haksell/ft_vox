@@ -1,3 +1,4 @@
+mod block;
 mod camera;
 mod chunk;
 mod face;

@@ -1,5 +1,6 @@
 use {
     crate::{
+        block::BlockType,
         chunk::{Chunk, CHUNK_HEIGHT, CHUNK_WIDTH},
         noise::{PerlinNoise, PerlinNoiseBuilder},
     },
@@ -41,8 +42,8 @@ impl World {
         &self,
         chunk_x: i32,
         chunk_y: i32,
-    ) -> [[[bool; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH] {
-        let mut blocks = [[[false; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH];
+    ) -> [[[Option<BlockType>; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH] {
+        let mut blocks = [[[None; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH];
 
         for x in 0..CHUNK_WIDTH {
             let world_x = (chunk_x * CHUNK_WIDTH as i32) + x as i32;
@@ -54,7 +55,9 @@ impl World {
                 let solid_height = height.floor() as usize;
 
                 for z in 0..CHUNK_HEIGHT {
-                    blocks[x][y][z] = y <= solid_height && solid_height < CHUNK_HEIGHT;
+                    if y <= solid_height && solid_height < CHUNK_HEIGHT {
+                        blocks[x][y][z] = Some(BlockType::Grass)
+                    }
                 }
             }
         }

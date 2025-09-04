@@ -1,17 +1,18 @@
 use crate::{
+    block::BlockType,
     face::{Face, FACES},
     vertex::Vertex,
 };
 
 pub const CHUNK_WIDTH: usize = 16;
-pub const CHUNK_HEIGHT: usize = 64;
+pub const CHUNK_HEIGHT: usize = 32;
 
 pub struct Chunk {
-    blocks: [[[bool; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH],
+    blocks: [[[Option<BlockType>; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH],
 }
 
 impl Chunk {
-    pub fn new(blocks: [[[bool; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH]) -> Self {
+    pub fn new(blocks: [[[Option<BlockType>; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH]) -> Self {
         Self { blocks }
     }
 
@@ -23,9 +24,9 @@ impl Chunk {
         for x in 0..CHUNK_WIDTH {
             for y in 0..CHUNK_WIDTH {
                 for z in 0..CHUNK_HEIGHT {
-                    if !self.blocks[x][y][z] {
+                    let Some(block) = self.blocks[x][y][z] else {
                         continue;
-                    }
+                    };
 
                     let position = glam::Vec3::new(x as f32, y as f32, z as f32);
 
@@ -43,10 +44,10 @@ impl Chunk {
                             || nx >= CHUNK_WIDTH as i32
                             || ny >= CHUNK_WIDTH as i32
                             || nz >= CHUNK_HEIGHT as i32
-                            || !self.blocks[nx as usize][ny as usize][nz as usize];
+                            || self.blocks[nx as usize][ny as usize][nz as usize].is_none();
 
                         if is_face_visible {
-                            let (face_verts, face_indices) = Self::face(face, position);
+                            let (face_verts, face_indices) = Self::face(face, position, block);
 
                             vertices.extend(face_verts);
                             indices.extend(face_indices.iter().map(|i| *i + index_offset));
@@ -60,24 +61,21 @@ impl Chunk {
         (vertices, indices)
     }
 
-    fn face(face: Face, position: glam::Vec3) -> (Vec<Vertex>, Vec<u16>) {
+    fn face(face: Face, position: glam::Vec3, block: BlockType) -> ([Vertex; 4], [u16; 6]) {
         let positions = face.positions();
         let uvs = face.uvs();
 
-        let vertices: Vec<Vertex> = positions
-            .iter()
-            .zip(uvs.iter())
-            .map(|(pos, uv)| Vertex {
-                position: [
-                    position.x + pos[0],
-                    position.y + pos[1],
-                    position.z + pos[2],
-                ],
-                tex_coords: *uv,
-            })
-            .collect();
+        let vertices = std::array::from_fn(|i| Vertex {
+            position: [
+                position.x + positions[i][0],
+                position.y + positions[i][1],
+                position.z + positions[i][2],
+            ],
+            tex_coords: uvs[i],
+            atlas_offset: block.atlas_offset(),
+        });
 
-        let indices = vec![0, 1, 2, 2, 3, 0];
+        let indices = [0, 1, 2, 2, 3, 0];
 
         (vertices, indices)
     }
