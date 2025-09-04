@@ -29,13 +29,9 @@ impl World {
     }
 
     fn generate_height_at(&self, world_x: f64, world_y: f64) -> f64 {
-        let base_noise = self.noise.noise2d(world_x * 0.01, world_y * 0.01);
-        let detail_noise = self.noise.noise2d(world_x * 0.05, world_y * 0.05) * 0.3;
-        let fine_detail = self.noise.noise2d(world_x * 0.1, world_y * 0.1) * 0.1;
+        let noise = self.noise.noise2d(world_x, world_y);
 
-        let combined = base_noise + detail_noise + fine_detail;
-
-        self.height_offset + (combined * self.height_scale)
+        self.height_offset + (noise * self.height_scale)
     }
 
     fn generate_chunk_blocks(
@@ -51,12 +47,15 @@ impl World {
             for y in 0..CHUNK_WIDTH {
                 let world_y = (chunk_y * CHUNK_WIDTH as i32) + y as i32;
 
-                let height = self.generate_height_at(world_x as f64, world_y as f64);
-                let solid_height = height.floor() as usize;
+                let height = self.generate_height_at(world_x as f64, world_y as f64) as usize;
 
                 for z in 0..CHUNK_HEIGHT {
-                    if y <= solid_height && solid_height < CHUNK_HEIGHT {
-                        blocks[x][y][z] = Some(BlockType::Grass)
+                    blocks[x][y][z] = if z == height {
+                        Some(BlockType::Snow)
+                    } else if z < height {
+                        Some(BlockType::Grass)
+                    } else {
+                        None
                     }
                 }
             }
