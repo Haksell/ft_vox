@@ -75,6 +75,10 @@ impl Camera {
         )
         .normalize()
     }
+
+    pub fn position(&self) -> glam::Vec3 {
+        self.eye
+    }
 }
 
 pub struct CameraController {

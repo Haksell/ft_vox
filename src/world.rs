@@ -13,6 +13,7 @@ pub struct World {
 
     height_scale: f64,
     height_offset: f64,
+    render_distance: usize,
 }
 
 impl World {
@@ -25,6 +26,7 @@ impl World {
             chunks,
             height_scale: CHUNK_HEIGHT as f64 * 0.4, // Height variation range
             height_offset: CHUNK_HEIGHT as f64 * 0.4, // Base height
+            render_distance: 4,
         }
     }
 
@@ -32,6 +34,10 @@ impl World {
         let noise = self.noise.noise2d(world_x, world_y);
 
         self.height_offset + (noise * self.height_scale)
+    }
+
+    pub fn get_render_distance(&self) -> usize {
+        self.render_distance
     }
 
     fn generate_chunk_blocks(

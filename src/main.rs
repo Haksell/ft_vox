@@ -9,9 +9,10 @@ mod world;
 
 use {
     crate::{
-        camera::Camera, camera::CameraController, camera::CameraUniform, texture::Texture,
-        vertex::Vertex, world::World,
+        camera::Camera, camera::CameraController, camera::CameraUniform, chunk::CHUNK_WIDTH,
+        texture::Texture, vertex::Vertex, world::World,
     },
+    std::collections::HashMap,
     std::time::{Duration, Instant},
     wgpu::util::DeviceExt as _,
     winit::{
@@ -22,6 +23,12 @@ use {
     },
 };
 
+struct ChunkRenderData {
+    vertex_buffer: wgpu::Buffer,
+    index_buffer: wgpu::Buffer,
+    num_indices: u32,
+}
+
 struct State<'a> {
     surface: wgpu::Surface<'a>,
     device: wgpu::Device,
@@ -30,9 +37,8 @@ struct State<'a> {
     size: winit::dpi::PhysicalSize<u32>,
     window: &'a Window,
     render_pipeline: wgpu::RenderPipeline,
-    vertex_buffer: wgpu::Buffer,
-    index_buffer: wgpu::Buffer,
-    num_indices: u32,
+
+    chunk_render_data: HashMap<(i32, i32), ChunkRenderData>,
 
     diffuse_texture: Texture,
     depth_texture: Texture,
@@ -142,7 +148,7 @@ impl<'a> State<'a> {
         });
 
         let camera = Camera::new(
-            glam::Vec3::new(0.0, 0.0, 30.0),
+            glam::Vec3::new(0.0, 50.0, 0.0),
             glam::Vec3::new(0.0, 1.0, 0.0),
             config.width as f32 / config.height as f32,
             80.0,
@@ -238,21 +244,7 @@ impl<'a> State<'a> {
             cache: None,
         });
 
-        let vertex_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Vertex Buffer"),
-            size: 0,
-            usage: wgpu::BufferUsages::VERTEX,
-            mapped_at_creation: false,
-        });
-
-        let index_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Index Buffer"),
-            size: 0,
-            usage: wgpu::BufferUsages::INDEX,
-            mapped_at_creation: false,
-        });
-
-        let num_indices = 0;
+        let chunk_render_data = HashMap::new();
 
         Self {
             surface,
@@ -262,9 +254,7 @@ impl<'a> State<'a> {
             size,
             window,
             render_pipeline,
-            vertex_buffer,
-            index_buffer,
-            num_indices,
+            chunk_render_data,
             diffuse_bind_group,
             diffuse_texture,
             depth_texture,
@@ -296,24 +286,74 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn update_buffers(&mut self, vertices: &[Vertex], indices: &[u16]) {
-        self.vertex_buffer = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(&vertices),
-                usage: wgpu::BufferUsages::VERTEX,
-            });
+    fn world_to_chunk_coords(world_x: f32, world_y: f32) -> (i32, i32) {
+        let chunk_x = (world_x / CHUNK_WIDTH as f32).floor() as i32;
+        let chunk_y = (world_y / CHUNK_WIDTH as f32).floor() as i32;
+        (chunk_x, chunk_y)
+    }
 
-        self.index_buffer = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Index Buffer"),
-                contents: bytemuck::cast_slice(&indices),
-                usage: wgpu::BufferUsages::INDEX,
-            });
+    pub fn update_chunks(&mut self, world: &mut World) {
+        let camera_pos = self.camera.position();
+        let render_distance = world.get_render_distance() as i32;
+        let current_chunk = Self::world_to_chunk_coords(camera_pos.x, camera_pos.z);
 
-        self.num_indices = indices.len() as u32;
+        let mut chunks_to_load = std::collections::HashSet::new();
+
+        for dx in -render_distance..=render_distance {
+            for dz in -render_distance..=render_distance {
+                let chunk_coords = (current_chunk.0 + dx, current_chunk.1 + dz);
+                chunks_to_load.insert(chunk_coords);
+            }
+        }
+
+        self.chunk_render_data
+            .retain(|&coords, _| chunks_to_load.contains(&coords));
+
+        for chunk_coords in chunks_to_load {
+            if !self.chunk_render_data.contains_key(&chunk_coords) {
+                self.load_chunk(world, chunk_coords.0, chunk_coords.1);
+            }
+        }
+    }
+
+    fn load_chunk(&mut self, world: &mut World, chunk_x: i32, chunk_y: i32) {
+        let chunk = world.get_chunk(chunk_x, chunk_y);
+        let (mut vertices, indices) = chunk.mesh();
+
+        let world_offset_x = chunk_x as f32 * CHUNK_WIDTH as f32;
+        let world_offset_y = chunk_y as f32 * CHUNK_WIDTH as f32;
+
+        for vertex in &mut vertices {
+            vertex.position[0] += world_offset_x;
+            vertex.position[1] += world_offset_y;
+        }
+
+        if !vertices.is_empty() && !indices.is_empty() {
+            let vertex_buffer = self
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some(&format!("Chunk ({}, {}) Vertex Buffer", chunk_x, chunk_y)),
+                    contents: bytemuck::cast_slice(&vertices),
+                    usage: wgpu::BufferUsages::VERTEX,
+                });
+
+            let index_buffer = self
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some(&format!("Chunk ({}, {}) Index Buffer", chunk_x, chunk_y)),
+                    contents: bytemuck::cast_slice(&indices),
+                    usage: wgpu::BufferUsages::INDEX,
+                });
+
+            let render_data = ChunkRenderData {
+                vertex_buffer,
+                index_buffer,
+                num_indices: indices.len() as u32,
+            };
+
+            self.chunk_render_data
+                .insert((chunk_x, chunk_y), render_data);
+        }
     }
 
     fn input(&mut self, event: &WindowEvent) -> bool {
@@ -377,10 +417,17 @@ impl<'a> State<'a> {
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
             render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
-            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
 
-            render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
+            for render_data in self.chunk_render_data.values() {
+                if render_data.num_indices > 0 {
+                    render_pass.set_vertex_buffer(0, render_data.vertex_buffer.slice(..));
+                    render_pass.set_index_buffer(
+                        render_data.index_buffer.slice(..),
+                        wgpu::IndexFormat::Uint16,
+                    );
+                    render_pass.draw_indexed(0..render_data.num_indices, 0, 0..1);
+                }
+            }
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
@@ -393,24 +440,18 @@ impl<'a> State<'a> {
 pub async fn run() {
     env_logger::init();
     let event_loop = EventLoop::new().unwrap();
-    // let monitor = event_loop.primary_monitor().unwrap();
     let window = WindowBuilder::new()
         .with_title("ft_vox")
         .with_resizable(true)
         .with_inner_size(winit::dpi::PhysicalSize::new(1280.0, 720.0))
-        // .with_fullscreen(Some(Fullscreen::Borderless(Some(monitor))))
         .build(&event_loop)
         .unwrap();
 
     window.set_cursor_visible(false);
 
     let mut state = State::new(&window).await;
-
     let mut world = World::new(42);
-    let chunk = world.get_chunk(0, 0);
-
-    let (chunk_vertices, chunk_indices) = chunk.mesh();
-    state.update_buffers(&chunk_vertices, &chunk_indices);
+    let mut last_camera_chunk = None;
 
     let mut last_render = Instant::now();
 
@@ -437,7 +478,6 @@ pub async fn run() {
                             },
                         ..
                     } => {
-                        // Toggle fullscreen
                         let monitor = state.window().current_monitor().unwrap();
                         match state.window().fullscreen() {
                             Some(_) => state.window().set_fullscreen(None),
@@ -464,6 +504,15 @@ pub async fn run() {
                         let now = Instant::now();
                         let dt = now - last_render;
                         last_render = now;
+
+                        let camera_pos = state.camera.position();
+                        let current_chunk =
+                            State::world_to_chunk_coords(camera_pos.x, camera_pos.z);
+
+                        if last_camera_chunk != Some(current_chunk) {
+                            last_camera_chunk = Some(current_chunk);
+                            state.update_chunks(&mut world);
+                        }
 
                         state.update(dt);
 
