@@ -428,12 +428,10 @@ pub async fn run() {
 
     let _ = event_loop.run(move |event, control_flow| match event {
         Event::DeviceEvent {
-            event: DeviceEvent::MouseMotion { delta },
+            event: DeviceEvent::MouseMotion { delta: (dx, dy) },
             ..
         } => {
-            state
-                .camera_controller
-                .process_mouse(delta.0 as f32, delta.1 as f32);
+            state.camera_controller.process_mouse(dx as f32, dy as f32);
         }
 
         Event::WindowEvent {
