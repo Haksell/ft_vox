@@ -1,5 +1,3 @@
-use wgpu::naga::Block;
-
 #[derive(Debug, Clone, Copy)]
 pub enum BlockType {
     Grass,
@@ -7,10 +5,10 @@ pub enum BlockType {
 }
 
 impl BlockType {
-    pub fn atlas_offset(&self) -> (u32, u32) {
+    pub fn atlas_offset(&self) -> [f32; 2] {
         match self {
-            BlockType::Grass => (0, 10),
-            BlockType::Snow => (2, 10),
+            BlockType::Grass => [0.0, 0.625],
+            BlockType::Snow => [2. / 32., 0.625],
         }
     }
 }

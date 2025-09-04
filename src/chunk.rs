@@ -53,7 +53,6 @@ impl Chunk {
     pub fn mesh(&self) -> (Vec<Vertex>, Vec<u16>) {
         let mut vertices = Vec::new();
         let mut indices = Vec::new();
-        let mut atlas_offsets = Vec::new();
         let mut index_offset = 0;
 
         for x in 0..CHUNK_WIDTH {
@@ -82,11 +81,10 @@ impl Chunk {
                             || self.blocks[nx as usize][ny as usize][nz as usize].is_none();
 
                         if is_face_visible {
-                            let (face_verts, face_indices) = Self::face(face, position);
+                            let (face_verts, face_indices) = Self::face(face, position, block);
 
                             vertices.extend(face_verts);
                             indices.extend(face_indices.iter().map(|i| *i + index_offset));
-                            atlas_offsets.push(block.atlas_offset());
                             index_offset += 4;
                         }
                     }
@@ -97,7 +95,7 @@ impl Chunk {
         (vertices, indices)
     }
 
-    fn face(face: Face, position: glam::Vec3) -> ([Vertex; 4], [u16; 6]) {
+    fn face(face: Face, position: glam::Vec3, block: BlockType) -> ([Vertex; 4], [u16; 6]) {
         let positions = face.positions();
         let uvs = face.uvs();
 
@@ -108,6 +106,7 @@ impl Chunk {
                 position.z + positions[i][2],
             ],
             tex_coords: uvs[i],
+            atlas_offset: block.atlas_offset(),
         });
 
         let indices = [0, 1, 2, 2, 3, 0];
