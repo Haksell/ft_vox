@@ -3,6 +3,7 @@
 ## todo
 
 - textures right side up
+- more textures
 - more chunks
 - greedy meshing
 
