@@ -1,4 +1,8 @@
-use crate::{face::FACES, noise::PerlinNoise, vertex::Vertex};
+use crate::{
+    face::{Face, FACES},
+    noise::PerlinNoise,
+    vertex::Vertex,
+};
 
 pub const CHUNK_WIDTH: usize = 16;
 pub const CHUNK_HEIGHT: usize = 64;
@@ -69,8 +73,7 @@ impl Chunk {
                             || !self.blocks[nx as usize][ny as usize][nz as usize];
 
                         if is_face_visible {
-                            let normal = glam::Vec3::new(dx as f32, dy as f32, dz as f32);
-                            let (face_verts, face_indices) = Self::face(position, normal);
+                            let (face_verts, face_indices) = Self::face(face, position);
 
                             vertices.extend(face_verts);
                             indices.extend(face_indices.iter().map(|i| *i + index_offset));
@@ -84,73 +87,15 @@ impl Chunk {
         (vertices, indices)
     }
 
-    fn face(position: glam::Vec3, normal: glam::Vec3) -> (Vec<Vertex>, Vec<u16>) {
-        let dx = normal.x;
-        let dy = normal.y;
-        let dz = normal.z;
-        let normal = (dx, dy, dz);
-
-        let (positions, uvs) = match normal {
-            (1., 0., 0.) => (
-                // Right
-                [
-                    [1.0, 0.0, 0.0],
-                    [1.0, 1.0, 0.0],
-                    [1.0, 1.0, 1.0],
-                    [1.0, 0.0, 1.0],
-                ],
-                [[0.0, 1.0], [0.0, 0.0], [1.0, 0.0], [1.0, 1.0]],
-            ),
-            (-1., 0., 0.) => (
-                // Left
-                [
-                    [0.0, 0.0, 0.0],
-                    [0.0, 1.0, 0.0],
-                    [0.0, 1.0, 1.0],
-                    [0.0, 0.0, 1.0],
-                ],
-                [[0.0, 1.0], [0.0, 0.0], [1.0, 0.0], [1.0, 1.0]],
-            ),
-            (0., 1., 0.) => (
-                // Top
-                [
-                    [0.0, 1.0, 0.0],
-                    [0.0, 1.0, 1.0],
-                    [1.0, 1.0, 1.0],
-                    [1.0, 1.0, 0.0],
-                ],
-                [[0.0, 1.0], [0.0, 0.0], [1.0, 0.0], [1.0, 1.0]],
-            ),
-            (0., -1., 0.) => (
-                // Bottom
-                [
-                    [0.0, 0.0, 0.0],
-                    [1.0, 0.0, 0.0],
-                    [1.0, 0.0, 1.0],
-                    [0.0, 0.0, 1.0],
-                ],
-                [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
-            ),
-            (0., 0., 1.) => (
-                // Front
-                [
-                    [0.0, 0.0, 1.0],
-                    [1.0, 0.0, 1.0],
-                    [1.0, 1.0, 1.0],
-                    [0.0, 1.0, 1.0],
-                ],
-                [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
-            ),
-            (0., 0., -1.) => (
-                // Back
-                [
-                    [0.0, 0.0, 0.0],
-                    [0.0, 1.0, 0.0],
-                    [1.0, 1.0, 0.0],
-                    [1.0, 0.0, 0.0],
-                ],
-                [[0.0, 1.0], [0.0, 0.0], [1.0, 0.0], [1.0, 1.0]],
-            ),
+    fn face(face: Face, position: glam::Vec3) -> (Vec<Vertex>, Vec<u16>) {
+        let positions = face.positions();
+        let uvs = match face.normal() {
+            (1, 0, 0) => [[0.0, 1.0], [0.0, 0.0], [1.0, 0.0], [1.0, 1.0]],
+            (-1, 0, 0) => [[0.0, 1.0], [0.0, 0.0], [1.0, 0.0], [1.0, 1.0]],
+            (0, 1, 0) => [[0.0, 1.0], [0.0, 0.0], [1.0, 0.0], [1.0, 1.0]],
+            (0, -1, 0) => [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+            (0, 0, 1) => [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
+            (0, 0, -1) => [[0.0, 1.0], [0.0, 0.0], [1.0, 0.0], [1.0, 1.0]],
             _ => unreachable!(),
         };
 
