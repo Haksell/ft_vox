@@ -1,6 +1,5 @@
 use crate::{
     face::{Face, FACES},
-    noise::PerlinNoise,
     vertex::Vertex,
 };
 
@@ -9,37 +8,11 @@ pub const CHUNK_HEIGHT: usize = 64;
 
 pub struct Chunk {
     blocks: [[[bool; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH],
-    chunk_x: i32,
-    chunk_y: i32,
 }
 
 impl Chunk {
-    pub fn new(pn: &PerlinNoise, chunk_x: i32, chunk_y: i32) -> Self {
-        let mut blocks = [[[false; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH];
-
-        for x in 0..CHUNK_WIDTH {
-            // Convert local chunk coordinates to world coordinates
-            let wx = (chunk_x * CHUNK_WIDTH as i32) + x as i32;
-            let nx = wx as f64;
-
-            for y in 0..CHUNK_WIDTH {
-                let wy = (chunk_y * CHUNK_WIDTH as i32) + y as i32;
-                let ny = wy as f64;
-
-                // Use world coordinates for noise generation
-                let noise_value = pn.noise2d(nx, ny);
-
-                for z in 0..CHUNK_HEIGHT {
-                    blocks[x][y][z] = (z as f64) < noise_value * CHUNK_HEIGHT as f64;
-                }
-            }
-        }
-
-        Self {
-            blocks,
-            chunk_x,
-            chunk_y,
-        }
+    pub fn new(blocks: [[[bool; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH]) -> Self {
+        Self { blocks }
     }
 
     pub fn mesh(&self) -> (Vec<Vertex>, Vec<u16>) {
