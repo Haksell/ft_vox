@@ -9,7 +9,7 @@
 
 ## mandatory
 
-- [ ] Your program will have to run in full screen mode. Reduce the default frame buffer
+- [x] Your program will have to run in full screen mode. Reduce the default frame buffer
 is prohibited.
 - [ ] You must be able to create a very large procedural world. For this project, user should
 be able to visit at least 16384\*256\*16384 cubes (256 is the height).

@@ -16,7 +16,7 @@ use {
         event::*,
         event_loop::EventLoop,
         keyboard::{KeyCode, PhysicalKey},
-        window::{Window, WindowBuilder},
+        window::{Fullscreen, Window, WindowBuilder},
     },
 };
 
@@ -388,13 +388,14 @@ impl<'a> State<'a> {
 pub async fn run() {
     env_logger::init();
     let event_loop = EventLoop::new().unwrap();
+    let monitor = event_loop.primary_monitor().unwrap();
     let window = WindowBuilder::new()
         .with_title("ft_vox")
         .with_resizable(true)
+        .with_fullscreen(Some(Fullscreen::Borderless(Some(monitor))))
         .build(&event_loop)
         .unwrap();
 
-    // Hide the cursor
     window.set_cursor_visible(false);
 
     let mut state = State::new(&window).await;
@@ -416,6 +417,24 @@ pub async fn run() {
         } if window_id == state.window().id() => {
             if !state.input(event) {
                 match event {
+                    WindowEvent::KeyboardInput {
+                        event:
+                            KeyEvent {
+                                state: ElementState::Pressed,
+                                physical_key: PhysicalKey::Code(KeyCode::F11),
+                                ..
+                            },
+                        ..
+                    } => {
+                        // Toggle fullscreen
+                        let monitor = state.window().current_monitor().unwrap();
+                        match state.window().fullscreen() {
+                            Some(_) => state.window().set_fullscreen(None),
+                            None => state
+                                .window()
+                                .set_fullscreen(Some(Fullscreen::Borderless(Some(monitor)))),
+                        }
+                    }
                     WindowEvent::CloseRequested
                     | WindowEvent::KeyboardInput {
                         event:
