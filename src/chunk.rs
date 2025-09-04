@@ -1,37 +1,32 @@
 use crate::{noise::PerlinNoise, vertex::Vertex};
 
-pub const CHUNK_SIZE: usize = 16;
+pub const CHUNK_WIDTH: usize = 16;
+pub const CHUNK_HEIGHT: usize = 256;
 
 pub struct Chunk {
-    blocks: [[[bool; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE],
+    blocks: [[[bool; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH],
     chunk_x: i32,
     chunk_y: i32,
-    chunk_z: i32,
 }
 
 impl Chunk {
-    pub fn new(pn: &PerlinNoise, chunk_x: i32, chunk_y: i32, chunk_z: i32) -> Self {
-        let mut blocks = [[[false; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE];
+    pub fn new(pn: &PerlinNoise, chunk_x: i32, chunk_y: i32) -> Self {
+        let mut blocks = [[[false; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH];
 
-        for x in 0..CHUNK_SIZE {
+        for x in 0..CHUNK_WIDTH {
             // Convert local chunk coordinates to world coordinates
-            let wx = (chunk_x * CHUNK_SIZE as i32) + x as i32;
+            let wx = (chunk_x * CHUNK_WIDTH as i32) + x as i32;
             let nx = wx as f64;
 
-            for y in 0..CHUNK_SIZE {
-                let wy = (chunk_y * CHUNK_SIZE as i32) + y as i32;
+            for y in 0..CHUNK_WIDTH {
+                let wy = (chunk_y * CHUNK_WIDTH as i32) + y as i32;
                 let ny = wy as f64;
 
-                for z in 0..CHUNK_SIZE {
-                    let wz = (chunk_z * CHUNK_SIZE as i32) + z as i32;
-                    let nz = wz as f64;
+                // Use world coordinates for noise generation
+                let noise_value = pn.noise2d(nx, ny);
 
-                    // Use world coordinates for noise generation
-                    let noise_value = pn.noise3d(nx, ny, nz);
-
-                    if noise_value > 0.5 {
-                        blocks[x][y][z] = true;
-                    }
+                for z in 0..CHUNK_HEIGHT {
+                    blocks[x][y][z] = (z as f64) < noise_value * CHUNK_HEIGHT as f64;
                 }
             }
         }
@@ -40,7 +35,6 @@ impl Chunk {
             blocks,
             chunk_x,
             chunk_y,
-            chunk_z,
         }
     }
 
@@ -49,9 +43,9 @@ impl Chunk {
         let mut indices = Vec::new();
         let mut index_offset = 0;
 
-        for x in 0..CHUNK_SIZE {
-            for y in 0..CHUNK_SIZE {
-                for z in 0..CHUNK_SIZE {
+        for x in 0..CHUNK_WIDTH {
+            for y in 0..CHUNK_WIDTH {
+                for z in 0..CHUNK_HEIGHT {
                     if !self.blocks[x][y][z] {
                         continue;
                     }
@@ -77,15 +71,15 @@ impl Chunk {
                         let is_face_visible = nx < 0
                             || ny < 0
                             || nz < 0
-                            || nx >= CHUNK_SIZE as i32
-                            || ny >= CHUNK_SIZE as i32
-                            || nz >= CHUNK_SIZE as i32
+                            || nx >= CHUNK_WIDTH as i32
+                            || ny >= CHUNK_WIDTH as i32
+                            || nz >= CHUNK_HEIGHT as i32
                             || (nx >= 0
                                 && ny >= 0
                                 && nz >= 0
-                                && nx < CHUNK_SIZE as i32
-                                && ny < CHUNK_SIZE as i32
-                                && nz < CHUNK_SIZE as i32
+                                && nx < CHUNK_WIDTH as i32
+                                && ny < CHUNK_WIDTH as i32
+                                && nz < CHUNK_HEIGHT as i32
                                 && !self.blocks[nx as usize][ny as usize][nz as usize]);
 
                         if is_face_visible {

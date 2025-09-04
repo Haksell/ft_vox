@@ -417,7 +417,7 @@ pub async fn run() {
     let mut state = State::new(&window).await;
 
     let mut world = World::new(42);
-    let chunk = world.get_chunk(0, 0, 0);
+    let chunk = world.get_chunk(0, 0);
 
     let (chunk_vertices, chunk_indices) = chunk.mesh();
     state.update_buffers(&chunk_vertices, &chunk_indices);
