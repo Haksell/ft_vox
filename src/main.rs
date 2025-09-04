@@ -404,11 +404,11 @@ impl<'a> State<'a> {
 pub async fn run() {
     env_logger::init();
     let event_loop = EventLoop::new().unwrap();
-    let monitor = event_loop.primary_monitor().unwrap();
+    // let monitor = event_loop.primary_monitor().unwrap();
     let window = WindowBuilder::new()
         .with_title("ft_vox")
         .with_resizable(true)
-        .with_fullscreen(Some(Fullscreen::Borderless(Some(monitor))))
+        // .with_fullscreen(Some(Fullscreen::Borderless(Some(monitor))))
         .build(&event_loop)
         .unwrap();
 
