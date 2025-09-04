@@ -1,4 +1,5 @@
 use crate::{
+    block::BlockType,
     face::{Face, FACES},
     noise::PerlinNoise,
     vertex::Vertex,
@@ -8,14 +9,14 @@ pub const CHUNK_WIDTH: usize = 16;
 pub const CHUNK_HEIGHT: usize = 64;
 
 pub struct Chunk {
-    blocks: [[[bool; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH],
+    blocks: [[[Option<BlockType>; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH],
     chunk_x: i32,
     chunk_y: i32,
 }
 
 impl Chunk {
     pub fn new(pn: &PerlinNoise, chunk_x: i32, chunk_y: i32) -> Self {
-        let mut blocks = [[[false; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH];
+        let mut blocks = [[[None; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH];
 
         for x in 0..CHUNK_WIDTH {
             // Convert local chunk coordinates to world coordinates
@@ -30,7 +31,14 @@ impl Chunk {
                 let noise_value = pn.noise2d(nx, ny);
 
                 for z in 0..CHUNK_HEIGHT {
-                    blocks[x][y][z] = (z as f64) < noise_value * CHUNK_HEIGHT as f64;
+                    let prop = (z as f64) / (noise_value * CHUNK_HEIGHT as f64);
+                    blocks[x][y][z] = if prop <= 0.5 {
+                        Some(BlockType::Grass)
+                    } else if prop <= 1.0 {
+                        Some(BlockType::Snow)
+                    } else {
+                        None
+                    };
                 }
             }
         }
@@ -50,9 +58,9 @@ impl Chunk {
         for x in 0..CHUNK_WIDTH {
             for y in 0..CHUNK_WIDTH {
                 for z in 0..CHUNK_HEIGHT {
-                    if !self.blocks[x][y][z] {
+                    let Some(block) = self.blocks[x][y][z] else {
                         continue;
-                    }
+                    };
 
                     let position = glam::Vec3::new(x as f32, y as f32, z as f32);
 
@@ -70,7 +78,7 @@ impl Chunk {
                             || nx >= CHUNK_WIDTH as i32
                             || ny >= CHUNK_WIDTH as i32
                             || nz >= CHUNK_HEIGHT as i32
-                            || !self.blocks[nx as usize][ny as usize][nz as usize];
+                            || self.blocks[nx as usize][ny as usize][nz as usize].is_none();
 
                         if is_face_visible {
                             let (face_verts, face_indices) = Self::face(face, position);
