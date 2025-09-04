@@ -53,6 +53,7 @@ impl Chunk {
     pub fn mesh(&self) -> (Vec<Vertex>, Vec<u16>) {
         let mut vertices = Vec::new();
         let mut indices = Vec::new();
+        let mut atlas_offsets = Vec::new();
         let mut index_offset = 0;
 
         for x in 0..CHUNK_WIDTH {
@@ -85,6 +86,7 @@ impl Chunk {
 
                             vertices.extend(face_verts);
                             indices.extend(face_indices.iter().map(|i| *i + index_offset));
+                            atlas_offsets.push(block.atlas_offset());
                             index_offset += 4;
                         }
                     }
@@ -95,24 +97,20 @@ impl Chunk {
         (vertices, indices)
     }
 
-    fn face(face: Face, position: glam::Vec3) -> (Vec<Vertex>, Vec<u16>) {
+    fn face(face: Face, position: glam::Vec3) -> ([Vertex; 4], [u16; 6]) {
         let positions = face.positions();
         let uvs = face.uvs();
 
-        let vertices: Vec<Vertex> = positions
-            .iter()
-            .zip(uvs.iter())
-            .map(|(pos, uv)| Vertex {
-                position: [
-                    position.x + pos[0],
-                    position.y + pos[1],
-                    position.z + pos[2],
-                ],
-                tex_coords: *uv,
-            })
-            .collect();
+        let vertices = std::array::from_fn(|i| Vertex {
+            position: [
+                position.x + positions[i][0],
+                position.y + positions[i][1],
+                position.z + positions[i][2],
+            ],
+            tex_coords: uvs[i],
+        });
 
-        let indices = vec![0, 1, 2, 2, 3, 0];
+        let indices = [0, 1, 2, 2, 3, 0];
 
         (vertices, indices)
     }
