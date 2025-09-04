@@ -87,10 +87,9 @@ impl<'a> State<'a> {
 
         surface.configure(&device, &config);
 
-        let diffuse_bytes = include_bytes!("../assets/happy-tree.png");
+        let diffuse_bytes = include_bytes!("../assets/atlas.png");
         let diffuse_texture =
-            Texture::from_bytes(&device, &queue, diffuse_bytes, "../assets/happy-tree.png")
-                .unwrap();
+            Texture::from_bytes(&device, &queue, diffuse_bytes, "../assets/atlas.png").unwrap();
         let depth_texture = Texture::create_depth_texture(&device, &config);
 
         let texture_bind_group_layout =
