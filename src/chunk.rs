@@ -1,4 +1,4 @@
-use crate::{noise::PerlinNoise, vertex::Vertex};
+use crate::{face::FACES, noise::PerlinNoise, vertex::Vertex};
 
 pub const CHUNK_WIDTH: usize = 16;
 pub const CHUNK_HEIGHT: usize = 64;
@@ -53,16 +53,8 @@ impl Chunk {
                     let position = glam::Vec3::new(x as f32, y as f32, z as f32);
 
                     // Check neighbors to determine visible faces
-                    let faces = [
-                        (1, 0, 0),  // Right
-                        (-1, 0, 0), // Left
-                        (0, 1, 0),  // Top
-                        (0, -1, 0), // Bottom
-                        (0, 0, 1),  // Front
-                        (0, 0, -1), // Back
-                    ];
-
-                    for (dx, dy, dz) in faces.iter() {
+                    for face in FACES {
+                        let (dx, dy, dz) = face.normal();
                         let nx = x as i32 + dx;
                         let ny = y as i32 + dy;
                         let nz = z as i32 + dz;
@@ -74,17 +66,10 @@ impl Chunk {
                             || nx >= CHUNK_WIDTH as i32
                             || ny >= CHUNK_WIDTH as i32
                             || nz >= CHUNK_HEIGHT as i32
-                            || (nx >= 0
-                                && ny >= 0
-                                && nz >= 0
-                                && nx < CHUNK_WIDTH as i32
-                                && ny < CHUNK_WIDTH as i32
-                                && nz < CHUNK_HEIGHT as i32
-                                && !self.blocks[nx as usize][ny as usize][nz as usize]);
+                            || !self.blocks[nx as usize][ny as usize][nz as usize];
 
                         if is_face_visible {
-                            let normal = glam::Vec3::new(*dx as f32, *dy as f32, *dz as f32);
-                            // Generate face vertices
+                            let normal = glam::Vec3::new(dx as f32, dy as f32, dz as f32);
                             let (face_verts, face_indices) = Self::face(position, normal);
 
                             vertices.extend(face_verts);

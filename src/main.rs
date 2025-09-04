@@ -1,5 +1,6 @@
 mod camera;
 mod chunk;
+mod face;
 mod noise;
 mod texture;
 mod vertex;
