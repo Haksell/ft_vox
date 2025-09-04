@@ -249,25 +249,21 @@ impl<'a> State<'a> {
             cache: None,
         });
 
-        let seed = 42;
-        let mut world = World::new(seed);
-        let chunk = world.get_chunk(0, 0, 0);
-
-        let (chunk_vertices, chunk_indices) = chunk.mesh();
-
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let vertex_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(&chunk_vertices),
+            size: 0,
             usage: wgpu::BufferUsages::VERTEX,
+            mapped_at_creation: false,
         });
 
-        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let index_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Index Buffer"),
-            contents: bytemuck::cast_slice(&chunk_indices),
+            size: 0,
             usage: wgpu::BufferUsages::INDEX,
+            mapped_at_creation: false,
         });
 
-        let num_indices = chunk_indices.len() as u32;
+        let num_indices = 0;
 
         Self {
             surface,
@@ -309,6 +305,26 @@ impl<'a> State<'a> {
             self.depth_texture = Texture::create_depth_texture(&self.device, &self.config);
             self.surface.configure(&self.device, &self.config);
         }
+    }
+
+    pub fn update_buffers(&mut self, vertices: &[Vertex], indices: &[u16]) {
+        self.vertex_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Vertex Buffer"),
+                contents: bytemuck::cast_slice(&vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
+
+        self.index_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Index Buffer"),
+                contents: bytemuck::cast_slice(&indices),
+                usage: wgpu::BufferUsages::INDEX,
+            });
+
+        self.num_indices = indices.len() as u32;
     }
 
     fn input(&mut self, event: &WindowEvent) -> bool {
@@ -399,6 +415,13 @@ pub async fn run() {
     window.set_cursor_visible(false);
 
     let mut state = State::new(&window).await;
+
+    let mut world = World::new(42);
+    let chunk = world.get_chunk(0, 0, 0);
+
+    let (chunk_vertices, chunk_indices) = chunk.mesh();
+    state.update_buffers(&chunk_vertices, &chunk_indices);
+
     let mut last_render = Instant::now();
 
     let _ = event_loop.run(move |event, control_flow| match event {
