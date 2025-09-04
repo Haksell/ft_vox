@@ -58,7 +58,7 @@ impl<'a> State<'a> {
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),
                 compatible_surface: Some(&surface),
-                force_fallback_adapter: false,
+                force_fallback_adapter: true,
             })
             .await
             .unwrap();
@@ -396,10 +396,6 @@ pub async fn run() {
 
     // Hide the cursor
     window.set_cursor_visible(false);
-    // Lock the cursor inside the window
-    if let Err(e) = window.set_cursor_grab(winit::window::CursorGrabMode::Locked) {
-        eprintln!("Failed to grab cursor: {:?}", e);
-    };
 
     let mut state = State::new(&window).await;
     let mut last_render = Instant::now();
