@@ -131,11 +131,17 @@ impl World {
         (vertices, indices)
     }
 
-    pub fn generate_chunk_mesh(&self, chunk_x: i32, chunk_y: i32) -> (Vec<Vertex>, Vec<u16>) {
-        let Some(chunk) = self.get_chunk_if_loaded(chunk_x, chunk_y) else {
-            return (Vec::new(), Vec::new());
-        };
-
+    pub fn generate_chunk_mesh(&mut self, chunk_x: i32, chunk_y: i32) -> (Vec<Vertex>, Vec<u16>) {
+        for dx in -1..=1 {
+            for dy in -1..=1 {
+                let neighbor_x = chunk_x + dx;
+                let neighbor_y = chunk_y + dy;
+                self.get_chunk(neighbor_x, neighbor_y);
+            }
+        }
+        
+        let chunk = self.get_chunk_if_loaded(chunk_x, chunk_y).unwrap();
+        
         let mut vertices = Vec::new();
         let mut indices = Vec::new();
         let mut index_offset = 0;

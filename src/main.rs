@@ -319,7 +319,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn generate_chunk_mesh(&mut self, world: &World, chunk_x: i32, chunk_y: i32) {
+    fn generate_chunk_mesh(&mut self, world: &mut World, chunk_x: i32, chunk_y: i32) {
         let (mut vertices, indices) = world.generate_chunk_mesh(chunk_x, chunk_y);
 
         let world_offset_x = chunk_x as f32 * CHUNK_WIDTH as f32;
