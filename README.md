@@ -5,7 +5,6 @@
 - atlas offsets as int
 - top and bottom different offsets
 - more textures
-- don't draw behind camera
 - greedy meshing
 
 ## mandatory

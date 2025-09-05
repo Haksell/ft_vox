@@ -139,9 +139,9 @@ impl World {
                 self.get_chunk(neighbor_x, neighbor_y);
             }
         }
-        
+
         let chunk = self.get_chunk_if_loaded(chunk_x, chunk_y).unwrap();
-        
+
         let mut vertices = Vec::new();
         let mut indices = Vec::new();
         let mut index_offset = 0;

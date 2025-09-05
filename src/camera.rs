@@ -1,6 +1,9 @@
-use winit::{
-    event::{ElementState, KeyEvent, WindowEvent},
-    keyboard::{KeyCode, PhysicalKey},
+use {
+    crate::frustum::Frustum,
+    winit::{
+        event::{ElementState, KeyEvent, WindowEvent},
+        keyboard::{KeyCode, PhysicalKey},
+    },
 };
 
 #[repr(C)]
@@ -78,6 +81,15 @@ impl Camera {
 
     pub fn position(&self) -> glam::Vec3 {
         self.eye
+    }
+
+    pub fn get_frustum(&self) -> Frustum {
+        let view_proj = self.projection() * self.look_at();
+        Frustum::from_matrix(view_proj)
+    }
+
+    pub fn set_aspect_ratio(&mut self, aspect: f32) {
+        self.aspect = aspect;
     }
 }
 

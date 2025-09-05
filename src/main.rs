@@ -1,7 +1,9 @@
+mod aabb;
 mod block;
 mod camera;
 mod chunk;
 mod face;
+mod frustum;
 mod noise;
 mod texture;
 mod vertex;
@@ -9,11 +11,17 @@ mod world;
 
 use {
     crate::{
-        camera::Camera, camera::CameraController, camera::CameraUniform, chunk::CHUNK_WIDTH,
-        texture::Texture, vertex::Vertex, world::World,
+        aabb::AABB,
+        camera::{Camera, CameraController, CameraUniform},
+        chunk::{CHUNK_HEIGHT, CHUNK_WIDTH},
+        texture::Texture,
+        vertex::Vertex,
+        world::World,
     },
-    std::collections::HashMap,
-    std::time::{Duration, Instant},
+    std::{
+        collections::HashMap,
+        time::{Duration, Instant},
+    },
     wgpu::util::DeviceExt as _,
     winit::{
         event::*,
@@ -27,6 +35,7 @@ struct ChunkRenderData {
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
     num_indices: u32,
+    aabb: AABB,
 }
 
 struct State<'a> {
@@ -281,6 +290,10 @@ impl<'a> State<'a> {
             self.size = new_size;
             self.config.width = new_size.width;
             self.config.height = new_size.height;
+
+            self.camera
+                .set_aspect_ratio(new_size.width as f32 / new_size.height as f32);
+
             self.depth_texture = Texture::create_depth_texture(&self.device, &self.config);
             self.surface.configure(&self.device, &self.config);
         }
@@ -290,6 +303,20 @@ impl<'a> State<'a> {
         let chunk_x = (world_x / CHUNK_WIDTH as f32).floor() as i32;
         let chunk_y = (world_y / CHUNK_WIDTH as f32).floor() as i32;
         (chunk_x, chunk_y)
+    }
+
+    fn chunk_to_aabb(chunk_x: i32, chunk_y: i32) -> AABB {
+        let world_x = chunk_x as f32 * CHUNK_WIDTH as f32;
+        let world_z = chunk_y as f32 * CHUNK_WIDTH as f32;
+
+        AABB::new(
+            glam::Vec3::new(world_x, 0.0, world_z),
+            glam::Vec3::new(
+                world_x + CHUNK_WIDTH as f32,
+                CHUNK_HEIGHT as f32,
+                world_z + CHUNK_WIDTH as f32,
+            ),
+        )
     }
 
     pub fn update_chunks(&mut self, world: &mut World) {
@@ -323,11 +350,11 @@ impl<'a> State<'a> {
         let (mut vertices, indices) = world.generate_chunk_mesh(chunk_x, chunk_y);
 
         let world_offset_x = chunk_x as f32 * CHUNK_WIDTH as f32;
-        let world_offset_y = chunk_y as f32 * CHUNK_WIDTH as f32;
+        let world_offset_z = chunk_y as f32 * CHUNK_WIDTH as f32;
 
         for vertex in &mut vertices {
             vertex.position[0] += world_offset_x;
-            vertex.position[1] += world_offset_y;
+            vertex.position[1] += world_offset_z;
         }
 
         if !vertices.is_empty() && !indices.is_empty() {
@@ -347,17 +374,19 @@ impl<'a> State<'a> {
                     usage: wgpu::BufferUsages::INDEX,
                 });
 
+            let aabb = Self::chunk_to_aabb(chunk_x, chunk_y);
+
             let render_data = ChunkRenderData {
                 vertex_buffer,
                 index_buffer,
                 num_indices: indices.len() as u32,
+                aabb,
             };
 
             self.chunk_render_data
                 .insert((chunk_x, chunk_y), render_data);
         }
     }
-
     fn input(&mut self, event: &WindowEvent) -> bool {
         self.camera_controller.process_keyboard(event)
     }
@@ -386,6 +415,8 @@ impl<'a> State<'a> {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render Encoder"),
             });
+
+        let frustum = self.camera.get_frustum();
 
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -421,7 +452,7 @@ impl<'a> State<'a> {
             render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
 
             for render_data in self.chunk_render_data.values() {
-                if render_data.num_indices > 0 {
+                if frustum.intersects_aabb(&render_data.aabb) {
                     render_pass.set_vertex_buffer(0, render_data.vertex_buffer.slice(..));
                     render_pass.set_index_buffer(
                         render_data.index_buffer.slice(..),
