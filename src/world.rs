@@ -26,7 +26,7 @@ impl World {
             chunks,
             height_scale: CHUNK_HEIGHT as f64 * 0.4, // Height variation range
             height_offset: CHUNK_HEIGHT as f64 * 0.4, // Base height
-            render_distance: 4,
+            render_distance: 6,
         }
     }
 
