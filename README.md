@@ -10,6 +10,7 @@
 - don't draw behind camera
 - more chunks
 - greedy meshing
+- mipmap to avoid moire patterns
 
 ## mandatory
 

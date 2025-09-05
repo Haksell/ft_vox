@@ -49,6 +49,10 @@ struct State<'a> {
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
     camera_controller: CameraController,
+
+    sky_pipeline: wgpu::RenderPipeline,
+    sky_texture: Texture,
+    sky_bind_group: wgpu::BindGroup,
 }
 
 impl<'a> State<'a> {
@@ -170,7 +174,7 @@ impl<'a> State<'a> {
                 label: Some("camera_bind_group_layout"),
                 entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -246,6 +250,71 @@ impl<'a> State<'a> {
 
         let chunk_render_data = HashMap::new();
 
+        // --- SKY TEXTURE ---
+        let sky_bytes = include_bytes!("../assets/panorama/Panorama_Sky_01-512x512.png");
+        let sky_texture = Texture::from_bytes(
+            &device,
+            &queue,
+            sky_bytes,
+            "../assets/panorama/Panorama_Sky_01-512x512.png",
+        )
+        .expect("failed to load sky panorama");
+
+        let sky_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &texture_bind_group_layout, // same layout: texture @binding(0), sampler @binding(1)
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&sky_texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&sky_texture.sampler),
+                },
+            ],
+            label: Some("sky_bind_group"),
+        });
+
+        // --- SKY PIPELINE ---
+        let sky_shader = device.create_shader_module(wgpu::include_wgsl!("../shaders/sky.wgsl"));
+
+        let sky_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Sky Pipeline Layout"),
+            bind_group_layouts: &[&texture_bind_group_layout, &camera_bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let sky_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Sky Pipeline"),
+            layout: Some(&sky_pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &sky_shader,
+                entry_point: Some("vs_fullscreen"),
+                // Fullscreen triangle: no vertex buffers needed.
+                buffers: &[],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &sky_shader,
+                entry_point: Some("fs_sky"),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                ..Default::default()
+            },
+            // Sky doesn't use depth.
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        });
+
         Self {
             surface,
             device,
@@ -263,6 +332,9 @@ impl<'a> State<'a> {
             camera_buffer,
             camera_bind_group,
             camera_controller,
+            sky_pipeline,
+            sky_texture,
+            sky_bind_group,
         }
     }
 
@@ -385,19 +457,42 @@ impl<'a> State<'a> {
                 label: Some("Render Encoder"),
             });
 
+        // --- PASS 1: Sky ---
         {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Render Pass"),
+            let mut sky_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Sky Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.1,
-                            g: 0.2,
-                            b: 0.3,
-                            a: 1.0,
-                        }),
+                        // Clear once at the beginning; the fullscreen triangle will cover it anyway.
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: wgpu::StoreOp::Store,
+                    },
+                    depth_slice: None,
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+
+            sky_pass.set_pipeline(&self.sky_pipeline);
+            sky_pass.set_bind_group(0, &self.sky_bind_group, &[]);
+            sky_pass.set_bind_group(1, &self.camera_bind_group, &[]);
+            // Fullscreen triangle: 3 vertices, 1 instance.
+            sky_pass.draw(0..3, 0..1);
+        }
+
+        // --- PASS 2: World ---
+        {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("World Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    // IMPORTANT: load previous color (the sky) so chunks draw over it.
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
                         store: wgpu::StoreOp::Store,
                     },
                     depth_slice: None,
@@ -432,7 +527,6 @@ impl<'a> State<'a> {
 
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
-
         Ok(())
     }
 }
