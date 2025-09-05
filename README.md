@@ -11,6 +11,8 @@
 - more chunks
 - greedy meshing
 - mipmap to avoid moire patterns
+- use cubemap instead of panorama for skybox 
+- better assets for everything
 
 ## mandatory
 
