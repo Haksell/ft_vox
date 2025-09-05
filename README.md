@@ -5,6 +5,9 @@
 - atlas offsets as int
 - top and bottom different offsets
 - more textures
+- only recalculate mesh when chunks change
+- fix z-fighting at chunks border
+- don't draw behind camera
 - more chunks
 - greedy meshing
 
