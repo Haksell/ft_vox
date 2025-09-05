@@ -297,28 +297,30 @@ impl<'a> State<'a> {
         let render_distance = world.get_render_distance() as i32;
         let current_chunk = Self::world_to_chunk_coords(camera_pos.x, camera_pos.z);
 
-        let mut chunks_to_load = std::collections::HashSet::new();
+        let mut chunks_in_range = std::collections::HashSet::new();
 
         for dx in -render_distance..=render_distance {
             for dz in -render_distance..=render_distance {
                 let chunk_coords = (current_chunk.0 + dx, current_chunk.1 + dz);
-                chunks_to_load.insert(chunk_coords);
+                chunks_in_range.insert(chunk_coords);
+
+                world.get_chunk(chunk_coords.0, chunk_coords.1);
             }
         }
 
         self.chunk_render_data
-            .retain(|&coords, _| chunks_to_load.contains(&coords));
+            .retain(|&coords, _| chunks_in_range.contains(&coords));
 
-        for chunk_coords in chunks_to_load {
-            if !self.chunk_render_data.contains_key(&chunk_coords) {
-                self.load_chunk(world, chunk_coords.0, chunk_coords.1);
+        for chunk_coords in &chunks_in_range {
+            if !self.chunk_render_data.contains_key(chunk_coords) {
+                let (chunk_x, chunk_y) = *chunk_coords;
+                self.generate_chunk_mesh(world, chunk_x, chunk_y);
             }
         }
     }
 
-    fn load_chunk(&mut self, world: &mut World, chunk_x: i32, chunk_y: i32) {
-        let chunk = world.get_chunk(chunk_x, chunk_y);
-        let (mut vertices, indices) = chunk.mesh();
+    fn generate_chunk_mesh(&mut self, world: &World, chunk_x: i32, chunk_y: i32) {
+        let (mut vertices, indices) = world.generate_chunk_mesh(chunk_x, chunk_y);
 
         let world_offset_x = chunk_x as f32 * CHUNK_WIDTH as f32;
         let world_offset_y = chunk_y as f32 * CHUNK_WIDTH as f32;
