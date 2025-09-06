@@ -376,8 +376,8 @@ impl<'a> State<'a> {
         let mut chunks_in_range = std::collections::HashSet::new();
 
         for dx in -render_distance..=render_distance {
-            for dz in -render_distance..=render_distance {
-                let chunk_coords = (current_chunk.0 + dx, current_chunk.1 + dz);
+            for dy in -render_distance..=render_distance {
+                let chunk_coords = (current_chunk.0 + dx, current_chunk.1 + dy);
                 chunks_in_range.insert(chunk_coords);
 
                 world.get_chunk(chunk_coords.0, chunk_coords.1);
@@ -399,11 +399,11 @@ impl<'a> State<'a> {
         let (mut vertices, indices) = world.generate_chunk_mesh(chunk_x, chunk_y);
 
         let world_offset_x = chunk_x as f32 * CHUNK_WIDTH as f32;
-        let world_offset_z = chunk_y as f32 * CHUNK_WIDTH as f32;
+        let world_offset_y = chunk_y as f32 * CHUNK_WIDTH as f32;
 
         for vertex in &mut vertices {
             vertex.position[0] += world_offset_x;
-            vertex.position[1] += world_offset_z;
+            vertex.position[1] += world_offset_y;
         }
 
         if !vertices.is_empty() && !indices.is_empty() {
