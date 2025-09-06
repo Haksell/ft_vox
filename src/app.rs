@@ -19,7 +19,7 @@ pub struct Application<'a> {
     state: Option<State<'a>>,
     window: Option<Arc<Window>>,
     world: World,
-    last_camera_chunk: Option<(i32, i32)>,
+    last_chunk: Option<(i32, i32)>,
     last_render: Instant,
     last_fps_log: Instant,
     frames_since_log: u32,
@@ -35,7 +35,7 @@ impl<'a> Application<'a> {
             state: None,
             window: None,
             world: World::new(42),
-            last_camera_chunk: None,
+            last_chunk: None,
             last_render: Instant::now(),
             last_fps_log: Instant::now(),
             frames_since_log: 0,
@@ -124,17 +124,12 @@ impl<'a> ApplicationHandler for Application<'a> {
                     let camera_pos = state.camera.position();
                     let current_chunk = State::world_to_chunk_coords(camera_pos.x, camera_pos.z);
 
-                    if self.last_camera_chunk != Some(current_chunk) {
-                        self.last_camera_chunk = Some(current_chunk);
+                    if self.last_chunk != Some(current_chunk) {
+                        self.last_chunk = Some(current_chunk);
                         state.update_chunks(&mut self.world);
                     }
 
                     state.update(dt);
-
-                    // Reset cursor: reaaaally weird
-                    let size = window.inner_size();
-                    let center = PhysicalPosition::new(size.width / 2, size.height / 2);
-                    window.set_cursor_position(center).unwrap();
 
                     match state.render() {
                         Ok(_) => {
