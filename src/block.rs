@@ -8,22 +8,22 @@ pub enum BlockType {
 impl BlockType {
     pub fn atlas_offset_top(&self) -> [u32; 2] {
         match self {
-            BlockType::Grass => [22, 0],
-            BlockType::Snow => [19, 7],
+            BlockType::Grass => [29, 18],
+            BlockType::Snow => [19, 24],
         }
     }
 
     pub fn atlas_offset_side(&self) -> [u32; 2] {
         match self {
-            BlockType::Grass => [0, 10],
-            BlockType::Snow => [2, 10],
+            BlockType::Grass => [30, 15],
+            BlockType::Snow => [31, 1],
         }
     }
 
     pub fn atlas_offset_bottom(&self) -> [u32; 2] {
         match self {
-            BlockType::Grass => [8, 4],
-            BlockType::Snow => [8, 4], // same as grass?
+            BlockType::Grass => [25, 2],
+            BlockType::Snow => [25, 2],
         }
     }
 }

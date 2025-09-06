@@ -102,7 +102,7 @@ impl<'a> State<'a> {
             format: surface_format,
             width: size.width,
             height: size.height,
-            present_mode: surface_caps.present_modes[0], // PresentMode::Fifo?
+            present_mode: wgpu::PresentMode::Fifo,
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
@@ -154,7 +154,7 @@ impl<'a> State<'a> {
         });
 
         let camera = Camera::new(
-            glam::Vec3::new(0.0, 50.0, 0.0),
+            glam::Vec3::new(0.0, 256.0, 0.0),
             glam::Vec3::new(0.0, 1.0, 0.0),
             config.width as f32 / config.height as f32,
             80.0,

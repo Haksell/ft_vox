@@ -32,7 +32,7 @@ var t_diffuse: texture_2d<f32>;
 @group(0) @binding(1)
 var s_diffuse: sampler;
 
-const ATLAS_SHAPE: vec2<f32> = vec2(32.0, 16.0);
+const ATLAS_SHAPE: vec2<f32> = vec2(64.0, 32.0);
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
