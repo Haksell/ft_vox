@@ -260,14 +260,9 @@ impl<'a> State<'a> {
         let chunk_render_data = HashMap::new();
 
         // --- SKY TEXTURE ---
-        let sky_bytes = include_bytes!("/home/axbrisse/Downloads/eso0932a.tif");
-        let sky_texture = Texture::from_bytes(
-            &device,
-            &queue,
-            sky_bytes,
-            "/home/axbrisse/Downloads/eso0932a.tif",
-        )
-        .expect("failed to load sky panorama");
+        let sky_bytes = include_bytes!("../assets/space.tif");
+        let sky_texture = Texture::from_bytes(&device, &queue, sky_bytes, "../assets/space.tif")
+            .expect("failed to load sky panorama");
 
         let sky_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &texture_bind_group_layout, // same layout: texture @binding(0), sampler @binding(1)
