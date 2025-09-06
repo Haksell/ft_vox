@@ -67,12 +67,10 @@ impl Chunk {
         local_z: i32,
         adjacent: &AdjacentChunks,
     ) -> Option<BlockType> {
-        // Check bounds for z first
         if local_z < 0 || local_z >= CHUNK_HEIGHT as i32 {
             return None;
         }
 
-        // If within current chunk bounds
         if local_x >= 0
             && local_x < CHUNK_WIDTH as i32
             && local_y >= 0
@@ -81,7 +79,6 @@ impl Chunk {
             return self.get_block(local_x as usize, local_y as usize, local_z as usize);
         }
 
-        // Check adjacent chunks
         match (local_x, local_y) {
             (x, y) if x >= CHUNK_WIDTH as i32 && y >= 0 && y < CHUNK_WIDTH as i32 => {
                 // East chunk
@@ -103,11 +100,11 @@ impl Chunk {
                     .south?
                     .get_block(x as usize, CHUNK_WIDTH - 1, local_z as usize)
             }
-            _ => None, // Corner cases - not supported with 4-directional adjacency
+            _ => None,
         }
     }
 
-    fn create_face(face: Face, position: glam::Vec3, block: BlockType) -> ([Vertex; 4], [u16; 6]) {
+    fn create_face(block: BlockType, position: glam::Vec3, face: Face) -> ([Vertex; 4], [u16; 6]) {
         let positions = face.positions();
         let uvs = face.uvs();
 
@@ -157,7 +154,7 @@ impl Chunk {
 
                         if is_face_visible {
                             let (face_verts, face_indices) =
-                                Self::create_face(face, position, block);
+                                Self::create_face(block, position, face);
 
                             vertices.extend(face_verts);
                             indices.extend(face_indices.iter().map(|i| *i + index_offset));

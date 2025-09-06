@@ -3,6 +3,8 @@
 pub enum BlockType {
     Grass,
     Snow,
+    Sand,
+    Stone,
 }
 
 impl BlockType {
@@ -10,6 +12,8 @@ impl BlockType {
         match self {
             BlockType::Grass => [1, 16],
             BlockType::Snow => [19, 24],
+            BlockType::Stone => [30, 29],
+            BlockType::Sand => [6, 27],
         }
     }
 
@@ -17,6 +21,8 @@ impl BlockType {
         match self {
             BlockType::Grass => [30, 15],
             BlockType::Snow => [31, 1],
+            BlockType::Stone => [30, 29],
+            BlockType::Sand => [6, 27],
         }
     }
 
@@ -24,6 +30,8 @@ impl BlockType {
         match self {
             BlockType::Grass => [25, 2],
             BlockType::Snow => [25, 2],
+            BlockType::Stone => [30, 29],
+            BlockType::Sand => [6, 27],
         }
     }
 }
