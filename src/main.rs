@@ -577,6 +577,9 @@ pub async fn run() {
 
     let mut last_render = Instant::now();
 
+    let mut frames_since_log: u32 = 0;
+    let mut last_fps_log = Instant::now();
+
     let _ = event_loop.run(move |event, control_flow| match event {
         Event::DeviceEvent {
             event: DeviceEvent::MouseMotion { delta: (dx, dy) },
@@ -639,7 +642,18 @@ pub async fn run() {
                         state.update(dt);
 
                         match state.render() {
-                            Ok(_) => {}
+                            Ok(_) => {
+                                frames_since_log += 1;
+                                let elapsed = last_fps_log.elapsed();
+                                if elapsed >= Duration::from_secs(1) {
+                                    let secs = elapsed.as_secs_f64();
+                                    let fps = frames_since_log as f64 / secs;
+                                    let ms = 1000.0 / fps.max(1e-9);
+                                    log::info!("FPS: {:.1} | avg frame: {:.2} ms", fps, ms);
+                                    frames_since_log = 0;
+                                    last_fps_log = Instant::now();
+                                }
+                            }
                             Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
                                 state.resize(state.size)
                             }
