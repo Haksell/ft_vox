@@ -648,8 +648,7 @@ pub async fn run() {
                                 if elapsed >= Duration::from_secs(1) {
                                     let secs = elapsed.as_secs_f64();
                                     let fps = frames_since_log as f64 / secs;
-                                    let ms = 1000.0 / fps.max(1e-9);
-                                    log::info!("FPS: {:.1} | avg frame: {:.2} ms", fps, ms);
+                                    log::info!("FPS: {:.1}", fps);
                                     frames_since_log = 0;
                                     last_fps_log = Instant::now();
                                 }
