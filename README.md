@@ -5,10 +5,6 @@
 - atlas offsets as int
 - top and bottom different offsets
 - more textures
-- only recalculate mesh when chunks change
-- fix z-fighting at chunks border
-- don't draw behind camera
-- more chunks
 - greedy meshing
 - mipmap to avoid moire patterns
 - use cubemap instead of panorama for skybox 
@@ -19,20 +15,20 @@
 - [x] Your program will have to run in full screen mode. Reduce the default frame buffer is prohibited.
 - [ ] You must be able to create a very large procedural world. For this project, user should be able to visit at least 16384\*256\*16384 cubes (256 is the height).
 - [ ] Some cubes may be empty, others can have different types, like grass, ground, sand, etc...
-- [ ] Except for the empty cubes, they will all be opaque but will have their own textures.
+- [x] Except for the empty cubes, they will all be opaque but will have their own textures.
 - [ ] There should be hills.
 - [ ] There should be mountains.
 - [ ] There should be caves.
 - [ ] There should be lakes.
-- [ ] This generation has to be determinist, which means the same seed will spawn the exact same map.
-- [ ] Each visited piece of terrain must be saved in the memory up to some limit you will set yourself and after which you can start deleting cubes from the memory.
-- [ ] In the open, minimal distance render will be 160 cubes
+- [x] This generation has to be determinist, which means the same seed will spawn the exact same map.
+- [x] Each visited piece of terrain must be saved in the memory up to some limit you will set yourself and after which you can start deleting cubes from the memory.
+- [x] In the open, minimal distance render will be 160 cubes
 - [ ] Each cube must be textured, and you must have at least 2 different textures and 2 different types of cubes.
-- [ ] FoV must be 80 degrees.
+- [x] FoV must be 80 degrees.
 - [ ] You will set up a skybox.
-- [ ] The mouse must be able to control the camera on 2 axis at least.
-- [ ] You will set 4 keys that will make the camera go forth, back, right and left according to its rotation.
-- [ ] Of course, the user must be able to keep going if he keeps pressing a key.
+- [x] The mouse must be able to control the camera on 2 axis at least.
+- [x] You will set 4 keys that will make the camera go forth, back, right and left according to its rotation.
+- [x] Of course, the user must be able to keep going if he keeps pressing a key.
 - [ ] The default camera speed should be 1 cube/second.
 - [ ] There should be a key to multiply the speed to 20 cubes/second.
 
