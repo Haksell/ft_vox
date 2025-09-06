@@ -1,4 +1,5 @@
 #[derive(Debug, Clone, Copy)]
+#[repr(u8)]
 pub enum BlockType {
     Grass,
     Snow,

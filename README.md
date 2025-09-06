@@ -9,6 +9,7 @@
 - mipmap to avoid moire patterns
 - use cubemap instead of panorama for skybox 
 - better assets for everything
+- keep camera z in [0, CHUNK_HEIGHT]
 
 ## mandatory
 
