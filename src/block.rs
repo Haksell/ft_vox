@@ -5,6 +5,7 @@ pub enum BlockType {
     Snow,
     Sand,
     Stone,
+    Dirt,
 }
 
 impl BlockType {
@@ -14,6 +15,7 @@ impl BlockType {
             BlockType::Snow => [19, 24],
             BlockType::Stone => [30, 29],
             BlockType::Sand => [6, 27],
+            BlockType::Dirt => [25, 2],
         }
     }
 
@@ -23,6 +25,7 @@ impl BlockType {
             BlockType::Snow => [31, 1],
             BlockType::Stone => [30, 29],
             BlockType::Sand => [6, 27],
+            BlockType::Dirt => [25, 2],
         }
     }
 
@@ -32,6 +35,7 @@ impl BlockType {
             BlockType::Snow => [25, 2],
             BlockType::Stone => [30, 29],
             BlockType::Sand => [6, 27],
+            BlockType::Dirt => [25, 2],
         }
     }
 }
