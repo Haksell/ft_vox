@@ -42,7 +42,6 @@ pub struct State<'a> {
 
     chunk_render_data: HashMap<(i32, i32), ChunkRenderData>,
 
-    diffuse_texture: Texture,
     depth_texture: Texture,
     diffuse_bind_group: wgpu::BindGroup,
 
@@ -53,7 +52,6 @@ pub struct State<'a> {
     camera_controller: CameraController,
 
     sky_pipeline: wgpu::RenderPipeline,
-    sky_texture: Texture,
     sky_bind_group: wgpu::BindGroup,
 }
 
@@ -320,7 +318,6 @@ impl<'a> State<'a> {
             render_pipeline,
             chunk_render_data,
             diffuse_bind_group,
-            diffuse_texture,
             depth_texture,
             camera,
             camera_uniform,
@@ -328,7 +325,6 @@ impl<'a> State<'a> {
             camera_bind_group,
             camera_controller,
             sky_pipeline,
-            sky_texture,
             sky_bind_group,
         }
     }

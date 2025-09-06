@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 pub struct PerlinNoiseBuilder {
     seed: u64,
     frequency: f64,
@@ -145,11 +147,7 @@ impl PerlinNoise {
         let bb = self.permutations[((b + 1) & 255) as usize] as usize;
 
         let value = Self::lerp(
-            Self::lerp(
-                self.grad2d(aa, xf, yf),
-                self.grad2d(ba, xf - 1.0, yf),
-                u
-            ),
+            Self::lerp(self.grad2d(aa, xf, yf), self.grad2d(ba, xf - 1.0, yf), u),
             Self::lerp(
                 self.grad2d(ab, xf, yf - 1.0),
                 self.grad2d(bb, xf - 1.0, yf - 1.0),
@@ -197,29 +195,29 @@ impl PerlinNoise {
                 Self::lerp(
                     self.grad3d(aaa, xf, yf, zf),
                     self.grad3d(baa, xf - 1.0, yf, zf),
-                    u
+                    u,
                 ),
                 Self::lerp(
                     self.grad3d(aba, xf, yf - 1.0, zf),
                     self.grad3d(bba, xf - 1.0, yf - 1.0, zf),
-                    u
+                    u,
                 ),
-                v
+                v,
             ),
             Self::lerp(
                 Self::lerp(
                     self.grad3d(aab, xf, yf, zf - 1.0),
                     self.grad3d(bab, xf - 1.0, yf, zf - 1.0),
-                    u
+                    u,
                 ),
                 Self::lerp(
                     self.grad3d(abb, xf, yf - 1.0, zf - 1.0),
                     self.grad3d(bbb, xf - 1.0, yf - 1.0, zf - 1.0),
-                    u
+                    u,
                 ),
-                v
+                v,
             ),
-            w
+            w,
         );
 
         value
