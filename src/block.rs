@@ -8,7 +8,7 @@ pub enum BlockType {
 impl BlockType {
     pub fn atlas_offset_top(&self) -> [u32; 2] {
         match self {
-            BlockType::Grass => [29, 18],
+            BlockType::Grass => [1, 16],
             BlockType::Snow => [19, 24],
         }
     }
