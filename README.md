@@ -33,6 +33,7 @@
 - [ ] There should be a key to multiply the speed to 20 cubes/second.
 
 ## bonus
+
 - [ ] Have a render distance always higher than 14 chunks and always have a smooth display.
 - [ ] A fps counter is displayed.
 - [ ] Render is smooth and doesn't freeze,  at x20 speed.
