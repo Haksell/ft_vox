@@ -1,4 +1,5 @@
 mod aabb;
+mod app;
 mod block;
 mod camera;
 mod chunk;
@@ -12,23 +13,16 @@ mod world;
 use {
     crate::{
         aabb::AABB,
+        app::Application,
         camera::{Camera, CameraController, CameraUniform},
         chunk::{CHUNK_HEIGHT, CHUNK_WIDTH},
         texture::Texture,
         vertex::Vertex,
         world::World,
     },
-    std::{
-        collections::HashMap,
-        time::{Duration, Instant},
-    },
+    std::{collections::HashMap, sync::Arc, time::Duration},
     wgpu::util::DeviceExt as _,
-    winit::{
-        event::*,
-        event_loop::EventLoop,
-        keyboard::{KeyCode, PhysicalKey},
-        window::{Fullscreen, Window, WindowBuilder},
-    },
+    winit::{event::*, event_loop::EventLoop, window::Window},
 };
 
 struct ChunkRenderData {
@@ -38,13 +32,12 @@ struct ChunkRenderData {
     aabb: AABB,
 }
 
-struct State<'a> {
+pub struct State<'a> {
     surface: wgpu::Surface<'a>,
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     size: winit::dpi::PhysicalSize<u32>,
-    window: &'a Window,
     render_pipeline: wgpu::RenderPipeline,
 
     chunk_render_data: HashMap<(i32, i32), ChunkRenderData>,
@@ -65,7 +58,7 @@ struct State<'a> {
 }
 
 impl<'a> State<'a> {
-    async fn new(window: &'a Window) -> State<'a> {
+    async fn new(window: Arc<Window>) -> State<'a> {
         let size = window.inner_size();
 
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
@@ -325,7 +318,6 @@ impl<'a> State<'a> {
             queue,
             config,
             size,
-            window,
             render_pipeline,
             chunk_render_data,
             diffuse_bind_group,
@@ -340,16 +332,6 @@ impl<'a> State<'a> {
             sky_texture,
             sky_bind_group,
         }
-    }
-
-    pub fn window(&self) -> &Window {
-        &self.window
-    }
-
-    pub fn reset_cursor(&self) {
-        let size = self.window.inner_size();
-        let center = winit::dpi::PhysicalPosition::new(size.width / 2, size.height / 2);
-        self.window.set_cursor_position(center).unwrap();
     }
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
@@ -462,7 +444,6 @@ impl<'a> State<'a> {
         let dt = dt.as_secs_f32();
 
         self.camera_controller.update(&mut self.camera, dt);
-        self.reset_cursor();
 
         self.camera_uniform.update(&self.camera);
         self.queue.write_buffer(
@@ -562,117 +543,8 @@ impl<'a> State<'a> {
 pub async fn run() {
     env_logger::init();
     let event_loop = EventLoop::new().unwrap();
-    let window = WindowBuilder::new()
-        .with_title("ft_vox")
-        .with_resizable(true)
-        .with_inner_size(winit::dpi::PhysicalSize::new(1280.0, 720.0))
-        .build(&event_loop)
-        .unwrap();
-
-    window.set_cursor_visible(false);
-
-    let mut state = State::new(&window).await;
-    let mut world = World::new(42);
-    let mut last_camera_chunk = None;
-
-    let mut last_render = Instant::now();
-
-    let mut frames_since_log: u32 = 0;
-    let mut last_fps_log = Instant::now();
-
-    let _ = event_loop.run(move |event, control_flow| match event {
-        Event::DeviceEvent {
-            event: DeviceEvent::MouseMotion { delta: (dx, dy) },
-            ..
-        } => {
-            state.camera_controller.process_mouse(dx as f32, dy as f32);
-        }
-
-        Event::WindowEvent {
-            ref event,
-            window_id,
-        } if window_id == state.window().id() => {
-            if !state.input(event) {
-                match event {
-                    WindowEvent::KeyboardInput {
-                        event:
-                            KeyEvent {
-                                state: ElementState::Pressed,
-                                physical_key: PhysicalKey::Code(KeyCode::F11),
-                                ..
-                            },
-                        ..
-                    } => {
-                        let monitor = state.window().current_monitor().unwrap();
-                        match state.window().fullscreen() {
-                            Some(_) => state.window().set_fullscreen(None),
-                            None => state
-                                .window()
-                                .set_fullscreen(Some(Fullscreen::Borderless(Some(monitor)))),
-                        }
-                    }
-                    WindowEvent::CloseRequested
-                    | WindowEvent::KeyboardInput {
-                        event:
-                            KeyEvent {
-                                state: ElementState::Pressed,
-                                physical_key: PhysicalKey::Code(KeyCode::Escape),
-                                ..
-                            },
-                        ..
-                    } => control_flow.exit(),
-                    WindowEvent::Resized(physical_size) => {
-                        log::info!("physical_size: {physical_size:?}");
-                        state.resize(*physical_size);
-                    }
-                    WindowEvent::RedrawRequested => {
-                        let now = Instant::now();
-                        let dt = now - last_render;
-                        last_render = now;
-
-                        let camera_pos = state.camera.position();
-                        let current_chunk =
-                            State::world_to_chunk_coords(camera_pos.x, camera_pos.z);
-
-                        if last_camera_chunk != Some(current_chunk) {
-                            last_camera_chunk = Some(current_chunk);
-                            state.update_chunks(&mut world);
-                        }
-
-                        state.update(dt);
-
-                        match state.render() {
-                            Ok(_) => {
-                                frames_since_log += 1;
-                                let elapsed = last_fps_log.elapsed();
-                                if elapsed >= Duration::from_secs(1) {
-                                    let secs = elapsed.as_secs_f64();
-                                    let fps = frames_since_log as f64 / secs;
-                                    log::info!("FPS: {:.1}", fps);
-                                    frames_since_log = 0;
-                                    last_fps_log = Instant::now();
-                                }
-                            }
-                            Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
-                                state.resize(state.size)
-                            }
-                            Err(wgpu::SurfaceError::OutOfMemory | wgpu::SurfaceError::Other) => {
-                                log::error!("OutOfMemory");
-                                control_flow.exit();
-                            }
-                            Err(wgpu::SurfaceError::Timeout) => {
-                                log::warn!("Surface timeout")
-                            }
-                        }
-
-                        state.window().request_redraw();
-                    }
-                    _ => {}
-                }
-            }
-        }
-        _ => {}
-    });
+    let mut app = Application::new();
+    event_loop.run_app(&mut app).expect("Failed to run app");
 }
 
 fn main() {

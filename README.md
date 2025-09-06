@@ -2,7 +2,7 @@
 
 ## todo
 
-- fix grass color (https://minecraft.fandom.com/wiki/Grass_Block, https://minecraft.fandom.com/wiki/Color#Biome_colors)
+- fix grass color (https://minecraft.fandom.com/wiki/Grass_Block, https://minecraft.fandom.com/wiki/Color#Biome_colors) (or simpler atlas)
 - more textures
 - greedy meshing
 - mipmap to avoid moire patterns
