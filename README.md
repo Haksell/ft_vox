@@ -22,7 +22,7 @@
 - [ ] There should be lakes.
 - [x] This generation has to be determinist, which means the same seed will spawn the exact same map.
 - [x] Each visited piece of terrain must be saved in the memory up to some limit you will set yourself and after which you can start deleting cubes from the memory.
-- [x] In the open, minimal distance render will be 160 cubes
+- [x] In the open, minimal distance render will be 10 chunks
 - [ ] Each cube must be textured, and you must have at least 2 different textures and 2 different types of cubes.
 - [x] FoV must be 80 degrees.
 - [x] You will set up a skybox.
@@ -33,9 +33,9 @@
 - [ ] There should be a key to multiply the speed to 20 cubes/second.
 
 ## bonus
-- [ ] Have a render distance always higher than 14 (what?) and always have a smooth display.
+- [ ] Have a render distance always higher than 14 chunks and always have a smooth display.
 - [ ] A fps counter is displayed.
-- [ ] Render is smooth and doesn't freeze, event at x20 speed.
+- [ ] Render is smooth and doesn't freeze,  at x20 speed.
 - [ ] Being able to delete blocks with the mouse.
 - [ ] Having a lot of different biomes.
 
