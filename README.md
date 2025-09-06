@@ -2,7 +2,6 @@
 
 ## todo
 
-- atlas offsets as int
 - top and bottom different offsets
 - more textures
 - greedy meshing

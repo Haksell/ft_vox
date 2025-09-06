@@ -6,10 +6,10 @@ pub enum BlockType {
 }
 
 impl BlockType {
-    pub fn atlas_offset(&self) -> [f32; 2] {
+    pub fn atlas_offset(&self) -> [u32; 2] {
         match self {
-            BlockType::Grass => [0.0, 0.625],
-            BlockType::Snow => [0.0625, 0.625],
+            BlockType::Grass => [0, 10],
+            BlockType::Snow => [2, 10],
         }
     }
 }
