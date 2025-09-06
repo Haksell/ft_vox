@@ -194,7 +194,7 @@ impl<'a> State<'a> {
             }],
         });
 
-        let camera_controller = CameraController::new(20.0, 0.2);
+        let camera_controller = CameraController::new();
 
         let shader = device.create_shader_module(wgpu::include_wgsl!("../shaders/shader.wgsl"));
 

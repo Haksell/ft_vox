@@ -113,10 +113,10 @@ pub struct CameraController {
 }
 
 impl CameraController {
-    pub fn new(speed: f32, sensitivity: f32) -> Self {
+    pub fn new() -> Self {
         Self {
-            speed,
-            sensitivity,
+            speed: 20.0,
+            sensitivity: 0.2,
             is_forward_pressed: false,
             is_backward_pressed: false,
             is_left_pressed: false,
@@ -170,17 +170,12 @@ impl CameraController {
 
     pub fn update(&mut self, camera: &mut Camera, dt: f32) {
         // Apply rotation from mouse movement
-        if self.mouse_delta.0 != 0.0 || self.mouse_delta.1 != 0.0 {
-            // Adjust yaw and pitch based on mouse movement
-            camera.yaw += self.mouse_delta.0 * self.sensitivity;
-            camera.pitch -= self.mouse_delta.1 * self.sensitivity; // Invert Y for natural feel
-
-            // Clamp pitch to avoid gimbal lock
-            camera.pitch = camera.pitch.clamp(-89.0, 89.0);
-
-            // Reset mouse delta
-            self.mouse_delta = (0.0, 0.0);
-        }
+        camera.yaw += self.mouse_delta.0 * self.sensitivity;
+        camera.pitch -= self.mouse_delta.1 * self.sensitivity;
+        // Clamp pitch to avoid gimbal lock
+        camera.pitch = camera.pitch.clamp(-89.0, 89.0);
+        // Reset mouse delta
+        self.mouse_delta = (0.0, 0.0);
 
         // Calculate movement directions
         let forward = camera.direction();
