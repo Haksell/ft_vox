@@ -36,7 +36,7 @@
 
 - [ ] Have a render distance always higher than 14 chunks and always have a smooth display.
 - [ ] A fps counter is displayed.
-- [ ] Render is smooth and doesn't freeze,  at x20 speed.
+- [ ] Render is smooth and doesn't freeze, at x20 speed.
 - [ ] Being able to delete blocks with the mouse.
 - [ ] Having a lot of different biomes.
 
