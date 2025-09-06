@@ -10,20 +10,24 @@ use {
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct CameraUniform {
     view_proj: [[f32; 4]; 4],
+    inverse_view_proj: [[f32; 4]; 4],
 }
 
 impl CameraUniform {
     pub fn new() -> Self {
         Self {
             view_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
+            inverse_view_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
         }
     }
 
     pub fn update(&mut self, camera: &Camera) {
         let view = camera.look_at();
         let proj = camera.projection();
+        let view_proj = proj * view;
 
-        self.view_proj = (proj * view).to_cols_array_2d();
+        self.view_proj = view_proj.to_cols_array_2d();
+        self.inverse_view_proj = view_proj.inverse().to_cols_array_2d();
     }
 }
 
