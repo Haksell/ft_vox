@@ -127,7 +127,11 @@ impl World {
                 position.z + positions[i][2],
             ],
             tex_coords: uvs[i],
-            atlas_offset: block.atlas_offset(),
+            atlas_offset: match face {
+                Face::Top => block.atlas_offset_top(),
+                Face::Bottom => block.atlas_offset_bottom(),
+                Face::Left | Face::Right | Face::Front | Face::Back => block.atlas_offset_side(),
+            },
         });
 
         let indices = [0, 1, 2, 2, 3, 0];

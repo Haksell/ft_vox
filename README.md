@@ -2,7 +2,7 @@
 
 ## todo
 
-- top and bottom different offsets
+- fix grass color (https://minecraft.fandom.com/wiki/Grass_Block, https://minecraft.fandom.com/wiki/Color#Biome_colors)
 - more textures
 - greedy meshing
 - mipmap to avoid moire patterns
