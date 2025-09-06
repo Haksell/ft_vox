@@ -25,7 +25,7 @@
 - [x] In the open, minimal distance render will be 160 cubes
 - [ ] Each cube must be textured, and you must have at least 2 different textures and 2 different types of cubes.
 - [x] FoV must be 80 degrees.
-- [ ] You will set up a skybox.
+- [x] You will set up a skybox.
 - [x] The mouse must be able to control the camera on 2 axis at least.
 - [x] You will set 4 keys that will make the camera go forth, back, right and left according to its rotation.
 - [x] Of course, the user must be able to keep going if he keeps pressing a key.
