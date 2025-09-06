@@ -251,12 +251,12 @@ impl<'a> State<'a> {
         let chunk_render_data = HashMap::new();
 
         // --- SKY TEXTURE ---
-        let sky_bytes = include_bytes!("../assets/panorama/Panorama_Sky_01-512x512.png");
+        let sky_bytes = include_bytes!("/home/axbrisse/Downloads/eso0932a.tif");
         let sky_texture = Texture::from_bytes(
             &device,
             &queue,
             sky_bytes,
-            "../assets/panorama/Panorama_Sky_01-512x512.png",
+            "/home/axbrisse/Downloads/eso0932a.tif",
         )
         .expect("failed to load sky panorama");
 
