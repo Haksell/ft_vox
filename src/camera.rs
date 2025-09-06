@@ -10,24 +10,29 @@ use {
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct CameraUniform {
     view_proj: [[f32; 4]; 4],
-    inverse_view_proj: [[f32; 4]; 4],
+    view_proj_inverse: [[f32; 4]; 4],
 }
 
 impl CameraUniform {
-    pub fn new() -> Self {
+    pub fn new(camera: &Camera) -> Self {
+        let view = camera.look_at();
+        let proj = camera.projection();
+
+        let view_proj = (proj * view).to_cols_array_2d();
+        let view_proj_inverse = (proj * view).inverse().to_cols_array_2d();
+
         Self {
-            view_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
-            inverse_view_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
+            view_proj,
+            view_proj_inverse,
         }
     }
 
     pub fn update(&mut self, camera: &Camera) {
         let view = camera.look_at();
         let proj = camera.projection();
-        let view_proj = proj * view;
 
-        self.view_proj = view_proj.to_cols_array_2d();
-        self.inverse_view_proj = view_proj.inverse().to_cols_array_2d();
+        self.view_proj = (proj * view).to_cols_array_2d();
+        self.view_proj_inverse = (proj * view).inverse().to_cols_array_2d();
     }
 }
 
@@ -184,18 +189,10 @@ impl CameraController {
         // Calculate movement
         let mut movement = glam::Vec3::ZERO;
 
-        if self.is_forward_pressed {
-            movement += forward;
-        }
-        if self.is_backward_pressed {
-            movement -= forward;
-        }
-        if self.is_right_pressed {
-            movement += right;
-        }
-        if self.is_left_pressed {
-            movement -= right;
-        }
+        movement += forward * (self.is_forward_pressed as i32) as f32;
+        movement -= forward * (self.is_backward_pressed as i32) as f32;
+        movement += right * (self.is_right_pressed as i32) as f32;
+        movement -= right * (self.is_left_pressed as i32) as f32;
 
         // Normalize movement vector if not zero and apply speed
         if movement != glam::Vec3::ZERO {

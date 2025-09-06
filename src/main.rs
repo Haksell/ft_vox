@@ -15,7 +15,7 @@ use {
         aabb::AABB,
         app::Application,
         camera::{Camera, CameraController, CameraUniform},
-        chunk::{CHUNK_HEIGHT, CHUNK_WIDTH},
+        chunk::CHUNK_WIDTH,
         texture::Texture,
         vertex::Vertex,
         world::World,
@@ -162,8 +162,7 @@ impl<'a> State<'a> {
             500.0,
         );
 
-        let mut camera_uniform = CameraUniform::new();
-        camera_uniform.update(&camera);
+        let camera_uniform = CameraUniform::new(&camera);
 
         let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Camera Buffer"),
@@ -354,20 +353,6 @@ impl<'a> State<'a> {
         (chunk_x, chunk_y)
     }
 
-    fn chunk_to_aabb(chunk_x: i32, chunk_y: i32) -> AABB {
-        let world_x = chunk_x as f32 * CHUNK_WIDTH as f32;
-        let world_z = chunk_y as f32 * CHUNK_WIDTH as f32;
-
-        AABB::new(
-            glam::Vec3::new(world_x, 0.0, world_z),
-            glam::Vec3::new(
-                world_x + CHUNK_WIDTH as f32,
-                CHUNK_HEIGHT as f32,
-                world_z + CHUNK_WIDTH as f32,
-            ),
-        )
-    }
-
     pub fn update_chunks(&mut self, world: &mut World) {
         let camera_pos = self.camera.position();
         let render_distance = world.get_render_distance() as i32;
@@ -423,7 +408,8 @@ impl<'a> State<'a> {
                     usage: wgpu::BufferUsages::INDEX,
                 });
 
-            let aabb = Self::chunk_to_aabb(chunk_x, chunk_y);
+            let chunk = world.get_chunk_if_loaded(chunk_x, chunk_y).unwrap();
+            let aabb = chunk.bounding_box();
 
             let render_data = ChunkRenderData {
                 vertex_buffer,
@@ -436,6 +422,7 @@ impl<'a> State<'a> {
                 .insert((chunk_x, chunk_y), render_data);
         }
     }
+
     fn input(&mut self, event: &WindowEvent) -> bool {
         self.camera_controller.process_keyboard(event)
     }

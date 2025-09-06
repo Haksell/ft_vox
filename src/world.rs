@@ -37,17 +37,14 @@ impl World {
     }
 
     pub fn get_chunk_if_loaded(&self, chunk_x: i32, chunk_y: i32) -> Option<&Chunk> {
-        if !self.chunks.contains_key(&(chunk_x, chunk_y)) {
-            return None;
-        }
-
-        Some(&self.chunks[&(chunk_x, chunk_y)])
+        self.chunks.get(&(chunk_x, chunk_y))
     }
 
     pub fn get_chunk(&mut self, chunk_x: i32, chunk_y: i32) -> &Chunk {
         if !self.chunks.contains_key(&(chunk_x, chunk_y)) {
             let blocks = self.generate_chunk_blocks(chunk_x, chunk_y);
-            let chunk = Chunk::new(blocks);
+            let index = (chunk_x, chunk_y);
+            let chunk = Chunk::new(index, blocks);
             self.chunks.insert((chunk_x, chunk_y), chunk);
         }
 
@@ -172,13 +169,13 @@ impl World {
 
                     for face in FACES {
                         let (dx, dy, dz) = face.normal();
-                        let neighbor_world_x = world_x + dx;
-                        let neighbor_world_y = world_y + dy;
-                        let neighbor_world_z = world_z + dz;
+                        let neighbor_x = world_x + dx;
+                        let neighbor_y = world_y + dy;
+                        let neighbor_z = world_z + dz;
 
-                        let is_face_visible = neighbor_world_z >= 0
+                        let is_face_visible = neighbor_z >= 0
                             && self
-                                .get_block_at(neighbor_world_x, neighbor_world_y, neighbor_world_z)
+                                .get_block_at(neighbor_x, neighbor_y, neighbor_z)
                                 .is_none();
 
                         if is_face_visible {
