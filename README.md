@@ -11,6 +11,7 @@
 - keep camera z in [0, CHUNK_HEIGHT]
 - threading for chunk generation, so not laggy ?
 - fix full screen mode
+- ray tracing/casting/marching/whatever (https://www.youtube.com/watch?v=gXSHtBZFxEI, https://www.youtube.com/watch?v=P2bGF6GPmfc)
 
 ## mandatory
 
