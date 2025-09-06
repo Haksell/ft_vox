@@ -122,7 +122,7 @@ impl<'a> ApplicationHandler for Application<'a> {
                     self.last_render = now;
 
                     let camera_pos = state.camera.position();
-                    let current_chunk = State::world_to_chunk_coords(camera_pos.x, camera_pos.z);
+                    let current_chunk = self.world.get_chunk_index_from_position(camera_pos.x, camera_pos.z);
 
                     if self.last_chunk != Some(current_chunk) {
                         self.last_chunk = Some(current_chunk);

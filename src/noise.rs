@@ -20,25 +20,25 @@ impl PerlinNoiseBuilder {
     }
 
     pub fn frequency(mut self, frequency: f64) -> Self {
-        self.frequency = frequency.max(0.0001); // Prevent values too close to zero
+        self.frequency = frequency.max(0.0001);
 
         self
     }
 
     pub fn octaves(mut self, octaves: usize) -> Self {
-        self.octaves = octaves.max(1).min(16); // Reasonable bounds
+        self.octaves = octaves.max(1).min(16);
 
         self
     }
 
     pub fn persistence(mut self, persistence: f64) -> Self {
-        self.persistence = persistence.max(0.0).min(1.0); // Clamp to valid range
+        self.persistence = persistence.max(0.0).min(1.0);
 
         self
     }
 
     pub fn lacunarity(mut self, lacunarity: f64) -> Self {
-        self.lacunarity = lacunarity.max(1.0); // Must be at least 1.0
+        self.lacunarity = lacunarity.max(1.0);
 
         self
     }
@@ -160,10 +160,10 @@ impl PerlinNoise {
 
     #[rustfmt::skip]
     const GRADIENT_2D: [glam::Vec2; 8] = [
-        glam::Vec2::new( 0.70710677,  0.70710677), // ( 1,  1) normalized
-        glam::Vec2::new(-0.70710677,  0.70710677), // (-1,  1) normalized
-        glam::Vec2::new( 0.70710677, -0.70710677), // ( 1, -1) normalized
-        glam::Vec2::new(-0.70710677, -0.70710677), // (-1, -1) normalized
+        glam::Vec2::new( 0.70710677,  0.70710677),
+        glam::Vec2::new(-0.70710677,  0.70710677),
+        glam::Vec2::new( 0.70710677, -0.70710677),
+        glam::Vec2::new(-0.70710677, -0.70710677),
         glam::Vec2::new( 1.0,         0.0),
         glam::Vec2::new(-1.0,         0.0),
         glam::Vec2::new( 0.0,         1.0),

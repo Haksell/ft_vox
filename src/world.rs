@@ -36,6 +36,13 @@ impl World {
         self.render_distance
     }
 
+    pub fn get_chunk_index_from_position(&self, world_x: f32, world_y: f32) -> (i32, i32) {
+        let chunk_x = (world_x / CHUNK_WIDTH as f32).floor() as i32;
+        let chunk_y = (world_y / CHUNK_WIDTH as f32).floor() as i32;
+
+        (chunk_x, chunk_y)
+    }
+
     pub fn get_chunk_if_loaded(&self, chunk_x: i32, chunk_y: i32) -> Option<&Chunk> {
         self.chunks.get(&(chunk_x, chunk_y))
     }

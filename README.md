@@ -10,6 +10,7 @@
 - better assets for everything
 - keep camera z in [0, CHUNK_HEIGHT]
 - threading for chunk generation, so not laggy ?
+- fix full screen mode
 
 ## mandatory
 

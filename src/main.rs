@@ -347,16 +347,10 @@ impl<'a> State<'a> {
         }
     }
 
-    fn world_to_chunk_coords(world_x: f32, world_y: f32) -> (i32, i32) {
-        let chunk_x = (world_x / CHUNK_WIDTH as f32).floor() as i32;
-        let chunk_y = (world_y / CHUNK_WIDTH as f32).floor() as i32;
-        (chunk_x, chunk_y)
-    }
-
     pub fn update_chunks(&mut self, world: &mut World) {
         let camera_pos = self.camera.position();
         let render_distance = world.get_render_distance() as i32;
-        let current_chunk = Self::world_to_chunk_coords(camera_pos.x, camera_pos.z);
+        let current_chunk = world.get_chunk_index_from_position(camera_pos.x, camera_pos.z);
 
         let mut chunks_in_range = std::collections::HashSet::new();
 
