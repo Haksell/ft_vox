@@ -2,6 +2,7 @@
 
 ## todo
 
+- make fov horizontal
 - fix grass color (https://minecraft.fandom.com/wiki/Grass_Block, https://minecraft.fandom.com/wiki/Color#Biome_colors) (or simpler atlas)
 - more textures
 - greedy meshing
@@ -12,6 +13,7 @@
 - threading for chunk generation, so not laggy ?
 - fix full screen mode
 - ray tracing/casting/marching/whatever (https://www.youtube.com/watch?v=gXSHtBZFxEI, https://www.youtube.com/watch?v=P2bGF6GPmfc)
+- port to wasm
 
 ## mandatory
 

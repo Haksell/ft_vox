@@ -1,4 +1,4 @@
-#![allow(unused)]
+#![allow(unused)] // TODO: remove
 
 pub struct PerlinNoiseBuilder {
     seed: u64,
