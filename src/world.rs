@@ -80,9 +80,12 @@ impl World {
 
                 for z in 0..CHUNK_HEIGHT {
                     if z <= height {
-                        blocks[x][y][z] = Some(match (chunk_x + chunk_y).rem_euclid(2) {
+                        blocks[x][y][z] = Some(match (chunk_x + chunk_y).rem_euclid(5) {
                             0 => BlockType::Grass,
                             1 => BlockType::Snow,
+                            2 => BlockType::Dirt,
+                            3 => BlockType::Sand,
+                            4 => BlockType::Stone,
                             _ => unreachable!(),
                         })
                     }

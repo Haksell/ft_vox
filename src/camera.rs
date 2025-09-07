@@ -184,8 +184,8 @@ impl CameraController {
         // Calculate movement
         let mut movement = glam::Vec3::ZERO;
 
-        movement += forward * (self.is_forward_pressed as i32) as f32;
-        movement -= forward * (self.is_backward_pressed as i32) as f32;
+        movement += forward * (self.is_forward_pressed as i32 as f32);
+        movement -= forward * (self.is_backward_pressed as i32 as f32);
         movement += right * (self.is_right_pressed as i32) as f32;
         movement -= right * (self.is_left_pressed as i32) as f32;
 

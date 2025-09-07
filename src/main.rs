@@ -270,7 +270,7 @@ impl<'a> State<'a> {
         });
 
         // --- SKY PIPELINE ---
-        let sky_shader = device.create_shader_module(wgpu::include_wgsl!("../shaders/sky.wgsl"));
+        let sky_shader = device.create_shader_module(wgpu::include_wgsl!("../shaders/skybox.wgsl"));
 
         let sky_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Sky Pipeline Layout"),
@@ -283,14 +283,14 @@ impl<'a> State<'a> {
             layout: Some(&sky_pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &sky_shader,
-                entry_point: Some("vs_fullscreen"),
+                entry_point: Some("vs_main"),
                 // Fullscreen triangle: no vertex buffers needed.
                 buffers: &[],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(wgpu::FragmentState {
                 module: &sky_shader,
-                entry_point: Some("fs_sky"),
+                entry_point: Some("fs_main"),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: config.format,
                     blend: Some(wgpu::BlendState::REPLACE),
