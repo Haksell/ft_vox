@@ -10,7 +10,7 @@ use {
         event::{DeviceEvent, DeviceId, ElementState, KeyEvent, WindowEvent},
         event_loop::ActiveEventLoop,
         keyboard::{KeyCode, PhysicalKey},
-        window::{Fullscreen, Window, WindowAttributes},
+        window::{Fullscreen, Window, WindowAttributes, WindowId},
     },
 };
 
@@ -74,89 +74,91 @@ impl<'a> ApplicationHandler for Application<'a> {
 
     fn window_event(
         &mut self,
-        control_flow: &ActiveEventLoop,
-        window_id: winit::window::WindowId,
-        event: winit::event::WindowEvent,
+        event_loop: &ActiveEventLoop,
+        window_id: WindowId,
+        event: WindowEvent,
     ) {
         let state = self.state.as_mut().unwrap();
         let window = self.window.as_mut().unwrap();
 
-        if window_id == window.id() && !state.input(&event) {
-            match event {
-                WindowEvent::KeyboardInput {
-                    event:
-                        KeyEvent {
-                            state: ElementState::Pressed,
-                            physical_key: PhysicalKey::Code(KeyCode::F11),
-                            ..
-                        },
-                    ..
-                } => {
-                    let monitor = window.current_monitor().unwrap();
-                    match window.fullscreen() {
-                        Some(_) => window.set_fullscreen(None),
-                        None => window.set_fullscreen(Some(Fullscreen::Borderless(Some(monitor)))),
-                    }
+        if window_id != window.id() || state.input(&event) {
+            return;
+        }
+
+        match event {
+            WindowEvent::KeyboardInput {
+                event:
+                    KeyEvent {
+                        state: ElementState::Pressed,
+                        physical_key: PhysicalKey::Code(KeyCode::F11),
+                        ..
+                    },
+                ..
+            } => {
+                let monitor = window.current_monitor().unwrap();
+                match window.fullscreen() {
+                    Some(_) => window.set_fullscreen(None),
+                    None => window.set_fullscreen(Some(Fullscreen::Borderless(Some(monitor)))),
                 }
-                WindowEvent::CloseRequested
-                | WindowEvent::KeyboardInput {
-                    event:
-                        KeyEvent {
-                            state: ElementState::Pressed,
-                            physical_key: PhysicalKey::Code(KeyCode::Escape),
-                            ..
-                        },
-                    ..
-                } => control_flow.exit(),
-                WindowEvent::Resized(physical_size) => {
-                    log::info!("physical_size: {physical_size:?}");
-                    state.resize(physical_size);
-                }
-                WindowEvent::RedrawRequested => {
-                    let now = Instant::now();
-                    let dt = now - self.last_render;
-                    self.last_render = now;
-
-                    let camera_pos = state.camera.position();
-                    let current_chunk = self
-                        .world
-                        .get_chunk_index_from_position(camera_pos.x, camera_pos.z);
-
-                    if self.last_chunk != Some(current_chunk) {
-                        self.last_chunk = Some(current_chunk);
-                        state.update_chunks(&mut self.world);
-                    }
-
-                    state.update(dt);
-
-                    match state.render() {
-                        Ok(_) => {
-                            self.frames_since_log += 1;
-                            let elapsed = self.last_fps_log.elapsed();
-                            if elapsed >= Duration::from_secs(1) {
-                                let secs = elapsed.as_secs_f64();
-                                let fps = self.frames_since_log as f64 / secs;
-                                log::info!("FPS: {:.1}", fps);
-                                self.frames_since_log = 0;
-                                self.last_fps_log = Instant::now();
-                            }
-                        }
-                        Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
-                            state.resize(state.size)
-                        }
-                        Err(wgpu::SurfaceError::OutOfMemory | wgpu::SurfaceError::Other) => {
-                            log::error!("OutOfMemory");
-                            control_flow.exit();
-                        }
-                        Err(wgpu::SurfaceError::Timeout) => {
-                            log::warn!("Surface timeout")
-                        }
-                    }
-
-                    window.request_redraw();
-                }
-                _ => {}
             }
+            WindowEvent::CloseRequested
+            | WindowEvent::KeyboardInput {
+                event:
+                    KeyEvent {
+                        state: ElementState::Pressed,
+                        physical_key: PhysicalKey::Code(KeyCode::Escape),
+                        ..
+                    },
+                ..
+            } => event_loop.exit(),
+            WindowEvent::Resized(physical_size) => {
+                log::info!("physical_size: {physical_size:?}");
+                state.resize(physical_size);
+            }
+            WindowEvent::RedrawRequested => {
+                let now = Instant::now();
+                let dt = now - self.last_render;
+                self.last_render = now;
+
+                let camera_pos = state.camera.position();
+                let current_chunk = self
+                    .world
+                    .get_chunk_index_from_position(camera_pos.x, camera_pos.z);
+
+                if self.last_chunk != Some(current_chunk) {
+                    self.last_chunk = Some(current_chunk);
+                    state.update_chunks(&mut self.world);
+                }
+
+                state.update(dt);
+
+                match state.render() {
+                    Ok(_) => {
+                        self.frames_since_log += 1;
+                        let elapsed = self.last_fps_log.elapsed();
+                        if elapsed >= Duration::from_secs(1) {
+                            let secs = elapsed.as_secs_f64();
+                            let fps = self.frames_since_log as f64 / secs;
+                            log::info!("FPS: {:.1}", fps);
+                            self.frames_since_log = 0;
+                            self.last_fps_log = Instant::now();
+                        }
+                    }
+                    Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
+                        state.resize(state.size)
+                    }
+                    Err(wgpu::SurfaceError::OutOfMemory | wgpu::SurfaceError::Other) => {
+                        log::error!("OutOfMemory");
+                        event_loop.exit();
+                    }
+                    Err(wgpu::SurfaceError::Timeout) => {
+                        log::warn!("Surface timeout")
+                    }
+                }
+
+                window.request_redraw();
+            }
+            _ => {}
         }
     }
 }
