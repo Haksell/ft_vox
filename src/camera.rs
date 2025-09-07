@@ -127,11 +127,9 @@ impl CameraController {
         }
     }
 
-    pub fn process_mouse(&mut self, delta_x: f32, delta_y: f32) -> bool {
+    pub fn process_mouse(&mut self, delta_x: f32, delta_y: f32) {
         self.mouse_delta.0 += delta_x;
         self.mouse_delta.1 += delta_y;
-
-        true
     }
 
     pub fn process_keyboard(&mut self, event: &WindowEvent) -> bool {

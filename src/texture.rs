@@ -53,14 +53,14 @@ impl Texture {
         label: &str,
     ) -> Result<Self, String> {
         let img = image::load_from_memory(bytes).map_err(|e| e.to_string())?;
-        Self::from_image(device, queue, &img, Some(label))
+        Self::from_image(device, queue, &img, label)
     }
 
     pub fn from_image(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         img: &image::DynamicImage,
-        label: Option<&str>,
+        label: &str,
     ) -> Result<Self, String> {
         let rgba = img.to_rgba8();
         let dimensions = img.dimensions();
@@ -71,7 +71,7 @@ impl Texture {
             depth_or_array_layers: 1,
         };
         let texture = device.create_texture(&wgpu::TextureDescriptor {
-            label,
+            label: Some(label),
             size,
             mip_level_count: 1,
             sample_count: 1,

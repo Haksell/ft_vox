@@ -5,9 +5,9 @@ use {
         chunk::{CHUNK_HEIGHT, CHUNK_WIDTH},
         texture::Texture,
         vertex::Vertex,
-        world::World,
+        world::{World, RENDER_DISTANCE},
     },
-    std::{collections::HashMap, sync::Arc, time::Duration},
+    std::{collections::HashMap, f32::consts::SQRT_2, sync::Arc, time::Duration},
     wgpu::util::DeviceExt as _,
     winit::{dpi::PhysicalSize, event::*, window::Window},
 };
@@ -143,13 +143,14 @@ impl<'a> State<'a> {
             label: Some("diffuse_bind_group"),
         });
 
+        const CAMERA_DISTANCE: f32 = (RENDER_DISTANCE + 1) as f32 * SQRT_2 * CHUNK_WIDTH as f32;
         let camera = Camera::new(
             glam::Vec3::new(0.0, CHUNK_HEIGHT as f32, 0.0),
             glam::Vec3::new(0.0, 1.0, 0.0),
             config.width as f32 / config.height as f32,
             80.0,
             0.1,
-            500.0,
+            CAMERA_DISTANCE,
         );
 
         let camera_uniform = CameraUniform::new(&camera);
@@ -437,7 +438,7 @@ impl<'a> State<'a> {
         // === SKYBOX ===
         {
             let mut skybox_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("skybox render pass"),
+                label: Some("skybox_pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
                     resolve_target: None,
@@ -460,8 +461,8 @@ impl<'a> State<'a> {
 
         // === VOXELS ===
         {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Voxels Pass"),
+            let mut voxels_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("voxels_pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
                     resolve_target: None,
@@ -483,19 +484,19 @@ impl<'a> State<'a> {
                 timestamp_writes: None,
             });
 
-            render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
-            render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
+            voxels_pass.set_pipeline(&self.render_pipeline);
+            voxels_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
+            voxels_pass.set_bind_group(1, &self.camera_bind_group, &[]);
 
             let frustum = self.camera.get_frustum();
             for render_data in self.chunk_render_data.values() {
                 if frustum.intersects_aabb(&render_data.aabb) {
-                    render_pass.set_vertex_buffer(0, render_data.vertex_buffer.slice(..));
-                    render_pass.set_index_buffer(
+                    voxels_pass.set_vertex_buffer(0, render_data.vertex_buffer.slice(..));
+                    voxels_pass.set_index_buffer(
                         render_data.index_buffer.slice(..),
                         wgpu::IndexFormat::Uint16,
                     );
-                    render_pass.draw_indexed(0..render_data.num_indices, 0, 0..1);
+                    voxels_pass.draw_indexed(0..render_data.num_indices, 0, 0..1);
                 }
             }
         }

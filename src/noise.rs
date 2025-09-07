@@ -1,5 +1,6 @@
 #![allow(unused)] // TODO: remove
 
+// TODO: remove PerlinNoiseBuilder in favor of PerlinNoise::new
 pub struct PerlinNoiseBuilder {
     seed: u64,
     frequency: f64,

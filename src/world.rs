@@ -8,6 +8,8 @@ use {
     std::collections::HashMap,
 };
 
+pub const RENDER_DISTANCE: usize = 10;
+
 pub struct World {
     noise: PerlinNoise,
     chunks: HashMap<(i32, i32), Chunk>,
@@ -25,9 +27,9 @@ impl World {
         Self {
             noise,
             chunks,
-            height_scale: CHUNK_HEIGHT as f64 * 0.4, // Height variation range
-            height_offset: CHUNK_HEIGHT as f64 * 0.4, // Base height
-            render_distance: 10,
+            height_scale: CHUNK_HEIGHT as f64 * 0.6, // Height variation range
+            height_offset: CHUNK_HEIGHT as f64 * 0.2, // Base height
+            render_distance: RENDER_DISTANCE,
         }
     }
 
@@ -78,17 +80,15 @@ impl World {
 
                 let height = self.generate_height_at(world_x as f64, world_y as f64) as usize;
 
-                for z in 0..CHUNK_HEIGHT {
-                    if z <= height {
-                        blocks[x][y][z] = Some(match (chunk_x + chunk_y).rem_euclid(5) {
-                            0 => BlockType::Grass,
-                            1 => BlockType::Snow,
-                            2 => BlockType::Dirt,
-                            3 => BlockType::Sand,
-                            4 => BlockType::Stone,
-                            _ => unreachable!(),
-                        })
-                    }
+                for z in 0..=height {
+                    blocks[x][y][z] = Some(match (chunk_x + chunk_y).rem_euclid(5) {
+                        0 => BlockType::Grass,
+                        1 => BlockType::Snow,
+                        2 => BlockType::Dirt,
+                        3 => BlockType::Sand,
+                        4 => BlockType::Stone,
+                        _ => unreachable!(),
+                    })
                 }
             }
         }
