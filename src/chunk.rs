@@ -61,50 +61,6 @@ impl Chunk {
         }
     }
 
-    fn get_neighbor_block(
-        &self,
-        local_x: i32,
-        local_y: i32,
-        local_z: i32,
-        adjacent: &AdjacentChunks,
-    ) -> Option<BlockType> {
-        if local_z < 0 || local_z >= CHUNK_HEIGHT as i32 {
-            return None;
-        }
-
-        if local_x >= 0
-            && local_x < CHUNK_WIDTH as i32
-            && local_y >= 0
-            && local_y < CHUNK_WIDTH as i32
-        {
-            return self.get_block(local_x as usize, local_y as usize, local_z as usize);
-        }
-
-        match (local_x, local_y) {
-            (x, y) if x >= CHUNK_WIDTH as i32 && y >= 0 && y < CHUNK_WIDTH as i32 => {
-                // East chunk
-                adjacent.east?.get_block(0, y as usize, local_z as usize)
-            }
-            (x, y) if x < 0 && y >= 0 && y < CHUNK_WIDTH as i32 => {
-                // West chunk
-                adjacent
-                    .west?
-                    .get_block(CHUNK_WIDTH - 1, y as usize, local_z as usize)
-            }
-            (x, y) if y >= CHUNK_WIDTH as i32 && x >= 0 && x < CHUNK_WIDTH as i32 => {
-                // North chunk
-                adjacent.north?.get_block(x as usize, 0, local_z as usize)
-            }
-            (x, y) if y < 0 && x >= 0 && x < CHUNK_WIDTH as i32 => {
-                // South chunk
-                adjacent
-                    .south?
-                    .get_block(x as usize, CHUNK_WIDTH - 1, local_z as usize)
-            }
-            _ => None,
-        }
-    }
-
     fn create_face(
         block: BlockType,
         position: glam::Vec3,
@@ -177,5 +133,49 @@ impl Chunk {
         }
 
         (vertices, indices)
+    }
+
+    fn get_neighbor_block(
+        &self,
+        local_x: i32,
+        local_y: i32,
+        local_z: i32,
+        adjacent: &AdjacentChunks,
+    ) -> Option<BlockType> {
+        if local_z < 0 || local_z >= CHUNK_HEIGHT as i32 {
+            return None;
+        }
+
+        if local_x >= 0
+            && local_x < CHUNK_WIDTH as i32
+            && local_y >= 0
+            && local_y < CHUNK_WIDTH as i32
+        {
+            return self.get_block(local_x as usize, local_y as usize, local_z as usize);
+        }
+
+        match (local_x, local_y) {
+            (x, y) if x >= CHUNK_WIDTH as i32 && y >= 0 && y < CHUNK_WIDTH as i32 => {
+                // East chunk
+                adjacent.east?.get_block(0, y as usize, local_z as usize)
+            }
+            (x, y) if x < 0 && y >= 0 && y < CHUNK_WIDTH as i32 => {
+                // West chunk
+                adjacent
+                    .west?
+                    .get_block(CHUNK_WIDTH - 1, y as usize, local_z as usize)
+            }
+            (x, y) if y >= CHUNK_WIDTH as i32 && x >= 0 && x < CHUNK_WIDTH as i32 => {
+                // North chunk
+                adjacent.north?.get_block(x as usize, 0, local_z as usize)
+            }
+            (x, y) if y < 0 && x >= 0 && x < CHUNK_WIDTH as i32 => {
+                // South chunk
+                adjacent
+                    .south?
+                    .get_block(x as usize, CHUNK_WIDTH - 1, local_z as usize)
+            }
+            _ => None,
+        }
     }
 }
