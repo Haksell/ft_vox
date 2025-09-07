@@ -62,7 +62,7 @@ impl<'a> State<'a> {
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),
                 compatible_surface: Some(&surface),
-                force_fallback_adapter: true,
+                force_fallback_adapter: false,
             })
             .await
             .unwrap();
@@ -87,12 +87,26 @@ impl<'a> State<'a> {
             .copied()
             .unwrap_or(surface_caps.formats[0]);
 
+        let present_mode = if surface_caps
+            .present_modes
+            .contains(&wgpu::PresentMode::Mailbox)
+        {
+            wgpu::PresentMode::Mailbox
+        } else if surface_caps
+            .present_modes
+            .contains(&wgpu::PresentMode::Immediate)
+        {
+            wgpu::PresentMode::Immediate
+        } else {
+            wgpu::PresentMode::Fifo
+        };
+
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
-            width: size.width,
-            height: size.height,
-            present_mode: wgpu::PresentMode::Fifo,
+            width: size.width.max(1),
+            height: size.height.max(1),
+            present_mode,
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
@@ -329,16 +343,19 @@ impl<'a> State<'a> {
     }
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
-        if new_size.width > 0 && new_size.height > 0 {
-            self.size = new_size;
-            self.config.width = new_size.width;
-            self.config.height = new_size.height;
-
-            self.camera.resize(new_size.width, new_size.height);
-
-            self.depth_texture = Texture::create_depth_texture(&self.device, &self.config);
-            self.surface.configure(&self.device, &self.config);
+        if new_size.width == 0 || new_size.height == 0 {
+            return;
         }
+
+        self.size = new_size;
+        self.config.width = new_size.width;
+        self.config.height = new_size.height;
+
+        self.surface.configure(&self.device, &self.config);
+
+        self.camera.resize(new_size.width, new_size.height);
+
+        self.depth_texture = Texture::create_depth_texture(&self.device, &self.config);
     }
 
     pub fn update_chunks(&mut self, world: &mut World) {
@@ -429,7 +446,15 @@ impl<'a> State<'a> {
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
-        let output = self.surface.get_current_texture()?;
+        let output = match self.surface.get_current_texture() {
+            Ok(output) => output,
+            Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
+                self.surface.configure(&self.device, &self.config);
+                self.surface.get_current_texture()?
+            }
+            Err(e) => return Err(e),
+        };
+
         let view = output
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());

@@ -10,14 +10,13 @@
 - use cubemap instead of panorama for skybox 
 - better assets for everything
 - threading for chunk generation, so not laggy ?
-- fix full screen mode
 - ray tracing/casting/marching/whatever (https://www.youtube.com/watch?v=gXSHtBZFxEI, https://www.youtube.com/watch?v=P2bGF6GPmfc)
 - port to wasm
 - generative skybox textures
 
 ## mandatory
 
-- [ ] Your program will have to run in full screen mode. Reduce the default frame buffer is prohibited.
+- [x] Your program will have to run in full screen mode. Reduce the default frame buffer is prohibited.
 - [ ] You must be able to create a very large procedural world. For this project, user should be able to visit at least 16384\*256\*16384 cubes (256 is the height).
 - [x] Some cubes may be empty, others can have different types, like grass, ground, sand, etc...
 - [x] Except for the empty cubes, they will all be opaque but will have their own textures.
