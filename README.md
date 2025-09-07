@@ -2,6 +2,7 @@
 
 ## todo
 
+- generative skybox textures
 - fix camera coordinate system
 - make camera fov horizontal
 - fix grass color (https://minecraft.fandom.com/wiki/Grass_Block, https://minecraft.fandom.com/wiki/Color#Biome_colors) (or simpler atlas)
