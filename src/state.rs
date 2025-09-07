@@ -147,14 +147,15 @@ impl<'a> State<'a> {
             label: Some("diffuse_bind_group"),
         });
 
-        const CAMERA_DISTANCE: f32 = (RENDER_DISTANCE + 1) as f32 * SQRT_2 * CHUNK_WIDTH as f32;
+        let camera_distance_xy = (RENDER_DISTANCE + 1) as f32 * SQRT_2 * CHUNK_WIDTH as f32;
+        let camera_distance = (camera_distance_xy.powi(2) + (CHUNK_HEIGHT as f32).powi(2)).sqrt();
         let camera = Camera::new(
             glam::Vec3::new(0.0, 0.0, CHUNK_HEIGHT as f32),
             glam::Vec3::new(0.0, 0.0, 1.0),
             config.width as f32 / config.height as f32,
             (80.0_f32).to_radians(),
             0.1,
-            CAMERA_DISTANCE,
+            camera_distance,
         );
 
         let camera_uniform = CameraUniform::new(&camera);
