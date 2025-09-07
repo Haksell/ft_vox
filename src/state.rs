@@ -5,7 +5,7 @@ use {
         chunk::{CHUNK_HEIGHT, CHUNK_WIDTH},
         texture::Texture,
         vertex::Vertex,
-        world::{World, LOD_HALF, LOD_QUARTER, RENDER_DISTANCE},
+        world::{calculate_lod, World, RENDER_DISTANCE},
     },
     std::{collections::HashMap, f32::consts::SQRT_2, sync::Arc, time::Duration},
     wgpu::util::DeviceExt as _,
@@ -346,19 +346,9 @@ impl<'a> State<'a> {
         let mut chunks_in_range = HashMap::new();
 
         for dx in -render_distance..=render_distance {
-            let abs_dx = dx.abs() as usize;
             for dy in -render_distance..=render_distance {
-                let abs_dy = dy.abs() as usize;
-
-                let lod_step = if abs_dx < LOD_HALF && abs_dy < LOD_HALF {
-                    1
-                } else if abs_dx < LOD_QUARTER && abs_dy < LOD_QUARTER {
-                    2
-                } else {
-                    4
-                };
-
                 let chunk_coords = (current_chunk.0 + dx, current_chunk.1 + dy);
+                let lod_step = calculate_lod(current_chunk, chunk_coords);
                 chunks_in_range.insert(chunk_coords, lod_step);
                 world.get_chunk(chunk_coords.0, chunk_coords.1);
             }
@@ -371,7 +361,7 @@ impl<'a> State<'a> {
             let crd = self.chunk_render_data.get(chunk_coords);
             if crd.is_none_or(|crd| crd.lod_step != lod_step) {
                 let (chunk_x, chunk_y) = *chunk_coords;
-                self.generate_chunk_mesh(world, chunk_x, chunk_y, lod_step);
+                self.generate_chunk_mesh(world, current_chunk, chunk_x, chunk_y, lod_step);
             }
         }
     }
@@ -379,6 +369,7 @@ impl<'a> State<'a> {
     fn generate_chunk_mesh(
         &mut self,
         world: &mut World,
+        current_chunk: (i32, i32),
         chunk_x: i32,
         chunk_y: i32,
         lod_step: usize,

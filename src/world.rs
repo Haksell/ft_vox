@@ -8,9 +8,22 @@ use {
     std::collections::HashMap,
 };
 
-pub const LOD_HALF: usize = 5;
-pub const LOD_QUARTER: usize = 10;
-pub const RENDER_DISTANCE: usize = 15;
+pub const LOD_HALF: usize = 3;
+pub const LOD_QUARTER: usize = 6;
+pub const RENDER_DISTANCE: usize = 9;
+
+pub fn calculate_lod((current_x, current_y): (i32, i32), (chunk_x, chunk_y): (i32, i32)) -> usize {
+    let dx = (current_x - chunk_x).abs() as usize;
+    let dy = (current_y - chunk_y).abs() as usize;
+
+    if dx < LOD_HALF && dy < LOD_HALF {
+        1
+    } else if dx < LOD_QUARTER && dy < LOD_QUARTER {
+        2
+    } else {
+        4
+    }
+}
 
 pub struct World {
     noise: PerlinNoise,

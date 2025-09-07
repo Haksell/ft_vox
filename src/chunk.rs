@@ -113,12 +113,7 @@ impl Chunk {
     ) -> ([Vertex; 4], [u16; 6]) {
         let positions = face.positions();
 
-        let mut uvs = face.uvs();
-        for y in 0..4 {
-            for x in 0..2 {
-                uvs[y][x] *= lod_step as f32;
-            }
-        }
+        let uvs = face.uvs();
 
         let vertices = std::array::from_fn(|i| Vertex {
             position: [
