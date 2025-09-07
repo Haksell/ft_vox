@@ -152,7 +152,7 @@ impl<'a> State<'a> {
             glam::Vec3::new(0.0, 0.0, CHUNK_HEIGHT as f32),
             glam::Vec3::new(0.0, 0.0, 1.0),
             config.width as f32 / config.height as f32,
-            80.0,
+            (80.0_f32).to_radians(),
             0.1,
             CAMERA_DISTANCE,
         );
@@ -333,8 +333,7 @@ impl<'a> State<'a> {
             self.config.width = new_size.width;
             self.config.height = new_size.height;
 
-            self.camera
-                .set_aspect_ratio(new_size.width as f32 / new_size.height as f32);
+            self.camera.resize(new_size.width, new_size.height);
 
             self.depth_texture = Texture::create_depth_texture(&self.device, &self.config);
             self.surface.configure(&self.device, &self.config);

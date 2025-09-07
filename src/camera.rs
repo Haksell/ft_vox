@@ -46,7 +46,7 @@ pub struct Camera {
     yaw: f32,
     pitch: f32,
     aspect: f32,
-    fov_y: f32,
+    fov_x: f32,
     near: f32,
     far: f32,
 }
@@ -56,7 +56,7 @@ impl Camera {
         eye: glam::Vec3,
         up: glam::Vec3,
         aspect: f32,
-        fov_y_degrees: f32,
+        fov_x: f32,
         near: f32,
         far: f32,
     ) -> Self {
@@ -66,7 +66,7 @@ impl Camera {
             aspect,
             yaw: 0.0,
             pitch: 0.0,
-            fov_y: fov_y_degrees.to_radians(),
+            fov_x,
             near,
             far,
         }
@@ -80,7 +80,8 @@ impl Camera {
     }
 
     pub fn projection(&self) -> glam::Mat4 {
-        glam::Mat4::perspective_rh(self.fov_y, self.aspect, self.near, self.far)
+        let fov_y = 2.0 * (self.fov_x / 2.0).tan().atan2(self.aspect);
+        glam::Mat4::perspective_rh(fov_y, self.aspect, self.near, self.far)
     }
 
     pub fn direction(&self) -> glam::Vec3 {
@@ -101,8 +102,8 @@ impl Camera {
         Frustum::from_matrix(view_proj)
     }
 
-    pub fn set_aspect_ratio(&mut self, aspect: f32) {
-        self.aspect = aspect;
+    pub fn resize(&mut self, width: u32, height: u32) {
+        self.aspect = width as f32 / height as f32;
     }
 }
 

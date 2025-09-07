@@ -5,8 +5,6 @@
 - lod
 - greedy meshing
 - mipmap to avoid moire patterns
-- fix camera coordinate system
-- make camera fov horizontal
 - fix grass color (https://minecraft.fandom.com/wiki/Grass_Block, https://minecraft.fandom.com/wiki/Color#Biome_colors) (or simpler atlas)
 - more textures
 - use cubemap instead of panorama for skybox 
