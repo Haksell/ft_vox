@@ -41,10 +41,6 @@ impl<'a> Application<'a> {
             frames_since_log: 0,
         }
     }
-
-    pub fn state_from_window(window: Arc<Window>) -> State<'static> {
-        pollster::block_on(State::new(window))
-    }
 }
 
 impl<'a> ApplicationHandler for Application<'a> {
@@ -55,7 +51,7 @@ impl<'a> ApplicationHandler for Application<'a> {
                 .unwrap(),
         );
         window.set_cursor_visible(false);
-        let state = Application::state_from_window(window.clone());
+        let state = pollster::block_on(State::new(window.clone()));
 
         self.window = Some(window);
         self.state = Some(state);
