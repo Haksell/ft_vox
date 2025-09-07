@@ -2,19 +2,20 @@
 
 ## todo
 
-- generative skybox textures
+- lod
+- greedy meshing
+- mipmap to avoid moire patterns
 - fix camera coordinate system
 - make camera fov horizontal
 - fix grass color (https://minecraft.fandom.com/wiki/Grass_Block, https://minecraft.fandom.com/wiki/Color#Biome_colors) (or simpler atlas)
 - more textures
-- greedy meshing
-- mipmap to avoid moire patterns
 - use cubemap instead of panorama for skybox 
 - better assets for everything
 - threading for chunk generation, so not laggy ?
 - fix full screen mode
 - ray tracing/casting/marching/whatever (https://www.youtube.com/watch?v=gXSHtBZFxEI, https://www.youtube.com/watch?v=P2bGF6GPmfc)
 - port to wasm
+- generative skybox textures
 
 ## mandatory
 
