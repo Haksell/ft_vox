@@ -159,9 +159,9 @@ impl Chunk {
 
                     for face in FACES {
                         let (dx, dy, dz) = face.normal();
-                        let neighbor_x = local_x as i32 + dx;
-                        let neighbor_y = local_y as i32 + dy;
-                        let neighbor_z = local_z as i32 + dz;
+                        let neighbor_x = local_x as i32 + dx * lod_step as i32;
+                        let neighbor_y = local_y as i32 + dy * lod_step as i32;
+                        let neighbor_z = local_z as i32 + dz * lod_step as i32;
 
                         let is_face_visible = neighbor_z >= 0
                             && self
