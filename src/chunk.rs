@@ -38,11 +38,11 @@ impl Chunk {
         let world_y = y as f32 * CHUNK_WIDTH as f32;
 
         AABB::new(
-            glam::Vec3::new(world_x, 0.0, world_y),
+            glam::Vec3::new(world_x, world_y, 0.0),
             glam::Vec3::new(
                 world_x + CHUNK_WIDTH as f32,
-                CHUNK_HEIGHT as f32,
                 world_y + CHUNK_WIDTH as f32,
+                CHUNK_HEIGHT as f32,
             ),
         )
     }

@@ -149,9 +149,8 @@ impl<'a> State<'a> {
 
         const CAMERA_DISTANCE: f32 = (RENDER_DISTANCE + 1) as f32 * SQRT_2 * CHUNK_WIDTH as f32;
         let camera = Camera::new(
-            // TODO: start at world height instead of in the stratosphere
-            glam::Vec3::new(0.0, CHUNK_HEIGHT as f32, 0.0),
-            glam::Vec3::new(0.0, 1.0, 0.0),
+            glam::Vec3::new(0.0, 0.0, CHUNK_HEIGHT as f32),
+            glam::Vec3::new(0.0, 0.0, 1.0),
             config.width as f32 / config.height as f32,
             80.0,
             0.1,
@@ -224,7 +223,7 @@ impl<'a> State<'a> {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
-                cull_mode: Some(wgpu::Face::Front),
+                cull_mode: Some(wgpu::Face::Back),
                 polygon_mode: wgpu::PolygonMode::Fill,
                 unclipped_depth: false,
                 conservative: false,
@@ -345,7 +344,7 @@ impl<'a> State<'a> {
     pub fn update_chunks(&mut self, world: &mut World) {
         let camera_pos = self.camera.position();
         let render_distance = world.get_render_distance() as i32;
-        let current_chunk = world.get_chunk_index_from_position(camera_pos.x, camera_pos.z);
+        let current_chunk = world.get_chunk_index_from_position(camera_pos.x, camera_pos.y);
 
         let mut chunks_in_range = HashSet::new();
 

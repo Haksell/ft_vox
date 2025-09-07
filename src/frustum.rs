@@ -23,46 +23,53 @@ pub struct Frustum {
 
 impl Frustum {
     pub fn from_matrix(view_proj: glam::Mat4) -> Self {
-        let m = view_proj.to_cols_array_2d();
+        // Use transpose to get row-major access
+        let m = view_proj.transpose().to_cols_array_2d();
 
         // Extract planes using Gribb/Hartmann method
         let planes = [
-            // Left plane
+            // Left plane (w + x = 0)
             Plane::new(
-                glam::Vec3::new(m[0][3] + m[0][0], m[1][3] + m[1][0], m[2][3] + m[2][0]),
-                m[3][3] + m[3][0],
+                glam::Vec3::new(m[3][0] + m[0][0], m[3][1] + m[0][1], m[3][2] + m[0][2]),
+                m[3][3] + m[0][3],
             ),
-            // Right plane
+            // Right plane (w - x = 0)
             Plane::new(
-                glam::Vec3::new(m[0][3] - m[0][0], m[1][3] - m[1][0], m[2][3] - m[2][0]),
-                m[3][3] - m[3][0],
+                glam::Vec3::new(m[3][0] - m[0][0], m[3][1] - m[0][1], m[3][2] - m[0][2]),
+                m[3][3] - m[0][3],
             ),
-            // Top plane
+            // Bottom plane (w + y = 0)
             Plane::new(
-                glam::Vec3::new(m[0][3] - m[0][1], m[1][3] - m[1][1], m[2][3] - m[2][1]),
-                m[3][3] - m[3][1],
+                glam::Vec3::new(m[3][0] + m[1][0], m[3][1] + m[1][1], m[3][2] + m[1][2]),
+                m[3][3] + m[1][3],
             ),
-            // Bottom plane
+            // Top plane (w - y = 0)
             Plane::new(
-                glam::Vec3::new(m[0][3] + m[0][1], m[1][3] + m[1][1], m[2][3] + m[2][1]),
-                m[3][3] + m[3][1],
+                glam::Vec3::new(m[3][0] - m[1][0], m[3][1] - m[1][1], m[3][2] - m[1][2]),
+                m[3][3] - m[1][3],
             ),
-            // Near plane
+            // Near plane (w + z = 0)
             Plane::new(
-                glam::Vec3::new(m[0][3] + m[0][2], m[1][3] + m[1][2], m[2][3] + m[2][2]),
-                m[3][3] + m[3][2],
+                glam::Vec3::new(m[3][0] + m[2][0], m[3][1] + m[2][1], m[3][2] + m[2][2]),
+                m[3][3] + m[2][3],
             ),
-            // Far plane
+            // Far plane (w - z = 0)
             Plane::new(
-                glam::Vec3::new(m[0][3] - m[0][2], m[1][3] - m[1][2], m[2][3] - m[2][2]),
-                m[3][3] - m[3][2],
+                glam::Vec3::new(m[3][0] - m[2][0], m[3][1] - m[2][1], m[3][2] - m[2][2]),
+                m[3][3] - m[2][3],
             ),
         ];
 
+        // Normalize planes
         let mut normalized_planes = [Plane::new(glam::Vec3::ZERO, 0.0); 6];
         for (i, plane) in planes.iter().enumerate() {
             let length = plane.normal.length();
-            normalized_planes[i] = Plane::new(plane.normal / length, plane.distance / length);
+            if length > 0.0 {
+                normalized_planes[i] = Plane::new(plane.normal / length, plane.distance / length);
+            } else {
+                // Handle degenerate case
+                normalized_planes[i] = *plane;
+            }
         }
 
         Self {

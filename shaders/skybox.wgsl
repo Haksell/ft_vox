@@ -41,8 +41,8 @@ fn world_dir_from_ndc(ndc: vec2<f32>) -> vec3<f32> {
 
 // convert direction to equirectangular UVs.
 fn pano_uv(dir: vec3<f32>) -> vec2<f32> {
-    let phi = atan2(dir.z, dir.x);
-    let theta = acos(clamp(dir.y, -1.0, 1.0));
+    let phi = atan2(dir.y, dir.x);
+    let theta = acos(clamp(dir.z, -1.0, 1.0));
     let u = phi / TAU + 0.5;
     let v = 1.0 - theta / PI;
     return vec2<f32>(u, v);

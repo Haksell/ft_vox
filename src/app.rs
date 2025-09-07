@@ -123,7 +123,7 @@ impl<'a> ApplicationHandler for Application<'a> {
                 let camera_pos = state.camera.position();
                 let current_chunk = self
                     .world
-                    .get_chunk_index_from_position(camera_pos.x, camera_pos.z);
+                    .get_chunk_index_from_position(camera_pos.x, camera_pos.y);
 
                 if self.last_chunk != Some(current_chunk) {
                     self.last_chunk = Some(current_chunk);

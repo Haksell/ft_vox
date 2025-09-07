@@ -1,5 +1,3 @@
-// TODO: make z be up instead of y
-
 use {
     crate::{chunk::CHUNK_HEIGHT, frustum::Frustum},
     std::f32::consts::FRAC_PI_2,
@@ -66,7 +64,7 @@ impl Camera {
             eye,
             up,
             aspect,
-            yaw: -FRAC_PI_2,
+            yaw: 0.0,
             pitch: 0.0,
             fov_y: fov_y_degrees.to_radians(),
             near,
@@ -87,9 +85,9 @@ impl Camera {
 
     pub fn direction(&self) -> glam::Vec3 {
         glam::Vec3::new(
-            self.yaw.cos() * self.pitch.cos(),
-            self.pitch.sin(),
-            self.yaw.sin() * self.pitch.cos(),
+            self.yaw.sin() * self.pitch.cos(), // X (right)
+            self.yaw.cos() * self.pitch.cos(), // Y (forward)
+            self.pitch.sin(),                  // Z (up)
         )
         .normalize()
     }
@@ -115,6 +113,8 @@ pub struct CameraController {
     is_backward_pressed: bool,
     is_left_pressed: bool,
     is_right_pressed: bool,
+    is_up_pressed: bool,    // Added for Z movement
+    is_down_pressed: bool,  // Added for Z movement
     mouse_delta: (f32, f32),
 }
 
@@ -127,6 +127,8 @@ impl CameraController {
             is_backward_pressed: false,
             is_left_pressed: false,
             is_right_pressed: false,
+            is_up_pressed: false,
+            is_down_pressed: false,
             mouse_delta: (0.0, 0.0),
         }
     }
@@ -165,6 +167,14 @@ impl CameraController {
                         self.is_right_pressed = is_pressed;
                         true
                     }
+                    KeyCode::Space => {
+                        self.is_up_pressed = is_pressed;
+                        true
+                    }
+                    KeyCode::ShiftLeft | KeyCode::ControlLeft => {
+                        self.is_down_pressed = is_pressed;
+                        true
+                    }
                     _ => false,
                 }
             }
@@ -179,21 +189,23 @@ impl CameraController {
         camera.pitch = (camera.pitch - dy * self.sensitivity).clamp(-MAX_PITCH, MAX_PITCH);
         self.mouse_delta = (0.0, 0.0);
 
-        // calculate movement
+        // calculate movement in Z-up coordinate system
         let forward = camera.direction();
-        let right = forward.cross(camera.up);
+        let right = forward.cross(camera.up); // right vector
+        let up = camera.up; // pure Z up vector
+
         let mut movement = forward
             * (self.is_forward_pressed as i32 - self.is_backward_pressed as i32) as f32
-            + right * (self.is_right_pressed as i32 - self.is_left_pressed as i32) as f32;
+            + right * (self.is_right_pressed as i32 - self.is_left_pressed as i32) as f32
+            + up * (self.is_up_pressed as i32 - self.is_down_pressed as i32) as f32;
 
         // normalize movement vector if not zero and apply speed
-        if movement != glam::Vec3::ZERO {
-            movement = movement.normalize() * self.speed * dt;
-            camera.eye += movement;
-            camera.eye.y = camera.eye.y.clamp(
-                -CAMERA_MAX_OUT_OF_BOUNDS,
-                CHUNK_HEIGHT as f32 + CAMERA_MAX_OUT_OF_BOUNDS,
-            );
-        }
+        movement = movement.normalize_or_zero() * self.speed * dt;
+        camera.eye += movement;
+        // Clamp Z coordinate (up/down) instead of Y
+        camera.eye.z = camera.eye.z.clamp(
+            -CAMERA_MAX_OUT_OF_BOUNDS,
+            CHUNK_HEIGHT as f32 + CAMERA_MAX_OUT_OF_BOUNDS,
+        );
     }
 }
