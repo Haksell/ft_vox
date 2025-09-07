@@ -36,6 +36,6 @@ const ATLAS_SHAPE: vec2<f32> = vec2(64.0, 32.0);
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    let uv = (in.tex_coords + vec2<f32>(in.atlas_offset)) / ATLAS_SHAPE;
+    let uv = (in.tex_coords % 1.0 + vec2<f32>(in.atlas_offset)) / ATLAS_SHAPE;
     return textureSample(t_diffuse, s_diffuse, uv);
 }

@@ -8,12 +8,13 @@ use {
     std::collections::HashMap,
 };
 
-pub const RENDER_DISTANCE: usize = 10;
+pub const LOD_HALF: usize = 5;
+pub const LOD_QUARTER: usize = 10;
+pub const RENDER_DISTANCE: usize = 15;
 
 pub struct World {
     noise: PerlinNoise,
     chunks: HashMap<(i32, i32), Chunk>,
-
     height_scale: f64,
     height_offset: f64,
     render_distance: usize,
@@ -27,8 +28,8 @@ impl World {
         Self {
             noise,
             chunks,
-            height_scale: CHUNK_HEIGHT as f64 * 0.6, // Height variation range
-            height_offset: CHUNK_HEIGHT as f64 * 0.2, // Base height
+            height_scale: CHUNK_HEIGHT as f64 * 0.6, // height variation range
+            height_offset: CHUNK_HEIGHT as f64 * 0.2, // base height
             render_distance: RENDER_DISTANCE,
         }
     }
@@ -74,12 +75,9 @@ impl World {
 
         for x in 0..CHUNK_WIDTH {
             let world_x = (chunk_x * CHUNK_WIDTH as i32) + x as i32;
-
             for y in 0..CHUNK_WIDTH {
                 let world_y = (chunk_y * CHUNK_WIDTH as i32) + y as i32;
-
                 let height = self.generate_height_at(world_x as f64, world_y as f64) as usize;
-
                 for z in 0..=height {
                     blocks[x][y][z] = Some(match (chunk_x + chunk_y).rem_euclid(5) {
                         0 => BlockType::Grass,
@@ -96,13 +94,18 @@ impl World {
         blocks
     }
 
-    pub fn generate_chunk_mesh(&mut self, chunk_x: i32, chunk_y: i32) -> (Vec<Vertex>, Vec<u16>) {
-        // Load the target chunk and its 4 cardinal neighbors
+    pub fn generate_chunk_mesh(
+        &mut self,
+        chunk_x: i32,
+        chunk_y: i32,
+        lod_step: usize,
+    ) -> (Vec<Vertex>, Vec<u16>) {
+        // load the target chunk and its 4 cardinal neighbors
         self.get_chunk(chunk_x, chunk_y);
-        self.get_chunk(chunk_x, chunk_y + 1); // North
-        self.get_chunk(chunk_x, chunk_y - 1); // South
-        self.get_chunk(chunk_x + 1, chunk_y); // East
-        self.get_chunk(chunk_x - 1, chunk_y); // West
+        self.get_chunk(chunk_x, chunk_y + 1); // north
+        self.get_chunk(chunk_x, chunk_y - 1); // south
+        self.get_chunk(chunk_x + 1, chunk_y); // east
+        self.get_chunk(chunk_x - 1, chunk_y); // west
 
         let chunk = self.get_chunk_if_loaded(chunk_x, chunk_y).unwrap();
 
@@ -113,6 +116,6 @@ impl World {
             west: self.get_chunk_if_loaded(chunk_x - 1, chunk_y),
         };
 
-        chunk.generate_mesh(&adjacent)
+        chunk.generate_mesh(&adjacent, lod_step)
     }
 }

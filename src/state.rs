@@ -5,14 +5,9 @@ use {
         chunk::{CHUNK_HEIGHT, CHUNK_WIDTH},
         texture::Texture,
         vertex::Vertex,
-        world::{World, RENDER_DISTANCE},
+        world::{World, LOD_HALF, LOD_QUARTER, RENDER_DISTANCE},
     },
-    std::{
-        collections::{HashMap, HashSet},
-        f32::consts::SQRT_2,
-        sync::Arc,
-        time::Duration,
-    },
+    std::{collections::HashMap, f32::consts::SQRT_2, sync::Arc, time::Duration},
     wgpu::util::DeviceExt as _,
     winit::{dpi::PhysicalSize, event::*, window::Window},
 };
@@ -22,6 +17,7 @@ struct ChunkRenderData {
     index_buffer: wgpu::Buffer,
     num_indices: u32,
     aabb: AABB,
+    lod_step: usize,
 }
 
 pub struct State<'a> {
@@ -347,29 +343,47 @@ impl<'a> State<'a> {
         let render_distance = world.get_render_distance() as i32;
         let current_chunk = world.get_chunk_index_from_position(camera_pos.x, camera_pos.z);
 
-        let mut chunks_in_range = HashSet::new();
+        let mut chunks_in_range = HashMap::new();
 
         for dx in -render_distance..=render_distance {
+            let abs_dx = dx.abs() as usize;
             for dy in -render_distance..=render_distance {
+                let abs_dy = dy.abs() as usize;
+
+                let lod_step = if abs_dx < LOD_HALF && abs_dy < LOD_HALF {
+                    1
+                } else if abs_dx < LOD_QUARTER && abs_dy < LOD_QUARTER {
+                    2
+                } else {
+                    4
+                };
+
                 let chunk_coords = (current_chunk.0 + dx, current_chunk.1 + dy);
-                chunks_in_range.insert(chunk_coords);
+                chunks_in_range.insert(chunk_coords, lod_step);
                 world.get_chunk(chunk_coords.0, chunk_coords.1);
             }
         }
 
         self.chunk_render_data
-            .retain(|&coords, _| chunks_in_range.contains(&coords));
+            .retain(|&coords, _| chunks_in_range.contains_key(&coords));
 
-        for chunk_coords in &chunks_in_range {
-            if !self.chunk_render_data.contains_key(chunk_coords) {
+        for (chunk_coords, &lod_step) in &chunks_in_range {
+            let crd = self.chunk_render_data.get(chunk_coords);
+            if crd.is_none_or(|crd| crd.lod_step != lod_step) {
                 let (chunk_x, chunk_y) = *chunk_coords;
-                self.generate_chunk_mesh(world, chunk_x, chunk_y);
+                self.generate_chunk_mesh(world, chunk_x, chunk_y, lod_step);
             }
         }
     }
 
-    fn generate_chunk_mesh(&mut self, world: &mut World, chunk_x: i32, chunk_y: i32) {
-        let (mut vertices, indices) = world.generate_chunk_mesh(chunk_x, chunk_y);
+    fn generate_chunk_mesh(
+        &mut self,
+        world: &mut World,
+        chunk_x: i32,
+        chunk_y: i32,
+        lod_step: usize,
+    ) {
+        let (mut vertices, indices) = world.generate_chunk_mesh(chunk_x, chunk_y, lod_step);
         if vertices.is_empty() || indices.is_empty() {
             return;
         }
@@ -406,6 +420,7 @@ impl<'a> State<'a> {
             index_buffer,
             num_indices: indices.len() as u32,
             aabb,
+            lod_step,
         };
 
         self.chunk_render_data
@@ -417,10 +432,8 @@ impl<'a> State<'a> {
     }
 
     pub fn update(&mut self, dt: Duration) {
-        let dt = dt.as_secs_f32();
-
-        self.camera_controller.update(&mut self.camera, dt);
-
+        self.camera_controller
+            .update(&mut self.camera, dt.as_secs_f32());
         self.camera_uniform.update(&self.camera);
         self.queue.write_buffer(
             &self.camera_buffer,
@@ -430,22 +443,15 @@ impl<'a> State<'a> {
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
-        let output = self.surface.get_current_texture()?;
-        let view = output
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("encoder"),
-            });
-
-        // === SKYBOX ===
-        {
+        fn render_skybox(
+            state: &State,
+            encoder: &mut wgpu::CommandEncoder,
+            texture_view: &wgpu::TextureView,
+        ) {
             let mut skybox_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("skybox_pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
+                    view: &texture_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
@@ -458,18 +464,21 @@ impl<'a> State<'a> {
                 timestamp_writes: None,
             });
 
-            skybox_pass.set_pipeline(&self.skybox_pipeline);
-            skybox_pass.set_bind_group(0, &self.skybox_bind_group, &[]);
-            skybox_pass.set_bind_group(1, &self.camera_bind_group, &[]);
+            skybox_pass.set_pipeline(&state.skybox_pipeline);
+            skybox_pass.set_bind_group(0, &state.skybox_bind_group, &[]);
+            skybox_pass.set_bind_group(1, &state.camera_bind_group, &[]);
             skybox_pass.draw(0..3, 0..1); // fullscreen triangle: 3 vertices, 1 instance.
         }
 
-        // === VOXELS ===
-        {
+        fn render_voxels(
+            state: &State,
+            encoder: &mut wgpu::CommandEncoder,
+            texture_view: &wgpu::TextureView,
+        ) {
             let mut voxels_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("voxels_pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
+                    view: &texture_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Load, // load previous color (the skybox)
@@ -478,7 +487,7 @@ impl<'a> State<'a> {
                     depth_slice: None,
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.depth_texture.view,
+                    view: &state.depth_texture.view,
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Clear(1.0),
                         store: wgpu::StoreOp::Store,
@@ -489,12 +498,12 @@ impl<'a> State<'a> {
                 timestamp_writes: None,
             });
 
-            voxels_pass.set_pipeline(&self.voxels_pipeline);
-            voxels_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
-            voxels_pass.set_bind_group(1, &self.camera_bind_group, &[]);
+            voxels_pass.set_pipeline(&state.voxels_pipeline);
+            voxels_pass.set_bind_group(0, &state.diffuse_bind_group, &[]);
+            voxels_pass.set_bind_group(1, &state.camera_bind_group, &[]);
 
-            let frustum = self.camera.get_frustum();
-            for render_data in self.chunk_render_data.values() {
+            let frustum = state.camera.get_frustum();
+            for render_data in state.chunk_render_data.values() {
                 if frustum.intersects_aabb(&render_data.aabb) {
                     voxels_pass.set_vertex_buffer(0, render_data.vertex_buffer.slice(..));
                     voxels_pass.set_index_buffer(
@@ -505,6 +514,19 @@ impl<'a> State<'a> {
                 }
             }
         }
+
+        let output = self.surface.get_current_texture()?;
+        let texture_view = output
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("encoder"),
+            });
+
+        render_skybox(self, &mut encoder, &texture_view);
+        render_voxels(self, &mut encoder, &texture_view);
 
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();

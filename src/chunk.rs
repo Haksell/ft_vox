@@ -105,15 +105,26 @@ impl Chunk {
         }
     }
 
-    fn create_face(block: BlockType, position: glam::Vec3, face: Face) -> ([Vertex; 4], [u16; 6]) {
+    fn create_face(
+        block: BlockType,
+        position: glam::Vec3,
+        face: Face,
+        lod_step: usize,
+    ) -> ([Vertex; 4], [u16; 6]) {
         let positions = face.positions();
-        let uvs = face.uvs();
+
+        let mut uvs = face.uvs();
+        for y in 0..4 {
+            for x in 0..2 {
+                uvs[y][x] *= lod_step as f32;
+            }
+        }
 
         let vertices = std::array::from_fn(|i| Vertex {
             position: [
-                position.x + positions[i][0],
-                position.y + positions[i][1],
-                position.z + positions[i][2],
+                position.x + positions[i][0] * lod_step as f32,
+                position.y + positions[i][1] * lod_step as f32,
+                position.z + positions[i][2] * lod_step as f32,
             ],
             tex_coords: uvs[i],
             atlas_offset: match face {
@@ -128,14 +139,18 @@ impl Chunk {
         (vertices, indices)
     }
 
-    pub fn generate_mesh(&self, adjacent: &AdjacentChunks) -> (Vec<Vertex>, Vec<u16>) {
+    pub fn generate_mesh(
+        &self,
+        adjacent: &AdjacentChunks,
+        lod_step: usize,
+    ) -> (Vec<Vertex>, Vec<u16>) {
         let mut vertices = Vec::new();
         let mut indices = Vec::new();
         let mut index_offset = 0;
 
-        for local_x in 0..CHUNK_WIDTH {
-            for local_y in 0..CHUNK_WIDTH {
-                for local_z in 0..CHUNK_HEIGHT {
+        for local_x in (0..CHUNK_WIDTH).step_by(lod_step) {
+            for local_y in (0..CHUNK_WIDTH).step_by(lod_step) {
+                for local_z in (0..CHUNK_HEIGHT).step_by(lod_step) {
                     let Some(block) = self.get_block(local_x, local_y, local_z) else {
                         continue;
                     };
@@ -155,7 +170,7 @@ impl Chunk {
 
                         if is_face_visible {
                             let (face_verts, face_indices) =
-                                Self::create_face(block, position, face);
+                                Self::create_face(block, position, face, lod_step);
 
                             vertices.extend(face_verts);
                             indices.extend(face_indices.iter().map(|i| *i + index_offset));
