@@ -85,9 +85,9 @@ impl Camera {
 
     pub fn direction(&self) -> glam::Vec3 {
         glam::Vec3::new(
-            self.yaw.sin() * self.pitch.cos(), // X (right)
-            self.yaw.cos() * self.pitch.cos(), // Y (forward)
-            self.pitch.sin(),                  // Z (up)
+            self.yaw.sin() * self.pitch.cos(),
+            self.yaw.cos() * self.pitch.cos(),
+            self.pitch.sin(),
         )
         .normalize()
     }
@@ -113,8 +113,8 @@ pub struct CameraController {
     is_backward_pressed: bool,
     is_left_pressed: bool,
     is_right_pressed: bool,
-    is_up_pressed: bool,    // Added for Z movement
-    is_down_pressed: bool,  // Added for Z movement
+    is_up_pressed: bool,
+    is_down_pressed: bool,
     mouse_delta: (f32, f32),
 }
 
@@ -189,15 +189,18 @@ impl CameraController {
         camera.pitch = (camera.pitch - dy * self.sensitivity).clamp(-MAX_PITCH, MAX_PITCH);
         self.mouse_delta = (0.0, 0.0);
 
-        // calculate movement in Z-up coordinate system
+        // calculate movement
         let forward = camera.direction();
-        let right = forward.cross(camera.up); // right vector
-        let up = camera.up; // pure Z up vector
+        let right = forward.cross(camera.up);
+        let up = camera.up;
 
-        let mut movement = forward
-            * (self.is_forward_pressed as i32 - self.is_backward_pressed as i32) as f32
-            + right * (self.is_right_pressed as i32 - self.is_left_pressed as i32) as f32
-            + up * (self.is_up_pressed as i32 - self.is_down_pressed as i32) as f32;
+        let mut movement = glam::Vec3::ZERO;
+        movement += forward * (self.is_forward_pressed as i32) as f32;
+        movement -= forward * (self.is_backward_pressed as i32) as f32;
+        movement += right * (self.is_right_pressed as i32) as f32;
+        movement -= right * (self.is_left_pressed as i32) as f32;
+        movement += up * (self.is_up_pressed as i32) as f32;
+        movement -= up * (self.is_down_pressed as i32) as f32;
 
         // normalize movement vector if not zero and apply speed
         movement = movement.normalize_or_zero() * self.speed * dt;
