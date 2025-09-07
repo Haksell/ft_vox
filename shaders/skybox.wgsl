@@ -18,7 +18,7 @@ struct VertexOutput {
 
 @vertex
 fn vs_main(@builtin(vertex_index) vi: u32) -> VertexOutput {
-    // Fullscreen triangle positions in clip space.
+    // fullscreen triangle positions in clip space.
     var pos = array<vec2<f32>, 3>(
         vec2<f32>(-1.0, -3.0),
         vec2<f32>(3.0, 1.0),
@@ -39,7 +39,7 @@ fn world_dir_from_ndc(ndc: vec2<f32>) -> vec3<f32> {
     return normalize(w1 - w0);
 }
 
-// Convert direction to equirectangular UVs.
+// convert direction to equirectangular UVs.
 fn pano_uv(dir: vec3<f32>) -> vec2<f32> {
     let phi = atan2(dir.z, dir.x);
     let theta = acos(clamp(dir.y, -1.0, 1.0));

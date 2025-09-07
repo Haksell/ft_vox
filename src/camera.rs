@@ -1,5 +1,8 @@
+// TODO: make z be up instead of y
+
 use {
     crate::{chunk::CHUNK_HEIGHT, frustum::Frustum},
+    std::f32::consts::FRAC_PI_2,
     winit::{
         event::{ElementState, KeyEvent, WindowEvent},
         keyboard::{KeyCode, PhysicalKey},
@@ -7,6 +10,7 @@ use {
 };
 
 const CAMERA_MAX_OUT_OF_BOUNDS: f32 = 16.0;
+const MAX_PITCH: f32 = FRAC_PI_2 * 0.99; // avoids gimbal lock
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -44,7 +48,7 @@ pub struct Camera {
     yaw: f32,
     pitch: f32,
     aspect: f32,
-    fovy: f32,
+    fov_y: f32,
     near: f32,
     far: f32,
 }
@@ -54,7 +58,7 @@ impl Camera {
         eye: glam::Vec3,
         up: glam::Vec3,
         aspect: f32,
-        fovy: f32,
+        fov_y_degrees: f32,
         near: f32,
         far: f32,
     ) -> Self {
@@ -62,9 +66,9 @@ impl Camera {
             eye,
             up,
             aspect,
-            yaw: -90.0,
+            yaw: -FRAC_PI_2,
             pitch: 0.0,
-            fovy,
+            fov_y: fov_y_degrees.to_radians(),
             near,
             far,
         }
@@ -78,14 +82,14 @@ impl Camera {
     }
 
     pub fn projection(&self) -> glam::Mat4 {
-        glam::Mat4::perspective_rh(self.fovy.to_radians(), self.aspect, self.near, self.far)
+        glam::Mat4::perspective_rh(self.fov_y, self.aspect, self.near, self.far)
     }
 
     pub fn direction(&self) -> glam::Vec3 {
         glam::Vec3::new(
-            self.yaw.to_radians().cos() * self.pitch.to_radians().cos(),
-            self.pitch.to_radians().sin(),
-            self.yaw.to_radians().sin() * self.pitch.to_radians().cos(),
+            self.yaw.cos() * self.pitch.cos(),
+            self.pitch.sin(),
+            self.yaw.sin() * self.pitch.cos(),
         )
         .normalize()
     }
@@ -118,7 +122,7 @@ impl CameraController {
     pub fn new() -> Self {
         Self {
             speed: 20.0,
-            sensitivity: 0.2,
+            sensitivity: 0.004,
             is_forward_pressed: false,
             is_backward_pressed: false,
             is_left_pressed: false,
@@ -169,20 +173,20 @@ impl CameraController {
     }
 
     pub fn update(&mut self, camera: &mut Camera, dt: f32) {
-        // Apply rotation from mouse movement
+        // apply rotation from mouse movement
         let (dx, dy) = self.mouse_delta;
         camera.yaw += dx * self.sensitivity;
-        camera.pitch = (camera.pitch - dy * self.sensitivity).clamp(-89.0, 89.0);
+        camera.pitch = (camera.pitch - dy * self.sensitivity).clamp(-MAX_PITCH, MAX_PITCH);
         self.mouse_delta = (0.0, 0.0);
 
-        // Calculate movement
+        // calculate movement
         let forward = camera.direction();
         let right = forward.cross(camera.up);
         let mut movement = forward
             * (self.is_forward_pressed as i32 - self.is_backward_pressed as i32) as f32
             + right * (self.is_right_pressed as i32 - self.is_left_pressed as i32) as f32;
 
-        // Normalize movement vector if not zero and apply speed
+        // normalize movement vector if not zero and apply speed
         if movement != glam::Vec3::ZERO {
             movement = movement.normalize() * self.speed * dt;
             camera.eye += movement;
