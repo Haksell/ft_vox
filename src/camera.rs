@@ -1,10 +1,12 @@
 use {
-    crate::frustum::Frustum,
+    crate::{chunk::CHUNK_HEIGHT, frustum::Frustum},
     winit::{
         event::{ElementState, KeyEvent, WindowEvent},
         keyboard::{KeyCode, PhysicalKey},
     },
 };
+
+const CAMERA_MAX_OUT_OF_BOUNDS: f32 = 16.0;
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -170,29 +172,26 @@ impl CameraController {
 
     pub fn update(&mut self, camera: &mut Camera, dt: f32) {
         // Apply rotation from mouse movement
-        camera.yaw += self.mouse_delta.0 * self.sensitivity;
-        camera.pitch -= self.mouse_delta.1 * self.sensitivity;
-        // Clamp pitch to avoid gimbal lock
-        camera.pitch = camera.pitch.clamp(-89.0, 89.0);
-        // Reset mouse delta
+        let (dx, dy) = self.mouse_delta;
+        camera.yaw += dx * self.sensitivity;
+        camera.pitch = (camera.pitch - dy * self.sensitivity).clamp(-89.0, 89.0);
         self.mouse_delta = (0.0, 0.0);
 
-        // Calculate movement directions
+        // Calculate movement
         let forward = camera.direction();
         let right = forward.cross(camera.up);
-
-        // Calculate movement
-        let mut movement = glam::Vec3::ZERO;
-
-        movement += forward * (self.is_forward_pressed as i32 as f32);
-        movement -= forward * (self.is_backward_pressed as i32 as f32);
-        movement += right * (self.is_right_pressed as i32) as f32;
-        movement -= right * (self.is_left_pressed as i32) as f32;
+        let mut movement = forward
+            * (self.is_forward_pressed as i32 - self.is_backward_pressed as i32) as f32
+            + right * (self.is_right_pressed as i32 - self.is_left_pressed as i32) as f32;
 
         // Normalize movement vector if not zero and apply speed
         if movement != glam::Vec3::ZERO {
             movement = movement.normalize() * self.speed * dt;
             camera.eye += movement;
+            camera.eye.y = camera.eye.y.clamp(
+                -CAMERA_MAX_OUT_OF_BOUNDS,
+                CHUNK_HEIGHT as f32 + CAMERA_MAX_OUT_OF_BOUNDS,
+            );
         }
     }
 }

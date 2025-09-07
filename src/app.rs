@@ -1,5 +1,5 @@
 use {
-    crate::{world::World, State},
+    crate::{state::State, world::World},
     std::{
         sync::Arc,
         time::{Duration, Instant},
