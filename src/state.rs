@@ -28,16 +28,15 @@ pub struct State<'a> {
 
     chunk_render_data: HashMap<(i32, i32), ChunkRenderData>,
 
-    render_pipeline: wgpu::RenderPipeline,
+    pub camera: Camera,
+    pub camera_controller: CameraController,
+    camera_uniform: CameraUniform,
+    camera_buffer: wgpu::Buffer,
+    camera_bind_group: wgpu::BindGroup,
 
     depth_texture: Texture,
     diffuse_bind_group: wgpu::BindGroup,
-
-    pub camera: Camera,
-    camera_uniform: CameraUniform,
-    pub camera_controller: CameraController,
-    camera_buffer: wgpu::Buffer,
-    camera_bind_group: wgpu::BindGroup,
+    voxels_pipeline: wgpu::RenderPipeline,
 
     skybox_pipeline: wgpu::RenderPipeline,
     skybox_bind_group: wgpu::BindGroup,
@@ -310,7 +309,7 @@ impl<'a> State<'a> {
             queue,
             config,
             size,
-            render_pipeline: voxels_pipeline,
+            voxels_pipeline,
             chunk_render_data,
             diffuse_bind_group,
             depth_texture,
@@ -485,7 +484,7 @@ impl<'a> State<'a> {
                 timestamp_writes: None,
             });
 
-            voxels_pass.set_pipeline(&self.render_pipeline);
+            voxels_pass.set_pipeline(&self.voxels_pipeline);
             voxels_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
             voxels_pass.set_bind_group(1, &self.camera_bind_group, &[]);
 
