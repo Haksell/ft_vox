@@ -33,8 +33,9 @@ impl Chunk {
     }
 
     pub fn bounding_box(&self) -> AABB {
-        let world_x = self.index.0 as f32 * CHUNK_WIDTH as f32;
-        let world_y = self.index.1 as f32 * CHUNK_WIDTH as f32;
+        let (x, y) = self.index;
+        let world_x = x as f32 * CHUNK_WIDTH as f32;
+        let world_y = y as f32 * CHUNK_WIDTH as f32;
 
         AABB::new(
             glam::Vec3::new(world_x, 0.0, world_y),
