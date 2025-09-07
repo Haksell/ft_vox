@@ -3,6 +3,7 @@
 ## todo
 
 - lod
+- refactor cod with (i32, i32) everywhere instead of sometimes as 2 arguments (`type ChunkCoord = (i32, i32)`)
 - greedy meshing
 - mipmap to avoid moire patterns
 - fix camera coordinate system
