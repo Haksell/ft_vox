@@ -22,7 +22,7 @@ use {
     },
     std::{collections::HashMap, sync::Arc, time::Duration},
     wgpu::util::DeviceExt as _,
-    winit::{event::*, event_loop::EventLoop, window::Window},
+    winit::{dpi::PhysicalSize, event::*, event_loop::EventLoop, window::Window},
 };
 
 struct ChunkRenderData {
@@ -37,22 +37,23 @@ pub struct State<'a> {
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
-    size: winit::dpi::PhysicalSize<u32>,
-    render_pipeline: wgpu::RenderPipeline,
+    size: PhysicalSize<u32>,
 
     chunk_render_data: HashMap<(i32, i32), ChunkRenderData>,
+
+    render_pipeline: wgpu::RenderPipeline,
 
     depth_texture: Texture,
     diffuse_bind_group: wgpu::BindGroup,
 
     camera: Camera,
     camera_uniform: CameraUniform,
+    camera_controller: CameraController,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
-    camera_controller: CameraController,
 
-    sky_pipeline: wgpu::RenderPipeline,
-    sky_bind_group: wgpu::BindGroup,
+    skybox_pipeline: wgpu::RenderPipeline,
+    skybox_bind_group: wgpu::BindGroup,
 }
 
 impl<'a> State<'a> {
@@ -194,26 +195,26 @@ impl<'a> State<'a> {
 
         let camera_controller = CameraController::new();
 
-        let shader = device.create_shader_module(wgpu::include_wgsl!("../shaders/shader.wgsl"));
-
-        let render_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&texture_bind_group_layout, &camera_bind_group_layout],
-                push_constant_ranges: &[],
-            });
-
-        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Render Pipeline"),
-            layout: Some(&render_pipeline_layout),
+        // === VOXELS ===
+        let voxels_shader =
+            device.create_shader_module(wgpu::include_wgsl!("../shaders/voxels.wgsl"));
+        let voxels_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Voxels Pipeline"),
+            layout: Some(
+                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Voxels Pipeline Layout"),
+                    bind_group_layouts: &[&texture_bind_group_layout, &camera_bind_group_layout],
+                    push_constant_ranges: &[],
+                }),
+            ),
             vertex: wgpu::VertexState {
-                module: &shader,
+                module: &voxels_shader,
                 entry_point: Some("vs_main"),
                 buffers: &[Vertex::desc()],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(wgpu::FragmentState {
-                module: &shader,
+                module: &voxels_shader,
                 entry_point: Some("fs_main"),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: config.format,
@@ -249,47 +250,46 @@ impl<'a> State<'a> {
 
         let chunk_render_data = HashMap::new();
 
-        // --- SKY TEXTURE ---
-        let sky_bytes = include_bytes!("../assets/space.tif");
-        let sky_texture = Texture::from_bytes(&device, &queue, sky_bytes, "../assets/space.tif")
-            .expect("failed to load sky panorama");
+        // === SKYBOX ===
+        let skybox_bytes = include_bytes!("../assets/space.tif");
+        let skybox_texture =
+            Texture::from_bytes(&device, &queue, skybox_bytes, "../assets/space.tif")
+                .expect("failed to load skybox");
 
-        let sky_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &texture_bind_group_layout, // same layout: texture @binding(0), sampler @binding(1)
+        let skybox_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &texture_bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&sky_texture.view),
+                    resource: wgpu::BindingResource::TextureView(&skybox_texture.view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&sky_texture.sampler),
+                    resource: wgpu::BindingResource::Sampler(&skybox_texture.sampler),
                 },
             ],
-            label: Some("sky_bind_group"),
+            label: Some("skybox_bind_group"),
         });
 
-        // --- SKY PIPELINE ---
-        let sky_shader = device.create_shader_module(wgpu::include_wgsl!("../shaders/skybox.wgsl"));
-
-        let sky_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Sky Pipeline Layout"),
-            bind_group_layouts: &[&texture_bind_group_layout, &camera_bind_group_layout],
-            push_constant_ranges: &[],
-        });
-
-        let sky_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Sky Pipeline"),
-            layout: Some(&sky_pipeline_layout),
+        let skybox_shader =
+            device.create_shader_module(wgpu::include_wgsl!("../shaders/skybox.wgsl"));
+        let skybox_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Skybox Pipeline"),
+            layout: Some(
+                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Skybox Pipeline Layout"),
+                    bind_group_layouts: &[&texture_bind_group_layout, &camera_bind_group_layout],
+                    push_constant_ranges: &[],
+                }),
+            ),
             vertex: wgpu::VertexState {
-                module: &sky_shader,
+                module: &skybox_shader,
                 entry_point: Some("vs_main"),
-                // Fullscreen triangle: no vertex buffers needed.
-                buffers: &[],
+                buffers: &[], // fullscreen triangle: no vertex buffers needed.
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(wgpu::FragmentState {
-                module: &sky_shader,
+                module: &skybox_shader,
                 entry_point: Some("fs_main"),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: config.format,
@@ -302,8 +302,7 @@ impl<'a> State<'a> {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 ..Default::default()
             },
-            // Sky doesn't use depth.
-            depth_stencil: None,
+            depth_stencil: None, // infinite depth
             multisample: wgpu::MultisampleState::default(),
             multiview: None,
             cache: None,
@@ -315,7 +314,7 @@ impl<'a> State<'a> {
             queue,
             config,
             size,
-            render_pipeline,
+            render_pipeline: voxels_pipeline,
             chunk_render_data,
             diffuse_bind_group,
             depth_texture,
@@ -324,8 +323,8 @@ impl<'a> State<'a> {
             camera_buffer,
             camera_bind_group,
             camera_controller,
-            sky_pipeline,
-            sky_bind_group,
+            skybox_pipeline,
+            skybox_bind_group,
         }
     }
 
@@ -438,15 +437,13 @@ impl<'a> State<'a> {
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Render Encoder"),
+                label: Some("encoder"),
             });
 
-        let frustum = self.camera.get_frustum();
-
-        // --- PASS 1: Sky ---
+        // === SKYBOX ===
         {
-            let mut sky_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Sky Pass"),
+            let mut skybox_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("skybox render pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
                     resolve_target: None,
@@ -462,21 +459,21 @@ impl<'a> State<'a> {
                 timestamp_writes: None,
             });
 
-            sky_pass.set_pipeline(&self.sky_pipeline);
-            sky_pass.set_bind_group(0, &self.sky_bind_group, &[]);
-            sky_pass.set_bind_group(1, &self.camera_bind_group, &[]);
+            skybox_pass.set_pipeline(&self.skybox_pipeline);
+            skybox_pass.set_bind_group(0, &self.skybox_bind_group, &[]);
+            skybox_pass.set_bind_group(1, &self.camera_bind_group, &[]);
             // Fullscreen triangle: 3 vertices, 1 instance.
-            sky_pass.draw(0..3, 0..1);
+            skybox_pass.draw(0..3, 0..1);
         }
 
-        // --- PASS 2: World ---
+        // === VOXELS ===
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("World Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
                     resolve_target: None,
-                    // IMPORTANT: load previous color (the sky) so chunks draw over it.
+                    // IMPORTANT: load previous color (the skybox) so chunks draw over it.
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Load,
                         store: wgpu::StoreOp::Store,
@@ -499,6 +496,7 @@ impl<'a> State<'a> {
             render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
             render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
 
+            let frustum = self.camera.get_frustum();
             for render_data in self.chunk_render_data.values() {
                 if frustum.intersects_aabb(&render_data.aabb) {
                     render_pass.set_vertex_buffer(0, render_data.vertex_buffer.slice(..));
