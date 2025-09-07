@@ -24,12 +24,12 @@ impl CameraUniform {
         let view = camera.look_at();
         let proj = camera.projection();
 
-        let view_proj = (proj * view).to_cols_array_2d();
-        let view_proj_inverse = (proj * view).inverse().to_cols_array_2d();
+        let view_proj = proj * view;
+        let view_proj_inverse = view_proj.inverse();
 
         Self {
-            view_proj,
-            view_proj_inverse,
+            view_proj: view_proj.to_cols_array_2d(),
+            view_proj_inverse: view_proj_inverse.to_cols_array_2d(),
         }
     }
 

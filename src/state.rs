@@ -145,6 +145,7 @@ impl<'a> State<'a> {
 
         const CAMERA_DISTANCE: f32 = (RENDER_DISTANCE + 1) as f32 * SQRT_2 * CHUNK_WIDTH as f32;
         let camera = Camera::new(
+            // TODO: start at world height instead of in the stratosphere
             glam::Vec3::new(0.0, CHUNK_HEIGHT as f32, 0.0),
             glam::Vec3::new(0.0, 1.0, 0.0),
             config.width as f32 / config.height as f32,
