@@ -62,7 +62,7 @@ impl<'a> State<'a> {
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),
                 compatible_surface: Some(&surface),
-                force_fallback_adapter: false,
+                force_fallback_adapter: true,
             })
             .await
             .unwrap();
@@ -360,7 +360,7 @@ impl<'a> State<'a> {
 
     pub fn update_chunks(&mut self, world: &mut World) {
         let camera_pos = self.camera.position();
-        let render_distance = world.get_render_distance() as i32;
+        let render_distance = RENDER_DISTANCE as i32;
         let current_chunk = world.get_chunk_index_from_position(camera_pos.x, camera_pos.y);
 
         let mut chunks_in_range = HashSet::new();

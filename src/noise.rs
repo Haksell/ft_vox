@@ -1,4 +1,4 @@
-use crate::utils::{lerp, fade};
+use crate::utils::{fade, lerp};
 
 #[allow(unused)] // TODO: remove
 
