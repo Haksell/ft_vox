@@ -34,7 +34,7 @@ impl<'a> Application<'a> {
                 .with_inner_size(PhysicalSize::new(1280.0, 720.0)),
             state: None,
             window: None,
-            world: World::new(42),
+            world: World::new(0),
             last_chunk: None,
             last_render: Instant::now(),
             last_fps_log: Instant::now(),
@@ -139,7 +139,7 @@ impl<'a> ApplicationHandler for Application<'a> {
                         if elapsed >= Duration::from_secs(1) {
                             let secs = elapsed.as_secs_f64();
                             let fps = self.frames_since_log as f64 / secs;
-                            log::info!("FPS: {:.1}", fps);
+                            log::info!("FPS: {:.1} | CHUNK: {:?}", fps, current_chunk);
                             self.frames_since_log = 0;
                             self.last_fps_log = Instant::now();
                         }

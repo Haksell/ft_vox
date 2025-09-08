@@ -143,15 +143,18 @@ impl<'a> State<'a> {
             label: Some("diffuse_bind_group"),
         });
 
-        const CAMERA_DISTANCE: f32 = (RENDER_DISTANCE + 1) as f32 * SQRT_2 * CHUNK_WIDTH as f32;
+        const CAMERA_START: f32 = (CHUNK_WIDTH - 1) as f32 / 2.0;
+        const CAMERA_DISTANCE_XY: f32 = (RENDER_DISTANCE + 1) as f32 * SQRT_2 * CHUNK_WIDTH as f32;
+        let camera_distance: f32 =
+            (CAMERA_DISTANCE_XY.powf(2.0) + (CHUNK_HEIGHT as f32).powf(2.0)).sqrt();
         let camera = Camera::new(
             // TODO: start at world height instead of in the stratosphere
-            glam::Vec3::new(0.0, CHUNK_HEIGHT as f32, 0.0),
+            glam::Vec3::new(CAMERA_START, CHUNK_HEIGHT as f32, CAMERA_START),
             glam::Vec3::new(0.0, 1.0, 0.0),
             config.width as f32 / config.height as f32,
             80.0,
             0.1,
-            CAMERA_DISTANCE,
+            camera_distance,
         );
 
         let camera_uniform = CameraUniform::new(&camera);
@@ -374,7 +377,9 @@ impl<'a> State<'a> {
         chunk_y: i32,
         lod_step: usize,
     ) {
-        let (mut vertices, indices) = world.generate_chunk_mesh(chunk_x, chunk_y, lod_step);
+        self.chunk_render_data.remove(&(chunk_x, chunk_y));
+        let (mut vertices, indices) =
+            world.generate_chunk_mesh(current_chunk, chunk_x, chunk_y, lod_step);
         if vertices.is_empty() || indices.is_empty() {
             return;
         }

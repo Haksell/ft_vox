@@ -14,10 +14,10 @@ pub struct Chunk {
 }
 
 pub struct AdjacentChunks<'a> {
-    pub north: Option<&'a Chunk>, // +y direction
-    pub south: Option<&'a Chunk>, // -y direction
-    pub east: Option<&'a Chunk>,  // +x direction
-    pub west: Option<&'a Chunk>,  // -x direction
+    pub north: Option<(&'a Chunk, usize)>, // +y direction
+    pub south: Option<(&'a Chunk, usize)>, // -y direction
+    pub east: Option<(&'a Chunk, usize)>,  // +x direction
+    pub west: Option<(&'a Chunk, usize)>,  // -x direction
 }
 
 impl Chunk {
@@ -99,6 +99,7 @@ impl Chunk {
         let mut indices = Vec::new();
         let mut index_offset = 0;
 
+        // TODO: middle instead of 0
         for local_x in (0..CHUNK_WIDTH).step_by(lod_step) {
             for local_y in (0..CHUNK_WIDTH).step_by(lod_step) {
                 for local_z in (0..CHUNK_HEIGHT).step_by(lod_step) {
@@ -114,10 +115,18 @@ impl Chunk {
                         let neighbor_y = local_y as i32 + dy * lod_step as i32;
                         let neighbor_z = local_z as i32 + dz * lod_step as i32;
 
-                        let is_face_visible = neighbor_z >= 0
-                            && self
-                                .get_neighbor_block(neighbor_x, neighbor_y, neighbor_z, adjacent)
-                                .is_none();
+                        let is_face_visible = self
+                            .get_neighbor_block(
+                                local_x as i32,
+                                local_y as i32,
+                                local_z as i32,
+                                neighbor_x,
+                                neighbor_y,
+                                neighbor_z,
+                                adjacent,
+                                lod_step,
+                            )
+                            .is_none();
 
                         if is_face_visible {
                             let (face_verts, face_indices) =
@@ -140,40 +149,72 @@ impl Chunk {
         local_x: i32,
         local_y: i32,
         local_z: i32,
+        neighbor_x: i32,
+        neighbor_y: i32,
+        neighbor_z: i32,
         adjacent: &AdjacentChunks,
+        lod_step: usize,
     ) -> Option<BlockType> {
-        if local_z < 0 || local_z >= CHUNK_HEIGHT as i32 {
+        if neighbor_z < 0 || neighbor_z >= CHUNK_HEIGHT as i32 {
             return None;
         }
 
-        if local_x >= 0
-            && local_x < CHUNK_WIDTH as i32
-            && local_y >= 0
-            && local_y < CHUNK_WIDTH as i32
+        if neighbor_x >= 0
+            && neighbor_x < CHUNK_WIDTH as i32
+            && neighbor_y >= 0
+            && neighbor_y < CHUNK_WIDTH as i32
         {
-            return self.get_block(local_x as usize, local_y as usize, local_z as usize);
+            return self.get_block(
+                neighbor_x as usize,
+                neighbor_y as usize,
+                neighbor_z as usize,
+            );
         }
 
-        match (local_x, local_y) {
+        match (neighbor_x, neighbor_y) {
             (x, y) if x >= CHUNK_WIDTH as i32 && y >= 0 && y < CHUNK_WIDTH as i32 => {
-                // East chunk
-                adjacent.east?.get_block(0, y as usize, local_z as usize)
+                let (adj_chunk, adj_lod_step) = adjacent.east?;
+                if lod_step != adj_lod_step {
+                    return None;
+                }
+                adj_chunk.get_block(
+                    0,
+                    y as usize,
+                    neighbor_z as usize / adj_lod_step * adj_lod_step,
+                )
             }
             (x, y) if x < 0 && y >= 0 && y < CHUNK_WIDTH as i32 => {
-                // West chunk
-                adjacent
-                    .west?
-                    .get_block(CHUNK_WIDTH - 1, y as usize, local_z as usize)
+                let (adj_chunk, adj_lod_step) = adjacent.west?;
+                if lod_step != adj_lod_step {
+                    return None;
+                }
+                adj_chunk.get_block(
+                    CHUNK_WIDTH - adj_lod_step,
+                    y as usize,
+                    neighbor_z as usize / adj_lod_step * adj_lod_step,
+                )
             }
             (x, y) if y >= CHUNK_WIDTH as i32 && x >= 0 && x < CHUNK_WIDTH as i32 => {
-                // North chunk
-                adjacent.north?.get_block(x as usize, 0, local_z as usize)
+                let (adj_chunk, adj_lod_step) = adjacent.north?;
+                if lod_step != adj_lod_step {
+                    return None;
+                }
+                adj_chunk.get_block(
+                    x as usize,
+                    0,
+                    neighbor_z as usize / adj_lod_step * adj_lod_step,
+                )
             }
             (x, y) if y < 0 && x >= 0 && x < CHUNK_WIDTH as i32 => {
-                // South chunk
-                adjacent
-                    .south?
-                    .get_block(x as usize, CHUNK_WIDTH - 1, local_z as usize)
+                let (adj_chunk, adj_lod_step) = adjacent.south?;
+                if lod_step != adj_lod_step {
+                    return None;
+                }
+                adj_chunk.get_block(
+                    x as usize,
+                    CHUNK_WIDTH - adj_lod_step,
+                    neighbor_z as usize / adj_lod_step * adj_lod_step,
+                )
             }
             _ => None,
         }

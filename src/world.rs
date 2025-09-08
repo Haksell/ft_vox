@@ -8,10 +8,11 @@ use {
     std::collections::HashMap,
 };
 
-pub const LOD_HALF: usize = 3;
-pub const LOD_QUARTER: usize = 6;
-pub const RENDER_DISTANCE: usize = 9;
+pub const LOD_HALF: usize = 2;
+pub const LOD_QUARTER: usize = 4;
+pub const RENDER_DISTANCE: usize = 5;
 
+// TODO: use euclidean distance instead
 pub fn calculate_lod((current_x, current_y): (i32, i32), (chunk_x, chunk_y): (i32, i32)) -> usize {
     let dx = (current_x - chunk_x).abs() as usize;
     let dy = (current_y - chunk_y).abs() as usize;
@@ -109,6 +110,7 @@ impl World {
 
     pub fn generate_chunk_mesh(
         &mut self,
+        current_chunk: (i32, i32),
         chunk_x: i32,
         chunk_y: i32,
         lod_step: usize,
@@ -123,10 +125,18 @@ impl World {
         let chunk = self.get_chunk_if_loaded(chunk_x, chunk_y).unwrap();
 
         let adjacent = AdjacentChunks {
-            north: self.get_chunk_if_loaded(chunk_x, chunk_y + 1),
-            south: self.get_chunk_if_loaded(chunk_x, chunk_y - 1),
-            east: self.get_chunk_if_loaded(chunk_x + 1, chunk_y),
-            west: self.get_chunk_if_loaded(chunk_x - 1, chunk_y),
+            north: self
+                .get_chunk_if_loaded(chunk_x, chunk_y + 1)
+                .map(|c| (c, calculate_lod(current_chunk, (chunk_x, chunk_y + 1)))),
+            south: self
+                .get_chunk_if_loaded(chunk_x, chunk_y - 1)
+                .map(|c| (c, calculate_lod(current_chunk, (chunk_x, chunk_y - 1)))),
+            east: self
+                .get_chunk_if_loaded(chunk_x + 1, chunk_y)
+                .map(|c| (c, calculate_lod(current_chunk, (chunk_x + 1, chunk_y)))),
+            west: self
+                .get_chunk_if_loaded(chunk_x - 1, chunk_y)
+                .map(|c| (c, calculate_lod(current_chunk, (chunk_x - 1, chunk_y)))),
         };
 
         chunk.generate_mesh(&adjacent, lod_step)
