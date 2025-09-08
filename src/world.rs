@@ -10,24 +10,24 @@ use {
     std::collections::HashMap,
 };
 
-pub const RENDER_DISTANCE: usize = 16;
+pub const LOD_FULL: usize = 2;
+pub const LOD_HALF: usize = 4;
+pub const RENDER_DISTANCE: usize = 6;
 pub const SURFACE: usize = 64;
 pub const SEA: usize = 62;
 
 // TODO: use euclidean distance instead
 pub fn calculate_lod((current_x, current_y): (i32, i32), (chunk_x, chunk_y): (i32, i32)) -> usize {
-    // let dx = (current_x - chunk_x).abs() as usize;
-    // let dy = (current_y - chunk_y).abs() as usize;
+    let dx = (current_x - chunk_x).abs() as usize;
+    let dy = (current_y - chunk_y).abs() as usize;
 
-    // if dx < LOD_HALF && dy < LOD_HALF {
-    //     1
-    // } else if dx < LOD_QUARTER && dy < LOD_QUARTER {
-    //     2
-    // } else {
-    //     4
-    // }
-
-    1
+    if dx <= LOD_FULL && dy <= LOD_FULL {
+        1
+    } else if dx <= LOD_HALF && dy <= LOD_HALF {
+        2
+    } else {
+        4
+    }
 }
 
 pub struct World {

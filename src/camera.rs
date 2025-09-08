@@ -172,13 +172,11 @@ impl CameraController {
     }
 
     pub fn update(&mut self, camera: &mut Camera, dt: f32) {
-        // apply rotation from mouse movement
         let (dx, dy) = self.mouse_delta;
         camera.yaw += dx * self.sensitivity;
         camera.pitch = (camera.pitch - dy * self.sensitivity).clamp(-MAX_PITCH, MAX_PITCH);
         self.mouse_delta = (0.0, 0.0);
 
-        // calculate movement
         let forward = camera.direction();
         let right = forward.cross(camera.up);
         let up = camera.up;
@@ -190,11 +188,9 @@ impl CameraController {
         movement -= right * (self.is_left_pressed as i32) as f32;
         movement += up * (self.is_up_pressed as i32) as f32;
         movement -= up * (self.is_down_pressed as i32) as f32;
-
-        // normalize movement vector if not zero and apply speed
         movement = movement.normalize_or_zero() * self.speed * dt;
+
         camera.eye += movement;
-        // clamp Z coordinate (up/down)
         camera.eye.z = camera.eye.z.clamp(
             -CAMERA_MAX_OUT_OF_BOUNDS,
             CHUNK_HEIGHT as f32 + CAMERA_MAX_OUT_OF_BOUNDS,
