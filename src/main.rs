@@ -1,5 +1,6 @@
 mod aabb;
 mod app;
+mod biome;
 mod block;
 mod camera;
 mod chunk;
@@ -8,6 +9,7 @@ mod frustum;
 mod noise;
 mod state;
 mod texture;
+mod utils;
 mod vertex;
 mod world;
 

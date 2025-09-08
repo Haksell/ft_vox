@@ -1,12 +1,14 @@
-#![allow(unused)] // TODO: remove
+use crate::utils::{lerp, fade};
+
+#[allow(unused)] // TODO: remove
 
 // TODO: remove PerlinNoiseBuilder in favor of PerlinNoise::new
 pub struct PerlinNoiseBuilder {
     seed: u64,
-    frequency: f64,
+    frequency: f32,
     octaves: usize,
-    persistence: f64,
-    lacunarity: f64,
+    persistence: f32,
+    lacunarity: f32,
 }
 
 impl PerlinNoiseBuilder {
@@ -20,7 +22,7 @@ impl PerlinNoiseBuilder {
         }
     }
 
-    pub fn frequency(mut self, frequency: f64) -> Self {
+    pub fn frequency(mut self, frequency: f32) -> Self {
         self.frequency = frequency.max(0.0001);
         self
     }
@@ -30,12 +32,12 @@ impl PerlinNoiseBuilder {
         self
     }
 
-    pub fn persistence(mut self, persistence: f64) -> Self {
+    pub fn persistence(mut self, persistence: f32) -> Self {
         self.persistence = persistence.max(0.0).min(1.0);
         self
     }
 
-    pub fn lacunarity(mut self, lacunarity: f64) -> Self {
+    pub fn lacunarity(mut self, lacunarity: f32) -> Self {
         self.lacunarity = lacunarity.max(1.0);
         self
     }
@@ -71,14 +73,14 @@ impl PerlinNoiseBuilder {
 
 pub struct PerlinNoise {
     permutations: [u8; 512],
-    frequency: f64,
+    frequency: f32,
     octaves: usize,
-    persistence: f64,
-    lacunarity: f64,
+    persistence: f32,
+    lacunarity: f32,
 }
 
 impl PerlinNoise {
-    pub fn noise2d(&self, x: f64, y: f64) -> f64 {
+    pub fn noise2d(&self, x: f32, y: f32) -> f32 {
         let mut value = 0.0;
         let mut amplitude = 1.0;
         let mut frequency = self.frequency;
@@ -100,10 +102,10 @@ impl PerlinNoise {
             value = value / max_value;
         }
 
-        value.clamp(-1.0, 1.0) * 0.5 + 0.5
+        value.clamp(-1.0, 1.0)
     }
 
-    pub fn noise3d(&self, x: f64, y: f64, z: f64) -> f64 {
+    pub fn noise3d(&self, x: f32, y: f32, z: f32) -> f32 {
         let mut value = 0.0;
         let mut amplitude = 1.0;
         let mut frequency = self.frequency;
@@ -126,18 +128,18 @@ impl PerlinNoise {
             value = value / max_value;
         }
 
-        value.clamp(-1.0, 1.0) * 0.5 + 0.5
+        value.clamp(-1.0, 1.0)
     }
 
-    fn perlin2d(&self, x: f64, y: f64) -> f64 {
+    fn perlin2d(&self, x: f32, y: f32) -> f32 {
         let xi = x.floor() as i32;
         let yi = y.floor() as i32;
 
-        let xf = x - xi as f64;
-        let yf = y - yi as f64;
+        let xf = x - xi as f32;
+        let yf = y - yi as f32;
 
-        let u = Self::fade(xf);
-        let v = Self::fade(yf);
+        let u = fade(xf);
+        let v = fade(yf);
 
         let a = self.permutations[(xi & 255) as usize] as i32 + yi;
         let aa = self.permutations[(a & 255) as usize] as usize;
@@ -147,9 +149,9 @@ impl PerlinNoise {
         let ba = self.permutations[(b & 255) as usize] as usize;
         let bb = self.permutations[((b + 1) & 255) as usize] as usize;
 
-        let value = Self::lerp(
-            Self::lerp(self.grad2d(aa, xf, yf), self.grad2d(ba, xf - 1.0, yf), u),
-            Self::lerp(
+        let value = lerp(
+            lerp(self.grad2d(aa, xf, yf), self.grad2d(ba, xf - 1.0, yf), u),
+            lerp(
                 self.grad2d(ab, xf, yf - 1.0),
                 self.grad2d(bb, xf - 1.0, yf - 1.0),
                 u,
@@ -160,18 +162,18 @@ impl PerlinNoise {
         value
     }
 
-    fn perlin3d(&self, x: f64, y: f64, z: f64) -> f64 {
+    fn perlin3d(&self, x: f32, y: f32, z: f32) -> f32 {
         let xi = x.floor() as i32;
         let yi = y.floor() as i32;
         let zi = z.floor() as i32;
 
-        let xf = x - xi as f64;
-        let yf = y - yi as f64;
-        let zf = z - zi as f64;
+        let xf = x - xi as f32;
+        let yf = y - yi as f32;
+        let zf = z - zi as f32;
 
-        let u = Self::fade(xf);
-        let v = Self::fade(yf);
-        let w = Self::fade(zf);
+        let u = fade(xf);
+        let v = fade(yf);
+        let w = fade(zf);
 
         let a = self.permutations[(xi & 255) as usize] as i32 + yi;
         let aa = self.permutations[(a & 255) as usize] as i32 + zi;
@@ -191,27 +193,27 @@ impl PerlinNoise {
         let bba = self.permutations[(bb & 255) as usize] as usize;
         let bbb = self.permutations[((bb + 1) & 255) as usize] as usize;
 
-        let value = Self::lerp(
-            Self::lerp(
-                Self::lerp(
+        let value = lerp(
+            lerp(
+                lerp(
                     self.grad3d(aaa, xf, yf, zf),
                     self.grad3d(baa, xf - 1.0, yf, zf),
                     u,
                 ),
-                Self::lerp(
+                lerp(
                     self.grad3d(aba, xf, yf - 1.0, zf),
                     self.grad3d(bba, xf - 1.0, yf - 1.0, zf),
                     u,
                 ),
                 v,
             ),
-            Self::lerp(
-                Self::lerp(
+            lerp(
+                lerp(
                     self.grad3d(aab, xf, yf, zf - 1.0),
                     self.grad3d(bab, xf - 1.0, yf, zf - 1.0),
                     u,
                 ),
-                Self::lerp(
+                lerp(
                     self.grad3d(abb, xf, yf - 1.0, zf - 1.0),
                     self.grad3d(bbb, xf - 1.0, yf - 1.0, zf - 1.0),
                     u,
@@ -260,23 +262,23 @@ impl PerlinNoise {
         glam::Vec3::new( 0.0, -1.0, -1.0),
     ];
 
-    fn grad2d(&self, hash: usize, x: f64, y: f64) -> f64 {
+    fn grad2d(&self, hash: usize, x: f32, y: f32) -> f32 {
         let gradient = Self::GRADIENT_2D[hash & 15];
         let position = glam::Vec2::new(x as f32, y as f32);
-        gradient.dot(position) as f64
+        gradient.dot(position) as f32
     }
 
-    fn grad3d(&self, hash: usize, x: f64, y: f64, z: f64) -> f64 {
+    fn grad3d(&self, hash: usize, x: f32, y: f32, z: f32) -> f32 {
         let gradient = Self::GRADIENT_3D[hash % 12];
         let position = glam::Vec3::new(x as f32, y as f32, z as f32);
-        gradient.dot(position) as f64
+        gradient.dot(position) as f32
     }
 
-    fn lerp(a: f64, b: f64, t: f64) -> f64 {
+    fn lerp(a: f32, b: f32, t: f32) -> f32 {
         a + t * (b - a)
     }
 
-    fn fade(t: f64) -> f64 {
+    fn fade(t: f32) -> f32 {
         t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
     }
 }
