@@ -3,6 +3,7 @@
 ## todo
 
 - lod
+- refactor code with (i32, i32) everywhere instead of sometimes as 2 arguments (`type ChunkCoord = (i32, i32)`)
 - greedy meshing
 - mipmap to avoid moire patterns
 - fix grass color (https://minecraft.fandom.com/wiki/Grass_Block, https://minecraft.fandom.com/wiki/Color#Biome_colors) (or simpler atlas)
