@@ -1,12 +1,12 @@
 const PI: f32 = 3.141592653589793;
 const TAU: f32 = 6.283185307179586;
 
-struct Camera {
+struct CameraUniform {
     view_proj: mat4x4<f32>,
-    inverse_view_proj: mat4x4<f32>,
+    view_proj_inverse: mat4x4<f32>,
 };
 
-@group(1) @binding(0) var<uniform> camera: Camera;
+@group(1) @binding(0) var<uniform> camera: CameraUniform;
 
 @group(0) @binding(0) var sky_texture: texture_2d<f32>;
 @group(0) @binding(1) var sky_sampler: sampler;
@@ -32,8 +32,8 @@ fn vs_main(@builtin(vertex_index) vi: u32) -> VertexOutput {
 }
 
 fn world_dir_from_ndc(ndc: vec2<f32>) -> vec3<f32> {
-    let p0 = camera.inverse_view_proj * vec4<f32>(ndc, 0.0, 1.0);
-    let p1 = camera.inverse_view_proj * vec4<f32>(ndc, 1.0, 1.0);
+    let p0 = camera.view_proj_inverse * vec4<f32>(ndc, 0.0, 1.0);
+    let p1 = camera.view_proj_inverse * vec4<f32>(ndc, 1.0, 1.0);
     let w0 = p0.xyz / p0.w;
     let w1 = p1.xyz / p1.w;
     return normalize(w1 - w0);
