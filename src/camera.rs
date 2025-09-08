@@ -41,6 +41,7 @@ pub struct Camera {
     fov_y: f32,
     near: f32,
     far: f32,
+    projection: glam::Mat4,
 }
 
 impl Camera {
@@ -52,15 +53,19 @@ impl Camera {
         near: f32,
         far: f32,
     ) -> Self {
+        let fov_y = 2.0 * (fov_x / 2.0).tan().atan2(aspect);
+        let projection = glam::Mat4::perspective_rh(fov_y, aspect, near, far);
+
         Self {
             eye,
             up,
             aspect,
             yaw: 0.0,
             pitch: 0.0,
-            fov_y: 2.0 * (fov_x / 2.0).tan().atan2(aspect),
+            fov_y,
             near,
             far,
+            projection,
         }
     }
 
@@ -69,7 +74,7 @@ impl Camera {
     }
 
     pub fn projection(&self) -> glam::Mat4 {
-        glam::Mat4::perspective_rh(self.fov_y, self.aspect, self.near, self.far)
+        self.projection
     }
 
     pub fn direction(&self) -> glam::Vec3 {
@@ -92,6 +97,7 @@ impl Camera {
 
     pub fn resize(&mut self, width: u32, height: u32) {
         self.aspect = width as f32 / height as f32;
+        self.projection = glam::Mat4::perspective_rh(self.fov_y, self.aspect, self.near, self.far);
     }
 }
 
