@@ -15,6 +15,8 @@ const MAX_PITCH: f32 = FRAC_PI_2 * 0.99; // avoids gimbal lock
 pub struct CameraUniform {
     view_proj: [[f32; 4]; 4],
     view_proj_inverse: [[f32; 4]; 4],
+    camera_dir: [f32; 3],
+    pub _pad0: f32, // magic
 }
 
 impl CameraUniform {
@@ -28,6 +30,8 @@ impl CameraUniform {
         Self {
             view_proj: view_proj.to_cols_array_2d(),
             view_proj_inverse: view_proj_inverse.to_cols_array_2d(),
+            camera_dir: camera.direction().to_array(),
+            _pad0: 0.0,
         }
     }
 }
