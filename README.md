@@ -2,7 +2,7 @@
 
 ## todo
 
-- lod
+- fix moving skybox
 - refactor code with (i32, i32) everywhere instead of sometimes as 2 arguments (`type ChunkCoord = (i32, i32)`)
 - greedy meshing
 - mipmap to avoid moire patterns
