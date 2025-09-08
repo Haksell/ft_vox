@@ -10,24 +10,24 @@ use {
     std::collections::HashMap,
 };
 
-pub const RENDER_DISTANCE: usize = 16;
+pub const LOD_FULL: usize = 5;
+pub const LOD_HALF: usize = 10;
+pub const RENDER_DISTANCE: usize = 15;
 pub const SURFACE: usize = 64;
 pub const SEA: usize = 62;
 
 // TODO: use euclidean distance instead
 pub fn calculate_lod((current_x, current_y): (i32, i32), (chunk_x, chunk_y): (i32, i32)) -> usize {
-    // let dx = (current_x - chunk_x).abs() as usize;
-    // let dy = (current_y - chunk_y).abs() as usize;
+    let dx = (current_x - chunk_x).abs() as usize;
+    let dy = (current_y - chunk_y).abs() as usize;
 
-    // if dx < LOD_HALF && dy < LOD_HALF {
-    //     1
-    // } else if dx < LOD_QUARTER && dy < LOD_QUARTER {
-    //     2
-    // } else {
-    //     4
-    // }
-
-    1
+    if dx <= LOD_FULL && dy <= LOD_FULL {
+        1
+    } else if dx <= LOD_HALF && dy <= LOD_HALF {
+        2
+    } else {
+        4
+    }
 }
 
 pub struct World {
@@ -658,7 +658,13 @@ impl World {
         blocks
     }
 
-    pub fn generate_chunk_mesh(&mut self, chunk_x: i32, chunk_y: i32) -> (Vec<Vertex>, Vec<u16>) {
+    pub fn generate_chunk_mesh(
+        &mut self,
+        current_chunk: (i32, i32),
+        lod_step: usize,
+        chunk_x: i32,
+        chunk_y: i32,
+    ) -> (Vec<Vertex>, Vec<u16>) {
         // Load the target chunk and its 4 cardinal neighbors
         self.get_chunk(chunk_x, chunk_y);
         self.get_chunk(chunk_x, chunk_y + 1);
@@ -669,12 +675,20 @@ impl World {
         let chunk = self.get_chunk_if_loaded(chunk_x, chunk_y).unwrap();
 
         let adjacent = AdjacentChunks {
-            north: self.get_chunk_if_loaded(chunk_x, chunk_y + 1),
-            south: self.get_chunk_if_loaded(chunk_x, chunk_y - 1),
-            east: self.get_chunk_if_loaded(chunk_x + 1, chunk_y),
-            west: self.get_chunk_if_loaded(chunk_x - 1, chunk_y),
+            north: self
+                .get_chunk_if_loaded(chunk_x, chunk_y + 1)
+                .map(|c| (c, calculate_lod(current_chunk, (chunk_x, chunk_y + 1)))),
+            south: self
+                .get_chunk_if_loaded(chunk_x, chunk_y - 1)
+                .map(|c| (c, calculate_lod(current_chunk, (chunk_x, chunk_y - 1)))),
+            east: self
+                .get_chunk_if_loaded(chunk_x + 1, chunk_y)
+                .map(|c| (c, calculate_lod(current_chunk, (chunk_x + 1, chunk_y)))),
+            west: self
+                .get_chunk_if_loaded(chunk_x - 1, chunk_y)
+                .map(|c| (c, calculate_lod(current_chunk, (chunk_x - 1, chunk_y)))),
         };
 
-        chunk.generate_mesh(&adjacent)
+        chunk.generate_mesh(lod_step, &adjacent)
     }
 }

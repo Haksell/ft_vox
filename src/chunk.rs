@@ -14,10 +14,10 @@ pub struct Chunk {
 }
 
 pub struct AdjacentChunks<'a> {
-    pub north: Option<&'a Chunk>, // +y direction
-    pub south: Option<&'a Chunk>, // -y direction
-    pub east: Option<&'a Chunk>,  // +x direction
-    pub west: Option<&'a Chunk>,  // -x direction
+    pub north: Option<(&'a Chunk, usize)>, // +y direction
+    pub south: Option<(&'a Chunk, usize)>, // -y direction
+    pub east: Option<(&'a Chunk, usize)>,  // +x direction
+    pub west: Option<(&'a Chunk, usize)>,  // -x direction
 }
 
 impl Chunk {
@@ -61,55 +61,136 @@ impl Chunk {
         }
     }
 
-    fn get_neighbor_block(
+    fn is_face_visible(
         &self,
-        local_x: i32,
-        local_y: i32,
-        local_z: i32,
+        neighbor_x: i32,
+        neighbor_y: i32,
+        neighbor_z: i32,
         adjacent: &AdjacentChunks,
-    ) -> Option<BlockType> {
-        if local_z < 0 || local_z >= CHUNK_HEIGHT as i32 {
-            return None;
+        lod_step: usize,
+    ) -> bool {
+        if neighbor_z < 0 {
+            return false;
+        }
+        if neighbor_z >= CHUNK_HEIGHT as i32 {
+            return true;
         }
 
-        if local_x >= 0
-            && local_x < CHUNK_WIDTH as i32
-            && local_y >= 0
-            && local_y < CHUNK_WIDTH as i32
+        if neighbor_x >= 0
+            && neighbor_x < CHUNK_WIDTH as i32
+            && neighbor_y >= 0
+            && neighbor_y < CHUNK_WIDTH as i32
         {
-            return self.get_block(local_x as usize, local_y as usize, local_z as usize);
+            return self
+                .get_block(
+                    neighbor_x as usize,
+                    neighbor_y as usize,
+                    neighbor_z as usize,
+                )
+                .is_none();
         }
 
-        match (local_x, local_y) {
+        // TODO: no loops, just check if used neighbor is present
+
+        match (neighbor_x, neighbor_y) {
             (x, y) if x >= CHUNK_WIDTH as i32 && y >= 0 && y < CHUNK_WIDTH as i32 => {
-                adjacent.east?.get_block(0, y as usize, local_z as usize)
+                let Some((adj_chunk, adj_lod_step)) = adjacent.east else {
+                    return true;
+                };
+                for dx in 0..lod_step {
+                    for dy in 0..lod_step {
+                        if adj_chunk
+                            .get_block(dx, y as usize + dy, neighbor_z as usize)
+                            .is_none()
+                        {
+                            return true;
+                        }
+                    }
+                }
+                false
             }
             (x, y) if x < 0 && y >= 0 && y < CHUNK_WIDTH as i32 => {
-                adjacent
-                    .west?
-                    .get_block(CHUNK_WIDTH - 1, y as usize, local_z as usize)
+                let Some((adj_chunk, adj_lod_step)) = adjacent.west else {
+                    return true;
+                };
+                for dx in 0..lod_step {
+                    for dy in 0..lod_step {
+                        if adj_chunk
+                            .get_block(
+                                CHUNK_WIDTH - lod_step + dx,
+                                y as usize + dy,
+                                neighbor_z as usize,
+                            )
+                            .is_none()
+                        {
+                            return true;
+                        }
+                    }
+                }
+                false
             }
             (x, y) if y >= CHUNK_WIDTH as i32 && x >= 0 && x < CHUNK_WIDTH as i32 => {
-                adjacent.north?.get_block(x as usize, 0, local_z as usize)
+                let Some((adj_chunk, adj_lod_step)) = adjacent.north else {
+                    return true;
+                };
+                for dx in 0..lod_step {
+                    for dy in 0..lod_step {
+                        if adj_chunk
+                            .get_block(x as usize + dx, dy, neighbor_z as usize)
+                            .is_none()
+                        {
+                            return true;
+                        }
+                    }
+                }
+                false
             }
             (x, y) if y < 0 && x >= 0 && x < CHUNK_WIDTH as i32 => {
-                adjacent
-                    .south?
-                    .get_block(x as usize, CHUNK_WIDTH - 1, local_z as usize)
+                let Some((adj_chunk, adj_lod_step)) = adjacent.south else {
+                    return true;
+                };
+                for dx in 0..lod_step {
+                    for dy in 0..lod_step {
+                        if adj_chunk
+                            .get_block(
+                                x as usize + dx,
+                                CHUNK_WIDTH - lod_step + dy,
+                                neighbor_z as usize,
+                            )
+                            .is_none()
+                        {
+                            return true;
+                        }
+                    }
+                }
+                false
             }
-            _ => None,
+            _ => unreachable!(),
         }
     }
 
-    fn create_face(block: BlockType, position: glam::Vec3, face: Face) -> ([Vertex; 4], [u16; 6]) {
+    fn create_face(
+        block: BlockType,
+        position: glam::Vec3,
+        face: Face,
+        lod_step: usize,
+    ) -> ([Vertex; 4], [u16; 6]) {
         let positions = face.positions();
-        let uvs = face.uvs();
+
+        // stretch uv in x and y but not z direction
+        let mut uvs = face.uvs();
+        for y in 0..4 {
+            uvs[y][0] *= lod_step as f32;
+            if matches!(face, Face::Top | Face::Bottom) {
+                uvs[y][1] *= lod_step as f32;
+            }
+        }
 
         let vertices = std::array::from_fn(|i| Vertex {
             position: [
-                position.x + positions[i][0],
-                position.y + positions[i][1],
-                position.z + positions[i][2],
+                position.x + positions[i][0] * lod_step as f32,
+                position.y + positions[i][1] * lod_step as f32,
+                position.z + positions[i][2] as f32,
             ],
             tex_coords: uvs[i],
             atlas_offset: match face {
@@ -124,13 +205,17 @@ impl Chunk {
         (vertices, indices)
     }
 
-    pub fn generate_mesh(&self, adjacent: &AdjacentChunks) -> (Vec<Vertex>, Vec<u16>) {
+    pub fn generate_mesh(
+        &self,
+        lod_step: usize,
+        adjacent: &AdjacentChunks,
+    ) -> (Vec<Vertex>, Vec<u16>) {
         let mut vertices = Vec::new();
         let mut indices = Vec::new();
         let mut index_offset = 0;
 
-        for local_x in 0..CHUNK_WIDTH {
-            for local_y in 0..CHUNK_WIDTH {
+        for local_x in (0..CHUNK_WIDTH).step_by(lod_step) {
+            for local_y in (0..CHUNK_WIDTH).step_by(lod_step) {
                 for local_z in 0..CHUNK_HEIGHT {
                     let Some(block) = self.get_block(local_x, local_y, local_z) else {
                         continue;
@@ -140,18 +225,17 @@ impl Chunk {
 
                     for face in FACES {
                         let (dx, dy, dz) = face.normal();
-                        let neighbor_x = local_x as i32 + dx;
-                        let neighbor_y = local_y as i32 + dy;
-                        let neighbor_z = local_z as i32 + dz;
+                        let neighbor_x = local_x as i32 + dx * lod_step as i32;
+                        let neighbor_y = local_y as i32 + dy * lod_step as i32;
+                        let neighbor_z = local_z as i32 + dz as i32;
 
-                        let is_face_visible = neighbor_z >= 0
-                            && self
-                                .get_neighbor_block(neighbor_x, neighbor_y, neighbor_z, adjacent)
-                                .is_none();
+                        let is_face_visible = self.is_face_visible(
+                            neighbor_x, neighbor_y, neighbor_z, adjacent, lod_step,
+                        );
 
                         if is_face_visible {
                             let (face_verts, face_indices) =
-                                Self::create_face(block, position, face);
+                                Self::create_face(block, position, face, lod_step);
 
                             vertices.extend(face_verts);
                             indices.extend(face_indices.iter().map(|i| *i + index_offset));
