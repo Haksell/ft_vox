@@ -10,9 +10,9 @@ use {
     std::collections::HashMap,
 };
 
-pub const LOD_FULL: usize = 2;
-pub const LOD_HALF: usize = 4;
-pub const RENDER_DISTANCE: usize = 6;
+pub const LOD_FULL: usize = 5;
+pub const LOD_HALF: usize = 10;
+pub const RENDER_DISTANCE: usize = 15;
 pub const SURFACE: usize = 64;
 pub const SEA: usize = 62;
 
@@ -674,10 +674,18 @@ impl World {
         let chunk = self.get_chunk_if_loaded(chunk_x, chunk_y).unwrap();
 
         let adjacent = AdjacentChunks {
-            north: self.get_chunk_if_loaded(chunk_x, chunk_y + 1),
-            south: self.get_chunk_if_loaded(chunk_x, chunk_y - 1),
-            east: self.get_chunk_if_loaded(chunk_x + 1, chunk_y),
-            west: self.get_chunk_if_loaded(chunk_x - 1, chunk_y),
+            north: self
+                .get_chunk_if_loaded(chunk_x, chunk_y + 1)
+                .map(|c| (c, lod_step)),
+            south: self
+                .get_chunk_if_loaded(chunk_x, chunk_y - 1)
+                .map(|c| (c, lod_step)),
+            east: self
+                .get_chunk_if_loaded(chunk_x + 1, chunk_y)
+                .map(|c| (c, lod_step)),
+            west: self
+                .get_chunk_if_loaded(chunk_x - 1, chunk_y)
+                .map(|c| (c, lod_step)),
         };
 
         chunk.generate_mesh(lod_step, &adjacent)

@@ -14,10 +14,10 @@ pub struct Chunk {
 }
 
 pub struct AdjacentChunks<'a> {
-    pub north: Option<&'a Chunk>, // +y direction
-    pub south: Option<&'a Chunk>, // -y direction
-    pub east: Option<&'a Chunk>,  // +x direction
-    pub west: Option<&'a Chunk>,  // -x direction
+    pub north: Option<(&'a Chunk, usize)>, // +y direction
+    pub south: Option<(&'a Chunk, usize)>, // -y direction
+    pub east: Option<(&'a Chunk, usize)>,  // +x direction
+    pub west: Option<(&'a Chunk, usize)>,  // -x direction
 }
 
 impl Chunk {
@@ -87,22 +87,90 @@ impl Chunk {
 
         match (neighbor_x, neighbor_y) {
             (x, y) if x >= CHUNK_WIDTH as i32 && y >= 0 && y < CHUNK_WIDTH as i32 => {
-                adjacent.east?.get_block(0, y as usize, neighbor_z as usize)
+                let (adj_chunk, adj_lod_step) = adjacent.east?;
+                if adj_lod_step != lod_step {
+                    return None;
+                }
+                for dx in 0..lod_step {
+                    for dy in 0..lod_step {
+                        for dz in 0..lod_step {
+                            if adj_chunk
+                                .get_block(dx, y as usize + dy, neighbor_z as usize + dz)
+                                .is_none()
+                            {
+                                return None;
+                            }
+                        }
+                    }
+                }
+                Some(BlockType::Grass)
             }
             (x, y) if x < 0 && y >= 0 && y < CHUNK_WIDTH as i32 => {
-                adjacent
-                    .west?
-                    .get_block(CHUNK_WIDTH - lod_step, y as usize, neighbor_z as usize)
+                let (adj_chunk, adj_lod_step) = adjacent.west?;
+                if adj_lod_step != lod_step {
+                    return None;
+                }
+                for dx in 0..lod_step {
+                    for dy in 0..lod_step {
+                        for dz in 0..lod_step {
+                            if adj_chunk
+                                .get_block(
+                                    CHUNK_WIDTH - adj_lod_step + dx,
+                                    y as usize + dy,
+                                    neighbor_z as usize + dz,
+                                )
+                                .is_none()
+                            {
+                                return None;
+                            }
+                        }
+                    }
+                }
+                Some(BlockType::Grass)
             }
-            (x, y) if y >= CHUNK_WIDTH as i32 && x >= 0 && x < CHUNK_WIDTH as i32 => adjacent
-                .north?
-                .get_block(x as usize, 0, neighbor_z as usize),
+            (x, y) if y >= CHUNK_WIDTH as i32 && x >= 0 && x < CHUNK_WIDTH as i32 => {
+                let (adj_chunk, adj_lod_step) = adjacent.north?;
+                if adj_lod_step != lod_step {
+                    return None;
+                }
+                for dx in 0..lod_step {
+                    for dy in 0..lod_step {
+                        for dz in 0..lod_step {
+                            if adj_chunk
+                                .get_block(x as usize + dx, dy, neighbor_z as usize + dz)
+                                .is_none()
+                            {
+                                return None;
+                            }
+                        }
+                    }
+                }
+                Some(BlockType::Grass)
+            }
             (x, y) if y < 0 && x >= 0 && x < CHUNK_WIDTH as i32 => {
-                adjacent
-                    .south?
-                    .get_block(x as usize, CHUNK_WIDTH - lod_step, neighbor_z as usize)
+                let (adj_chunk, adj_lod_step) = adjacent.south?;
+                if adj_lod_step != lod_step {
+                    return None;
+                }
+                for dx in 0..lod_step {
+                    for dy in 0..lod_step {
+                        for dz in 0..lod_step {
+                            if adj_chunk
+                                .get_block(
+                                    x as usize + dx,
+                                    CHUNK_WIDTH - adj_lod_step + dy,
+                                    neighbor_z as usize + dz,
+                                )
+                                .is_none()
+                            {
+                                return None;
+                            }
+                        }
+                    }
+                }
+                Some(BlockType::Grass)
             }
-            _ => None,
+            _ => unreachable!(),
         }
     }
 
