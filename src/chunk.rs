@@ -82,21 +82,17 @@ impl Chunk {
 
         match (local_x, local_y) {
             (x, y) if x >= CHUNK_WIDTH as i32 && y >= 0 && y < CHUNK_WIDTH as i32 => {
-                // East chunk
                 adjacent.east?.get_block(0, y as usize, local_z as usize)
             }
             (x, y) if x < 0 && y >= 0 && y < CHUNK_WIDTH as i32 => {
-                // West chunk
                 adjacent
                     .west?
                     .get_block(CHUNK_WIDTH - 1, y as usize, local_z as usize)
             }
             (x, y) if y >= CHUNK_WIDTH as i32 && x >= 0 && x < CHUNK_WIDTH as i32 => {
-                // North chunk
                 adjacent.north?.get_block(x as usize, 0, local_z as usize)
             }
             (x, y) if y < 0 && x >= 0 && x < CHUNK_WIDTH as i32 => {
-                // South chunk
                 adjacent
                     .south?
                     .get_block(x as usize, CHUNK_WIDTH - 1, local_z as usize)

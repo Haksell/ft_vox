@@ -194,7 +194,7 @@ impl CameraController {
         // normalize movement vector if not zero and apply speed
         movement = movement.normalize_or_zero() * self.speed * dt;
         camera.eye += movement;
-        // Clamp Z coordinate (up/down)
+        // clamp Z coordinate (up/down)
         camera.eye.z = camera.eye.z.clamp(
             -CAMERA_MAX_OUT_OF_BOUNDS,
             CHUNK_HEIGHT as f32 + CAMERA_MAX_OUT_OF_BOUNDS,

@@ -14,6 +14,22 @@ pub const RENDER_DISTANCE: usize = 16;
 pub const SURFACE: usize = 64;
 pub const SEA: usize = 62;
 
+// TODO: use euclidean distance instead
+pub fn calculate_lod((current_x, current_y): (i32, i32), (chunk_x, chunk_y): (i32, i32)) -> usize {
+    // let dx = (current_x - chunk_x).abs() as usize;
+    // let dy = (current_y - chunk_y).abs() as usize;
+
+    // if dx < LOD_HALF && dy < LOD_HALF {
+    //     1
+    // } else if dx < LOD_QUARTER && dy < LOD_QUARTER {
+    //     2
+    // } else {
+    //     4
+    // }
+
+    1
+}
+
 pub struct World {
     temperature_noise: PerlinNoise,
     humidity_noise: PerlinNoise,

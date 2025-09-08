@@ -23,53 +23,52 @@ pub struct Frustum {
 
 impl Frustum {
     pub fn from_matrix(view_proj: glam::Mat4) -> Self {
-        // Use transpose to get row-major access
+        // use transpose to get row-major access
         let m = view_proj.transpose().to_cols_array_2d();
 
-        // Extract planes using Gribb/Hartmann method
+        // extract planes using Gribb/Hartmann method
         let planes = [
-            // Left plane (w + x = 0)
+            // left plane (w + x = 0)
             Plane::new(
                 glam::Vec3::new(m[3][0] + m[0][0], m[3][1] + m[0][1], m[3][2] + m[0][2]),
                 m[3][3] + m[0][3],
             ),
-            // Right plane (w - x = 0)
+            // right plane (w - x = 0)
             Plane::new(
                 glam::Vec3::new(m[3][0] - m[0][0], m[3][1] - m[0][1], m[3][2] - m[0][2]),
                 m[3][3] - m[0][3],
             ),
-            // Bottom plane (w + y = 0)
+            // bottom plane (w + y = 0)
             Plane::new(
                 glam::Vec3::new(m[3][0] + m[1][0], m[3][1] + m[1][1], m[3][2] + m[1][2]),
                 m[3][3] + m[1][3],
             ),
-            // Top plane (w - y = 0)
+            // top plane (w - y = 0)
             Plane::new(
                 glam::Vec3::new(m[3][0] - m[1][0], m[3][1] - m[1][1], m[3][2] - m[1][2]),
                 m[3][3] - m[1][3],
             ),
-            // Near plane (w + z = 0)
+            // near plane (w + z = 0)
             Plane::new(
                 glam::Vec3::new(m[3][0] + m[2][0], m[3][1] + m[2][1], m[3][2] + m[2][2]),
                 m[3][3] + m[2][3],
             ),
-            // Far plane (w - z = 0)
+            // far plane (w - z = 0)
             Plane::new(
                 glam::Vec3::new(m[3][0] - m[2][0], m[3][1] - m[2][1], m[3][2] - m[2][2]),
                 m[3][3] - m[2][3],
             ),
         ];
 
-        // Normalize planes
+        // normalize planes
         let mut normalized_planes = [Plane::new(glam::Vec3::ZERO, 0.0); 6];
         for (i, plane) in planes.iter().enumerate() {
             let length = plane.normal.length();
-            if length > 0.0 {
-                normalized_planes[i] = Plane::new(plane.normal / length, plane.distance / length);
+            normalized_planes[i] = if length > 0.0 {
+                Plane::new(plane.normal / length, plane.distance / length)
             } else {
-                // Handle degenerate case
-                normalized_planes[i] = *plane;
-            }
+                *plane
+            };
         }
 
         Self {

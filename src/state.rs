@@ -439,30 +439,15 @@ impl<'a> State<'a> {
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
-        let output = match self.surface.get_current_texture() {
-            Ok(output) => output,
-            Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
-                self.surface.configure(&self.device, &self.config);
-                self.surface.get_current_texture()?
-            }
-            Err(e) => return Err(e),
-        };
-
-        let view = output
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("encoder"),
-            });
-
-        // === SKYBOX ===
-        {
+        fn render_skybox(
+            state: &State,
+            encoder: &mut wgpu::CommandEncoder,
+            texture_view: &wgpu::TextureView,
+        ) {
             let mut skybox_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("skybox_pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
+                    view: &texture_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
@@ -475,18 +460,21 @@ impl<'a> State<'a> {
                 timestamp_writes: None,
             });
 
-            skybox_pass.set_pipeline(&self.skybox_pipeline);
-            skybox_pass.set_bind_group(0, &self.skybox_bind_group, &[]);
-            skybox_pass.set_bind_group(1, &self.camera_bind_group, &[]);
+            skybox_pass.set_pipeline(&state.skybox_pipeline);
+            skybox_pass.set_bind_group(0, &state.skybox_bind_group, &[]);
+            skybox_pass.set_bind_group(1, &state.camera_bind_group, &[]);
             skybox_pass.draw(0..3, 0..1); // fullscreen triangle: 3 vertices, 1 instance.
         }
 
-        // === VOXELS ===
-        {
+        fn render_voxels(
+            state: &State,
+            encoder: &mut wgpu::CommandEncoder,
+            texture_view: &wgpu::TextureView,
+        ) {
             let mut voxels_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("voxels_pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
+                    view: &texture_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Load, // load previous color (the skybox)
@@ -495,7 +483,7 @@ impl<'a> State<'a> {
                     depth_slice: None,
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.depth_texture.view,
+                    view: &state.depth_texture.view,
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Clear(1.0),
                         store: wgpu::StoreOp::Store,
@@ -506,12 +494,12 @@ impl<'a> State<'a> {
                 timestamp_writes: None,
             });
 
-            voxels_pass.set_pipeline(&self.voxels_pipeline);
-            voxels_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
-            voxels_pass.set_bind_group(1, &self.camera_bind_group, &[]);
+            voxels_pass.set_pipeline(&state.voxels_pipeline);
+            voxels_pass.set_bind_group(0, &state.diffuse_bind_group, &[]);
+            voxels_pass.set_bind_group(1, &state.camera_bind_group, &[]);
 
-            let frustum = self.camera.get_frustum();
-            for render_data in self.chunk_render_data.values() {
+            let frustum = state.camera.get_frustum();
+            for render_data in state.chunk_render_data.values() {
                 if frustum.intersects_aabb(&render_data.aabb) {
                     voxels_pass.set_vertex_buffer(0, render_data.vertex_buffer.slice(..));
                     voxels_pass.set_index_buffer(
@@ -522,6 +510,27 @@ impl<'a> State<'a> {
                 }
             }
         }
+
+        let output = match self.surface.get_current_texture() {
+            Ok(output) => output,
+            Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
+                self.surface.configure(&self.device, &self.config);
+                self.surface.get_current_texture()?
+            }
+            Err(e) => return Err(e),
+        };
+
+        let texture_view = output
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("encoder"),
+            });
+
+        render_skybox(self, &mut encoder, &texture_view);
+        render_voxels(self, &mut encoder, &texture_view);
 
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
