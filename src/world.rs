@@ -36,6 +36,7 @@ pub struct World {
     continentalness_noise: PerlinNoise,
     erosion_noise: PerlinNoise,
     weirdness_noise: PerlinNoise,
+    cave_noise: PerlinNoise,
 
     chunks: HashMap<(i32, i32), Chunk>,
 }
@@ -44,34 +45,39 @@ impl World {
     pub fn new(seed: u64) -> Self {
         let chunks = HashMap::new();
 
-        // Temperature: affects hot vs cold biomes
+        // temperature: affects hot vs cold biomes
         let temperature_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0xFF446677))
             .frequency(0.0002)
             .octaves(4)
             .build();
 
-        // Humidity: affects dry vs wet biomes
+        // humidity: affects dry vs wet biomes
         let humidity_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0xAABB33CC))
             .frequency(0.0026)
             .octaves(4)
             .build();
 
-        // Continentalness: determines land vs ocean
+        // continentalness: determines land vs ocean
         let continentalness_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0xFF000055))
             .frequency(0.0002)
             .octaves(12)
             .build();
 
-        // Erosion: affects terrain ruggedness
+        // erosion: affects terrain ruggedness
         let erosion_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0x44336699))
             .frequency(0.002)
             .octaves(6)
             .build();
 
-        // Weirdness: creates unusual terrain features
+        // weirdness: creates unusual terrain features
         let weirdness_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0xFF110077))
             .frequency(0.0008)
             .octaves(6)
+            .build();
+
+        let cave_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0x110099FF))
+            .frequency(0.008)
+            .octaves(2)
             .build();
 
         Self {
@@ -80,6 +86,7 @@ impl World {
             continentalness_noise,
             erosion_noise,
             weirdness_noise,
+            cave_noise,
             chunks,
         }
     }
@@ -91,16 +98,16 @@ impl World {
         (chunk_x, chunk_y)
     }
 
-    pub fn get_chunk_if_loaded(&self, chunk_x: i32, chunk_y: i32) -> Option<&Chunk> {
+    pub fn get_chunk_if_loaded(&self, (chunk_x, chunk_y): (i32, i32)) -> Option<&Chunk> {
         self.chunks.get(&(chunk_x, chunk_y))
     }
 
-    pub fn get_chunk(&mut self, chunk_x: i32, chunk_y: i32) -> &Chunk {
+    pub fn get_chunk(&mut self, (chunk_x, chunk_y): (i32, i32)) -> &Chunk {
         if !self.chunks.contains_key(&(chunk_x, chunk_y)) {
-            let blocks = self.generate_chunk_blocks(chunk_x, chunk_y);
             let index = (chunk_x, chunk_y);
+            let blocks = self.generate_chunk_blocks(index);
             let chunk = Chunk::new(index, blocks);
-            self.chunks.insert((chunk_x, chunk_y), chunk);
+            self.chunks.insert(index, chunk);
         }
 
         &self.chunks[&(chunk_x, chunk_y)]
@@ -623,10 +630,20 @@ impl World {
         }
     }
 
+    fn has_cave_at(&self, world_x: i32, world_y: i32, world_z: i32) -> bool {
+        // TODO: Improve this
+
+        let noise = self.cave_noise.noise3d(world_x as f32, world_y as f32, world_z as f32);
+
+        let spaghetti = noise.abs() > 0.08;
+        let cheese = noise > 0.4;
+
+        cheese || spaghetti
+    }
+
     fn generate_chunk_blocks(
         &self,
-        chunk_x: i32,
-        chunk_y: i32,
+        (chunk_x, chunk_y): (i32, i32),
     ) -> [[[Option<BlockType>; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH] {
         let mut blocks = [[[None; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH];
 
@@ -639,9 +656,12 @@ impl World {
                 let biome = self.determine_biome(world_x as f32, world_y as f32);
 
                 for z in 0..=CHUNK_HEIGHT {
-                    if z <= height.min(CHUNK_HEIGHT - 1) {
-                        let depth_from_surface = height.saturating_sub(z);
+                    if z <= height {
+                        if self.has_cave_at(world_x, world_y, z as i32) {
+                            continue;
+                        }
 
+                        let depth_from_surface = height.saturating_sub(z);
                         blocks[x][y][z] = Some(match depth_from_surface {
                             0 => biome.get_surface_block(),
                             1..=3 => biome.get_subsurface_block(),
@@ -662,30 +682,29 @@ impl World {
         &mut self,
         current_chunk: (i32, i32),
         lod_step: usize,
-        chunk_x: i32,
-        chunk_y: i32,
+        (chunk_x, chunk_y): (i32, i32),
     ) -> (Vec<Vertex>, Vec<u16>) {
         // Load the target chunk and its 4 cardinal neighbors
-        self.get_chunk(chunk_x, chunk_y);
-        self.get_chunk(chunk_x, chunk_y + 1);
-        self.get_chunk(chunk_x, chunk_y - 1);
-        self.get_chunk(chunk_x + 1, chunk_y);
-        self.get_chunk(chunk_x - 1, chunk_y);
+        self.get_chunk((chunk_x, chunk_y));
+        self.get_chunk((chunk_x, chunk_y + 1));
+        self.get_chunk((chunk_x, chunk_y - 1));
+        self.get_chunk((chunk_x + 1, chunk_y));
+        self.get_chunk((chunk_x - 1, chunk_y));
 
-        let chunk = self.get_chunk_if_loaded(chunk_x, chunk_y).unwrap();
+        let chunk = self.get_chunk_if_loaded((chunk_x, chunk_y)).unwrap();
 
         let adjacent = AdjacentChunks {
             north: self
-                .get_chunk_if_loaded(chunk_x, chunk_y + 1)
+                .get_chunk_if_loaded((chunk_x, chunk_y + 1))
                 .map(|c| (c, calculate_lod(current_chunk, (chunk_x, chunk_y + 1)))),
             south: self
-                .get_chunk_if_loaded(chunk_x, chunk_y - 1)
+                .get_chunk_if_loaded((chunk_x, chunk_y - 1))
                 .map(|c| (c, calculate_lod(current_chunk, (chunk_x, chunk_y - 1)))),
             east: self
-                .get_chunk_if_loaded(chunk_x + 1, chunk_y)
+                .get_chunk_if_loaded((chunk_x + 1, chunk_y))
                 .map(|c| (c, calculate_lod(current_chunk, (chunk_x + 1, chunk_y)))),
             west: self
-                .get_chunk_if_loaded(chunk_x - 1, chunk_y)
+                .get_chunk_if_loaded((chunk_x - 1, chunk_y))
                 .map(|c| (c, calculate_lod(current_chunk, (chunk_x - 1, chunk_y)))),
         };
 

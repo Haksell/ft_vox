@@ -362,7 +362,7 @@ impl<'a> State<'a> {
                 let chunk_coords = (current_chunk.0 + dx, current_chunk.1 + dy);
                 let lod_step = calculate_lod(current_chunk, chunk_coords);
                 chunks_in_range.insert(chunk_coords, lod_step);
-                world.get_chunk(chunk_coords.0, chunk_coords.1);
+                world.get_chunk(chunk_coords);
             }
         }
 
@@ -390,7 +390,7 @@ impl<'a> State<'a> {
         chunk_y: i32,
     ) {
         let (mut vertices, indices) =
-            world.generate_chunk_mesh(current_chunk, lod_step, chunk_x, chunk_y);
+            world.generate_chunk_mesh(current_chunk, lod_step, (chunk_x, chunk_y));
         if vertices.is_empty() || indices.is_empty() {
             return;
         }
@@ -419,7 +419,7 @@ impl<'a> State<'a> {
                 usage: wgpu::BufferUsages::INDEX,
             });
 
-        let chunk = world.get_chunk_if_loaded(chunk_x, chunk_y).unwrap();
+        let chunk = world.get_chunk_if_loaded((chunk_x, chunk_y)).unwrap();
         let aabb = chunk.bounding_box();
 
         let render_data = ChunkRenderData {
