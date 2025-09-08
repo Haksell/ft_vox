@@ -174,7 +174,15 @@ impl Chunk {
         lod_step: usize,
     ) -> ([Vertex; 4], [u16; 6]) {
         let positions = face.positions();
-        let uvs = face.uvs();
+
+        // stretch uv in x and y but not z direction
+        let mut uvs = face.uvs();
+        for y in 0..4 {
+            uvs[y][0] *= lod_step as f32;
+            if matches!(face, Face::Top | Face::Bottom) {
+                uvs[y][1] *= lod_step as f32;
+            }
+        }
 
         let vertices = std::array::from_fn(|i| Vertex {
             position: [
