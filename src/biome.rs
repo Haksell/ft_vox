@@ -71,6 +71,7 @@ impl BiomeType {
             BiomeType::SunflowerForest => BlockType::Grass,
             BiomeType::Ocean => BlockType::Sand,
             BiomeType::IceSpikes => BlockType::Ice,
+            BiomeType::Badlands => BlockType::RedSand,
             _ => BlockType::Grass,
         }
     }
@@ -86,6 +87,7 @@ impl BiomeType {
             BiomeType::Mountains => BlockType::Stone,
             BiomeType::Beach => BlockType::Sand,
             BiomeType::Ocean => BlockType::Sand,
+            BiomeType::Badlands => BlockType::RedSand,
             _ => BlockType::Grass,
         }
     }

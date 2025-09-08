@@ -23,7 +23,7 @@ impl BlockType {
             BlockType::Ice => [29, 14],
             BlockType::Water => [7, 9],
             BlockType::Gravel => [31, 2],
-            BlockType::RedSand => [27, 27],
+            BlockType::RedSand => [27, 25],
         }
     }
 
@@ -37,7 +37,7 @@ impl BlockType {
             BlockType::Ice => [29, 14],
             BlockType::Water => [7, 9],
             BlockType::Gravel => [31, 2],
-            BlockType::RedSand => [27, 27],
+            BlockType::RedSand => [27, 25],
         }
     }
 
@@ -51,7 +51,7 @@ impl BlockType {
             BlockType::Ice => [29, 14],
             BlockType::Water => [7, 9],
             BlockType::Gravel => [31, 2],
-            BlockType::RedSand => [27, 27],
+            BlockType::RedSand => [27, 25],
         }
     }
 }
