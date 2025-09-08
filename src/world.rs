@@ -635,7 +635,7 @@ impl World {
 
         let noise = self.cave_noise.noise3d(world_x as f32, world_y as f32, world_z as f32);
 
-        let spaghetti = noise.abs() > 0.08;
+        let spaghetti = noise.abs() < 0.08;
         let cheese = noise > 0.4;
 
         cheese || spaghetti
