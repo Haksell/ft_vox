@@ -13,6 +13,7 @@
 - ray tracing/casting/marching/whatever (https://www.youtube.com/watch?v=gXSHtBZFxEI, https://www.youtube.com/watch?v=P2bGF6GPmfc)
 - port to wasm
 - generative skybox textures
+- fix water to be transparent block
 
 ## mandatory
 

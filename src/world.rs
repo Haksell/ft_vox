@@ -12,6 +12,7 @@ use {
 
 pub const RENDER_DISTANCE: usize = 16;
 pub const SURFACE: usize = 64;
+pub const SEA: usize = 62;
 
 pub struct World {
     temperature_noise: PerlinNoise,
@@ -35,25 +36,25 @@ impl World {
 
         // Humidity: affects dry vs wet biomes
         let humidity_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0xAABB33CC))
-            .frequency(0.008)
+            .frequency(0.0026)
             .octaves(4)
             .build();
 
         // Continentalness: determines land vs ocean
         let continentalness_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0xFF000055))
-            .frequency(0.0004)
+            .frequency(0.0002)
             .octaves(12)
             .build();
 
         // Erosion: affects terrain ruggedness
         let erosion_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0x44336699))
-            .frequency(0.003)
+            .frequency(0.002)
             .octaves(6)
             .build();
 
         // Weirdness: creates unusual terrain features
         let weirdness_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0xFF110077))
-            .frequency(0.001)
+            .frequency(0.0008)
             .octaves(6)
             .build();
 
@@ -96,83 +97,52 @@ impl World {
         let peak_and_valley = 1.0 - (3.0 * weirdness.abs() - 2.0).abs();
 
         let continentalness_offset = self.continentalness_spline(continentalness);
-        // let erosion_offset = self.erosion_spline(erosion);
-        // let pv_offset = self.peaks_valleys_spline(peak_and_valley, erosion);
-        // let stretch_factor =
-            // self.calculate_stretch_factor(continentalness, erosion, peak_and_valley);
+        let pv_offset = self.peaks_valleys_spline(peak_and_valley);
+        let erosion_factor = if continentalness >= -0.2 {
+            self.erosion_factor(erosion)
+        } else {
+            1.0
+        };
 
-        // let height_offset = continentalness_offset + erosion_offset + pv_offset;
-        let height_offset = continentalness_offset;
+        let height_offset = continentalness_offset * erosion_factor + pv_offset;
 
-        // SURFACE as f32 + (height_offset * stretch_factor)
         SURFACE as f32 + height_offset
     }
 
     // Continentalness spline: higher continentalness = higher terrain
     fn continentalness_spline(&self, continentalness: f32) -> f32 {
         match continentalness {
-            x if x < -0.45 => lerp(-40.0, -20.0, (x + 1.0) / ((-0.45) - (-1.0))), // Deep ocean: -1.0 to -0.45
-            x if x < -0.2 => lerp(-20.0, -10.0, (x - (-0.45)) / ((-0.2) - (-0.45))), // Ocean to coast: -0.45 to -0.2
-            x if x < -0.1 => lerp(-10.0, 5.0, (x - (-0.2)) / ((-0.1) - (-0.2))), // Coast to low land: -0.2 to -0.1
-            x if x < 0.05 => lerp(5.0, 15.0, (x - (-0.1)) / (0.05 - (-0.1))), // Low to mid land: -0.1 to 0.05
-            x if x < 0.3 => lerp(15.0, 50.0, (x - 0.05) / (0.3 - 0.05)), // Mid to high land: 0.05 to 0.3
-            x => lerp(50.0, 100.0, (x - 0.3) / (1.0 - 0.3)), // High mountains: 0.3 to 1.0
+            x if x < -0.45 => lerp(-40.0, -20.0, (x + 1.0) / ((-0.45) - (-1.0))),
+            x if x < -0.2 => lerp(-20.0, -5.0, (x - (-0.45)) / ((-0.2) - (-0.45))),
+            x if x < -0.1 => lerp(-5.0, 5.0, (x - (-0.2)) / ((-0.1) - (-0.2))),
+            x if x < 0.05 => lerp(5.0, 30.0, (x - (-0.1)) / (0.05 - (-0.1))),
+            x if x < 0.3 => lerp(30.0, 60.0, (x - 0.05) / (0.3 - 0.05)),
+            x => lerp(60.0, 120.0, (x - 0.3) / (1.0 - 0.3)),
         }
     }
 
     // Erosion spline: higher erosion = lower, flatter terrain
-    // fn erosion_spline(&self, erosion: f32) -> f32 {
-        // match erosion {
-            // x if x < -0.8 => lerp(0.0, 0.0, (x + 1.0) / ((-0.8) - (-1.0))), // No erosion effect: -1.0 to -0.8
-            // x if x < -0.38 => lerp(0.0, -5.0, (x - (-0.8)) / ((-0.38) - (-0.8))), // -0.8 to -0.38
-            // x if x < -0.22 => lerp(-5.0, -15.0, (x - (-0.38)) / ((-0.22) - (-0.38))), // -0.38 to -0.22
-            // x if x < 0.05 => lerp(-15.0, -25.0, (x - (-0.22)) / (0.05 - (-0.22))), // -0.22 to 0.05
-            // x if x < 0.45 => lerp(-25.0, -35.0, (x - 0.05) / (0.45 - 0.05)),       // 0.05 to 0.45
-            // x => lerp(-35.0, -40.0, (x - 0.45) / (1.0 - 0.45)), // High erosion = very flat: 0.45 to 1.0
-        // }
-    // }
+    fn erosion_factor(&self, erosion: f32) -> f32 {
+        match erosion {
+            x if x < -0.8 => 1.0,
+            x if x < -0.38 => lerp(1.0, 0.9, (x - (-0.8)) / ((-0.38) - (-0.8))),
+            x if x < -0.22 => lerp(0.9, 0.7, (x - (-0.38)) / ((-0.22) - (-0.38))),
+            x if x < 0.05 => lerp(0.7, 0.5, (x - (-0.22)) / (0.05 - (-0.22))),
+            x if x < 0.45 => lerp(0.5, 0.4, (x - 0.05) / (0.45 - 0.05)),
+            x => lerp(0.4, 0.3, (x - 0.45) / (1.0 - 0.45)),
+        }
+    }
 
     // Peaks and valleys spline
-    // fn peaks_valleys_spline(&self, peak_and_valley: f32, erosion: f32) -> f32 {
-        // PV effect is stronger in non-eroded areas
-        // let erosion_factor = 1.0 - erosion.max(-1.0).min(1.0) * 0.5;
-
-        // let base_value = match peak_and_valley {
-        //     x if x < -0.85 => lerp(-30.0, -30.0, (x + 1.0) / ((-0.85) - (-1.0))), // -1.0 to -0.85
-        //     x if x < -0.2 => lerp(-30.0, -10.0, (x - (-0.85)) / ((-0.2) - (-0.85))), // -0.85 to -0.2
-        //     x if x < 0.2 => lerp(-10.0, 5.0, (x - (-0.2)) / (0.2 - (-0.2))),         // -0.2 to 0.2
-        //     x if x < 0.7 => lerp(5.0, 25.0, (x - 0.2) / (0.7 - 0.2)),                // 0.2 to 0.7
-        //     x => lerp(25.0, 50.0, (x - 0.7) / (1.0 - 0.7)),                          // 0.7 to 1.0
-        // };
-
-        // base_value * erosion_factor
-    // }
-
-    // Calculate vertical stretch factor
-    // fn calculate_stretch_factor(
-    //     &self,
-    //     continentalness: f32,
-    //     erosion: f32,
-    //     peak_and_valley: f32,
-    // ) -> f32 {
-    //     // Base stretch factor
-    //     let mut stretch = 1.0;
-
-    //     // Continental areas have more dramatic height variations
-    //     if continentalness > 0.0 {
-    //         stretch *= 1.0 + continentalness * 0.8;
-    //     }
-
-    //     // Low erosion areas can have more dramatic height changes
-    //     if erosion < 0.0 {
-    //         stretch *= 1.0 + (-erosion) * 0.6;
-    //     }
-
-    //     // High PV values create more dramatic terrain
-    //     stretch *= 1.0 + peak_and_valley.abs() * 0.4;
-
-    //     stretch.max(0.3).min(3.0) // Clamp to reasonable range
-    // }
+    fn peaks_valleys_spline(&self, peak_and_valley: f32) -> f32 {
+        match peak_and_valley {
+            x if x < -0.85 => lerp(-40.0, -10.0, (x + 1.0) / ((-0.85) - (-1.0))),
+            x if x < -0.2 => lerp(-10.0, 10.0, (x - (-0.85)) / ((-0.2) - (-0.85))),
+            x if x < 0.2 => lerp(10.0, 20.0, (x - (-0.2)) / (0.2 - (-0.2))),
+            x if x < 0.7 => lerp(20.0, 40.0, (x - 0.2) / (0.7 - 0.2)),
+            x => lerp(40.0, 60.0, (x - 0.7) / (1.0 - 0.7)),
+        }
+    }
 
     pub fn determine_biome(&self, world_x: f32, world_y: f32) -> BiomeType {
         let temperature = self.temperature_noise.noise2d(world_x, world_y);
@@ -654,16 +624,15 @@ impl World {
 
                 for z in 0..=CHUNK_HEIGHT {
                     if z <= height.min(CHUNK_HEIGHT - 1) {
-                        // Generate terrain blocks
                         let depth_from_surface = height.saturating_sub(z);
-                        
+
                         blocks[x][y][z] = Some(match depth_from_surface {
                             0 => biome.get_surface_block(),
                             1..=3 => biome.get_subsurface_block(),
                             _ => biome.get_deep_block(),
                         });
-                    } else if z < (SURFACE - 1) {
-                        // Fill with water above terrain but at or below sea level
+                    } else if z <= SEA {
+                        // Fill with water above terrain at or below sea level
                         blocks[x][y][z] = Some(BlockType::Water);
                     }
                 }

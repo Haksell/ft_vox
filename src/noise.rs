@@ -273,12 +273,4 @@ impl PerlinNoise {
         let position = glam::Vec3::new(x as f32, y as f32, z as f32);
         gradient.dot(position) as f32
     }
-
-    fn lerp(a: f32, b: f32, t: f32) -> f32 {
-        a + t * (b - a)
-    }
-
-    fn fade(t: f32) -> f32 {
-        t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
-    }
 }
