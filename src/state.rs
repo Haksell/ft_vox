@@ -35,7 +35,6 @@ pub struct State<'a> {
 
     pub camera: Camera,
     pub camera_controller: CameraController,
-    camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
 
@@ -172,11 +171,9 @@ impl<'a> State<'a> {
             camera_distance,
         );
 
-        let camera_uniform = CameraUniform::new(&camera);
-
         let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("camera_buffer"),
-            contents: bytemuck::cast_slice(&[camera_uniform]),
+            contents: bytemuck::cast_slice(&[CameraUniform::new(&camera)]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
@@ -333,7 +330,6 @@ impl<'a> State<'a> {
             diffuse_bind_group,
             depth_texture,
             camera,
-            camera_uniform,
             camera_buffer,
             camera_bind_group,
             camera_controller,
@@ -433,15 +429,12 @@ impl<'a> State<'a> {
     }
 
     pub fn update(&mut self, dt: Duration) {
-        let dt = dt.as_secs_f32();
-
-        self.camera_controller.update(&mut self.camera, dt);
-
-        self.camera_uniform.update(&self.camera);
+        self.camera_controller
+            .update(&mut self.camera, dt.as_secs_f32());
         self.queue.write_buffer(
             &self.camera_buffer,
             0,
-            bytemuck::cast_slice(&[self.camera_uniform]),
+            bytemuck::cast_slice(&[CameraUniform::new(&self.camera)]),
         );
     }
 

@@ -30,14 +30,6 @@ impl CameraUniform {
             view_proj_inverse: view_proj_inverse.to_cols_array_2d(),
         }
     }
-
-    pub fn update(&mut self, camera: &Camera) {
-        let view = camera.look_at();
-        let proj = camera.projection();
-
-        self.view_proj = (proj * view).to_cols_array_2d();
-        self.view_proj_inverse = (proj * view).inverse().to_cols_array_2d();
-    }
 }
 
 pub struct Camera {
@@ -46,7 +38,7 @@ pub struct Camera {
     yaw: f32,
     pitch: f32,
     aspect: f32,
-    fov_x: f32,
+    fov_y: f32,
     near: f32,
     far: f32,
 }
@@ -66,22 +58,18 @@ impl Camera {
             aspect,
             yaw: 0.0,
             pitch: 0.0,
-            fov_x,
+            fov_y: 2.0 * (fov_x / 2.0).tan().atan2(aspect),
             near,
             far,
         }
     }
 
     pub fn look_at(&self) -> glam::Mat4 {
-        let forward = self.direction();
-        let target = self.eye + forward;
-
-        glam::Mat4::look_at_rh(self.eye, target, self.up)
+        glam::Mat4::look_at_rh(self.eye, self.eye + self.direction(), self.up)
     }
 
     pub fn projection(&self) -> glam::Mat4 {
-        let fov_y = 2.0 * (self.fov_x / 2.0).tan().atan2(self.aspect);
-        glam::Mat4::perspective_rh(fov_y, self.aspect, self.near, self.far)
+        glam::Mat4::perspective_rh(self.fov_y, self.aspect, self.near, self.far)
     }
 
     pub fn direction(&self) -> glam::Vec3 {
