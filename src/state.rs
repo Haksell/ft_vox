@@ -376,7 +376,7 @@ impl<'a> State<'a> {
                 .is_none_or(|crd| crd.lod_step != lod_step)
             {
                 let (chunk_x, chunk_y) = chunk_coords;
-                self.generate_chunk_mesh(world, lod_step, chunk_x, chunk_y);
+                self.generate_chunk_mesh(world, current_chunk, lod_step, chunk_x, chunk_y);
             }
         }
     }
@@ -384,11 +384,13 @@ impl<'a> State<'a> {
     fn generate_chunk_mesh(
         &mut self,
         world: &mut World,
+        current_chunk: (i32, i32),
         lod_step: usize,
         chunk_x: i32,
         chunk_y: i32,
     ) {
-        let (mut vertices, indices) = world.generate_chunk_mesh(lod_step, chunk_x, chunk_y);
+        let (mut vertices, indices) =
+            world.generate_chunk_mesh(current_chunk, lod_step, chunk_x, chunk_y);
         if vertices.is_empty() || indices.is_empty() {
             return;
         }

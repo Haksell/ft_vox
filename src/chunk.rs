@@ -61,16 +61,19 @@ impl Chunk {
         }
     }
 
-    fn get_neighbor_block(
+    fn is_face_visible(
         &self,
         neighbor_x: i32,
         neighbor_y: i32,
         neighbor_z: i32,
         adjacent: &AdjacentChunks,
         lod_step: usize,
-    ) -> Option<BlockType> {
-        if neighbor_z < 0 || neighbor_z >= CHUNK_HEIGHT as i32 {
-            return None;
+    ) -> bool {
+        if neighbor_z < 0 {
+            return false;
+        }
+        if neighbor_z >= CHUNK_HEIGHT as i32 {
+            return true;
         }
 
         if neighbor_x >= 0
@@ -78,97 +81,87 @@ impl Chunk {
             && neighbor_y >= 0
             && neighbor_y < CHUNK_WIDTH as i32
         {
-            return self.get_block(
-                neighbor_x as usize,
-                neighbor_y as usize,
-                neighbor_z as usize,
-            );
+            return self
+                .get_block(
+                    neighbor_x as usize,
+                    neighbor_y as usize,
+                    neighbor_z as usize,
+                )
+                .is_none();
         }
 
         match (neighbor_x, neighbor_y) {
             (x, y) if x >= CHUNK_WIDTH as i32 && y >= 0 && y < CHUNK_WIDTH as i32 => {
-                let (adj_chunk, adj_lod_step) = adjacent.east?;
-                if adj_lod_step != lod_step {
-                    return None;
-                }
+                let Some((adj_chunk, adj_lod_step)) = adjacent.east else {
+                    return true;
+                };
                 for dx in 0..lod_step {
                     for dy in 0..lod_step {
-                        for dz in 0..lod_step {
-                            if adj_chunk
-                                .get_block(dx, y as usize + dy, neighbor_z as usize + dz)
-                                .is_none()
-                            {
-                                return None;
-                            }
+                        if adj_chunk
+                            .get_block(dx, y as usize + dy, neighbor_z as usize)
+                            .is_none()
+                        {
+                            return true;
                         }
                     }
                 }
-                Some(BlockType::Grass)
+                false
             }
             (x, y) if x < 0 && y >= 0 && y < CHUNK_WIDTH as i32 => {
-                let (adj_chunk, adj_lod_step) = adjacent.west?;
-                if adj_lod_step != lod_step {
-                    return None;
-                }
+                let Some((adj_chunk, adj_lod_step)) = adjacent.west else {
+                    return true;
+                };
                 for dx in 0..lod_step {
                     for dy in 0..lod_step {
-                        for dz in 0..lod_step {
-                            if adj_chunk
-                                .get_block(
-                                    CHUNK_WIDTH - adj_lod_step + dx,
-                                    y as usize + dy,
-                                    neighbor_z as usize + dz,
-                                )
-                                .is_none()
-                            {
-                                return None;
-                            }
+                        if adj_chunk
+                            .get_block(
+                                CHUNK_WIDTH - lod_step + dx,
+                                y as usize + dy,
+                                neighbor_z as usize,
+                            )
+                            .is_none()
+                        {
+                            return true;
                         }
                     }
                 }
-                Some(BlockType::Grass)
+                false
             }
             (x, y) if y >= CHUNK_WIDTH as i32 && x >= 0 && x < CHUNK_WIDTH as i32 => {
-                let (adj_chunk, adj_lod_step) = adjacent.north?;
-                if adj_lod_step != lod_step {
-                    return None;
-                }
+                let Some((adj_chunk, adj_lod_step)) = adjacent.north else {
+                    return true;
+                };
                 for dx in 0..lod_step {
                     for dy in 0..lod_step {
-                        for dz in 0..lod_step {
-                            if adj_chunk
-                                .get_block(x as usize + dx, dy, neighbor_z as usize + dz)
-                                .is_none()
-                            {
-                                return None;
-                            }
+                        if adj_chunk
+                            .get_block(x as usize + dx, dy, neighbor_z as usize)
+                            .is_none()
+                        {
+                            return true;
                         }
                     }
                 }
-                Some(BlockType::Grass)
+                false
             }
             (x, y) if y < 0 && x >= 0 && x < CHUNK_WIDTH as i32 => {
-                let (adj_chunk, adj_lod_step) = adjacent.south?;
-                if adj_lod_step != lod_step {
-                    return None;
-                }
+                let Some((adj_chunk, adj_lod_step)) = adjacent.south else {
+                    return true;
+                };
                 for dx in 0..lod_step {
                     for dy in 0..lod_step {
-                        for dz in 0..lod_step {
-                            if adj_chunk
-                                .get_block(
-                                    x as usize + dx,
-                                    CHUNK_WIDTH - adj_lod_step + dy,
-                                    neighbor_z as usize + dz,
-                                )
-                                .is_none()
-                            {
-                                return None;
-                            }
+                        if adj_chunk
+                            .get_block(
+                                x as usize + dx,
+                                CHUNK_WIDTH - lod_step + dy,
+                                neighbor_z as usize,
+                            )
+                            .is_none()
+                        {
+                            return true;
                         }
                     }
                 }
-                Some(BlockType::Grass)
+                false
             }
             _ => unreachable!(),
         }
@@ -187,7 +180,7 @@ impl Chunk {
             position: [
                 position.x + positions[i][0] * lod_step as f32,
                 position.y + positions[i][1] * lod_step as f32,
-                position.z + positions[i][2] * lod_step as f32,
+                position.z + positions[i][2] as f32,
             ],
             tex_coords: uvs[i],
             atlas_offset: match face {
@@ -213,7 +206,7 @@ impl Chunk {
 
         for local_x in (0..CHUNK_WIDTH).step_by(lod_step) {
             for local_y in (0..CHUNK_WIDTH).step_by(lod_step) {
-                for local_z in (0..CHUNK_HEIGHT).step_by(lod_step) {
+                for local_z in 0..CHUNK_HEIGHT {
                     let Some(block) = self.get_block(local_x, local_y, local_z) else {
                         continue;
                     };
@@ -224,14 +217,11 @@ impl Chunk {
                         let (dx, dy, dz) = face.normal();
                         let neighbor_x = local_x as i32 + dx * lod_step as i32;
                         let neighbor_y = local_y as i32 + dy * lod_step as i32;
-                        let neighbor_z = local_z as i32 + dz * lod_step as i32;
+                        let neighbor_z = local_z as i32 + dz as i32;
 
-                        let is_face_visible = neighbor_z >= 0
-                            && self
-                                .get_neighbor_block(
-                                    neighbor_x, neighbor_y, neighbor_z, adjacent, lod_step,
-                                )
-                                .is_none();
+                        let is_face_visible = self.is_face_visible(
+                            neighbor_x, neighbor_y, neighbor_z, adjacent, lod_step,
+                        );
 
                         if is_face_visible {
                             let (face_verts, face_indices) =

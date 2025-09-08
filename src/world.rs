@@ -660,6 +660,7 @@ impl World {
 
     pub fn generate_chunk_mesh(
         &mut self,
+        current_chunk: (i32, i32),
         lod_step: usize,
         chunk_x: i32,
         chunk_y: i32,
@@ -676,16 +677,16 @@ impl World {
         let adjacent = AdjacentChunks {
             north: self
                 .get_chunk_if_loaded(chunk_x, chunk_y + 1)
-                .map(|c| (c, lod_step)),
+                .map(|c| (c, calculate_lod(current_chunk, (chunk_x, chunk_y + 1)))),
             south: self
                 .get_chunk_if_loaded(chunk_x, chunk_y - 1)
-                .map(|c| (c, lod_step)),
+                .map(|c| (c, calculate_lod(current_chunk, (chunk_x, chunk_y - 1)))),
             east: self
                 .get_chunk_if_loaded(chunk_x + 1, chunk_y)
-                .map(|c| (c, lod_step)),
+                .map(|c| (c, calculate_lod(current_chunk, (chunk_x + 1, chunk_y)))),
             west: self
                 .get_chunk_if_loaded(chunk_x - 1, chunk_y)
-                .map(|c| (c, lod_step)),
+                .map(|c| (c, calculate_lod(current_chunk, (chunk_x - 1, chunk_y)))),
         };
 
         chunk.generate_mesh(lod_step, &adjacent)
