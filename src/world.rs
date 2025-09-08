@@ -658,7 +658,12 @@ impl World {
         blocks
     }
 
-    pub fn generate_chunk_mesh(&mut self, chunk_x: i32, chunk_y: i32) -> (Vec<Vertex>, Vec<u16>) {
+    pub fn generate_chunk_mesh(
+        &mut self,
+        lod_step: usize,
+        chunk_x: i32,
+        chunk_y: i32,
+    ) -> (Vec<Vertex>, Vec<u16>) {
         // Load the target chunk and its 4 cardinal neighbors
         self.get_chunk(chunk_x, chunk_y);
         self.get_chunk(chunk_x, chunk_y + 1);
@@ -675,6 +680,6 @@ impl World {
             west: self.get_chunk_if_loaded(chunk_x - 1, chunk_y),
         };
 
-        chunk.generate_mesh(&adjacent)
+        chunk.generate_mesh(lod_step, &adjacent)
     }
 }

@@ -5,14 +5,9 @@ use {
         chunk::{CHUNK_HEIGHT, CHUNK_WIDTH},
         texture::Texture,
         vertex::Vertex,
-        world::{World, RENDER_DISTANCE},
+        world::{calculate_lod, World, RENDER_DISTANCE},
     },
-    std::{
-        collections::{HashMap, HashSet},
-        f32::consts::SQRT_2,
-        sync::Arc,
-        time::Duration,
-    },
+    std::{collections::HashMap, f32::consts::SQRT_2, sync::Arc, time::Duration},
     wgpu::util::DeviceExt as _,
     winit::{dpi::PhysicalSize, event::*, window::Window},
 };
@@ -22,6 +17,7 @@ struct ChunkRenderData {
     index_buffer: wgpu::Buffer,
     num_indices: u32,
     aabb: AABB,
+    lod_step: usize,
 }
 
 pub struct State<'a> {
@@ -359,29 +355,40 @@ impl<'a> State<'a> {
         let render_distance = RENDER_DISTANCE as i32;
         let current_chunk = world.get_chunk_index_from_position(camera_pos.x, camera_pos.y);
 
-        let mut chunks_in_range = HashSet::new();
+        let mut chunks_in_range = HashMap::new();
 
         for dx in -render_distance..=render_distance {
             for dy in -render_distance..=render_distance {
                 let chunk_coords = (current_chunk.0 + dx, current_chunk.1 + dy);
-                chunks_in_range.insert(chunk_coords);
+                let lod_step = calculate_lod(current_chunk, chunk_coords);
+                chunks_in_range.insert(chunk_coords, lod_step);
                 world.get_chunk(chunk_coords.0, chunk_coords.1);
             }
         }
 
         self.chunk_render_data
-            .retain(|&coords, _| chunks_in_range.contains(&coords));
+            .retain(|&coords, _| chunks_in_range.contains_key(&coords));
 
-        for chunk_coords in &chunks_in_range {
-            if !self.chunk_render_data.contains_key(chunk_coords) {
-                let (chunk_x, chunk_y) = *chunk_coords;
-                self.generate_chunk_mesh(world, chunk_x, chunk_y);
+        for (&chunk_coords, &lod_step) in &chunks_in_range {
+            if self
+                .chunk_render_data
+                .get(&chunk_coords)
+                .is_none_or(|crd| crd.lod_step != lod_step)
+            {
+                let (chunk_x, chunk_y) = chunk_coords;
+                self.generate_chunk_mesh(world, lod_step, chunk_x, chunk_y);
             }
         }
     }
 
-    fn generate_chunk_mesh(&mut self, world: &mut World, chunk_x: i32, chunk_y: i32) {
-        let (mut vertices, indices) = world.generate_chunk_mesh(chunk_x, chunk_y);
+    fn generate_chunk_mesh(
+        &mut self,
+        world: &mut World,
+        lod_step: usize,
+        chunk_x: i32,
+        chunk_y: i32,
+    ) {
+        let (mut vertices, indices) = world.generate_chunk_mesh(lod_step, chunk_x, chunk_y);
         if vertices.is_empty() || indices.is_empty() {
             return;
         }
@@ -418,6 +425,7 @@ impl<'a> State<'a> {
             index_buffer,
             num_indices: indices.len() as u32,
             aabb,
+            lod_step,
         };
 
         self.chunk_render_data
