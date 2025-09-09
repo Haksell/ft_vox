@@ -1,6 +1,7 @@
 struct CameraUniform {
     view_proj: mat4x4<f32>,
     view_proj_inverse: mat4x4<f32>,
+    view_proj_skybox_inverse: mat4x4<f32>,
 };
 
 @group(1) @binding(0)

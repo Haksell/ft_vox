@@ -15,19 +15,24 @@ const MAX_PITCH: f32 = FRAC_PI_2 * 0.99; // avoids gimbal lock
 pub struct CameraUniform {
     view_proj: [[f32; 4]; 4],
     view_proj_inverse: [[f32; 4]; 4],
+    view_proj_skybox_inverse: [[f32; 4]; 4],
 }
 
 impl CameraUniform {
     pub fn new(camera: &Camera) -> Self {
         let view = camera.look_at();
+        let view_skybox = camera.look_at_skybox();
         let proj = camera.projection();
 
         let view_proj = proj * view;
         let view_proj_inverse = view_proj.inverse();
+        let view_proj_skybox = proj * view_skybox;
+        let view_proj_skybox_inverse = view_proj_skybox.inverse();
 
         Self {
             view_proj: view_proj.to_cols_array_2d(),
             view_proj_inverse: view_proj_inverse.to_cols_array_2d(),
+            view_proj_skybox_inverse: view_proj_skybox_inverse.to_cols_array_2d(),
         }
     }
 }
@@ -71,6 +76,10 @@ impl Camera {
 
     pub fn look_at(&self) -> glam::Mat4 {
         glam::Mat4::look_at_rh(self.eye, self.eye + self.direction(), self.up)
+    }
+
+    pub fn look_at_skybox(&self) -> glam::Mat4 {
+        glam::Mat4::look_at_rh(glam::Vec3::ZERO, self.direction(), self.up)
     }
 
     pub fn projection(&self) -> glam::Mat4 {
@@ -162,14 +171,14 @@ impl CameraController {
                         self.is_right_pressed = is_pressed;
                         true
                     }
-                    KeyCode::Space => {
-                        self.is_up_pressed = is_pressed;
-                        true
-                    }
-                    KeyCode::ShiftLeft | KeyCode::ControlLeft => {
-                        self.is_down_pressed = is_pressed;
-                        true
-                    }
+                    // KeyCode::Space => {
+                    //     self.is_up_pressed = is_pressed;
+                    //     true
+                    // }
+                    // KeyCode::ShiftLeft | KeyCode::ControlLeft => {
+                    //     self.is_down_pressed = is_pressed;
+                    //     true
+                    // }
                     _ => false,
                 }
             }
