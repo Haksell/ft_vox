@@ -196,6 +196,49 @@ enum ChunkNode {
     Inner(Box<ChunkNode>, Box<ChunkNode>, ChunkNodePos),
 }
 impl ChunkNode {
+    fn generate_mesh(
+        &self,
+        chunk: &Chunk,
+        adjacent: &AdjacentChunks,
+    ) -> (Vec<Vertex>, Vec<u16>, u16) {
+        match self {
+            Self::Leaf(None, _) => (vec![], vec![], 0),
+            Self::Leaf(Some(block_type), chunk_node_pos) => {
+                let mut vertices = Vec::new();
+                let mut indices = Vec::new();
+                let mut index_offset = 0;
+
+                // TODO: use again to avoid computing it 6 times
+                // let position = Vec3::new(
+                //     chunk_node_pos.x0 as f32,
+                //     chunk_node_pos.y0 as f32,
+                //     chunk_node_pos.z0 as f32,
+                // );
+
+                for face in FACES {
+                    if chunk.is_face_visible(chunk_node_pos, face, adjacent) {
+                        let (face_verts, face_indices) =
+                            create_face(face, *block_type, &chunk_node_pos);
+
+                        vertices.extend(face_verts);
+                        indices.extend(face_indices.iter().map(|i| *i + index_offset));
+                        index_offset += 4;
+                    }
+                }
+
+                (vertices, indices, index_offset)
+            }
+            Self::Inner(a, b, _) => {
+                let (mut vertices_a, mut indices_a, index_offset_a) =
+                    a.generate_mesh(chunk, adjacent);
+                let (vertices_b, indices_b, index_offset_b) = b.generate_mesh(chunk, adjacent);
+                vertices_a.extend(vertices_b);
+                indices_a.extend(indices_b.iter().map(|i| i + index_offset_a));
+                (vertices_a, indices_a, index_offset_a + index_offset_b)
+            }
+        }
+    }
+
     fn from_region(blocks: &Blocks, chunk_node_pos: ChunkNodePos) -> Self {
         let sx = chunk_node_pos.size_x();
         let sy = chunk_node_pos.size_y();
@@ -287,59 +330,16 @@ impl ChunkNode {
             }
         }
     }
-
-    fn generate_mesh(
-        &self,
-        chunk: &Chunk,
-        adjacent: &AdjacentChunks,
-    ) -> (Vec<Vertex>, Vec<u16>, u16) {
-        match self {
-            Self::Leaf(None, _) => (vec![], vec![], 0),
-            Self::Leaf(Some(block_type), chunk_node_pos) => {
-                let mut vertices = Vec::new();
-                let mut indices = Vec::new();
-                let mut index_offset = 0;
-
-                // TODO: use again to avoid computing it 6 times
-                // let position = Vec3::new(
-                //     chunk_node_pos.x0 as f32,
-                //     chunk_node_pos.y0 as f32,
-                //     chunk_node_pos.z0 as f32,
-                // );
-
-                for face in FACES {
-                    if chunk.is_face_visible(chunk_node_pos, face, adjacent) {
-                        let (face_verts, face_indices) =
-                            create_face(face, *block_type, &chunk_node_pos);
-
-                        vertices.extend(face_verts);
-                        indices.extend(face_indices.iter().map(|i| *i + index_offset));
-                        index_offset += 4;
-                    }
-                }
-
-                (vertices, indices, index_offset)
-            }
-            Self::Inner(a, b, _) => {
-                let (mut vertices_a, mut indices_a, index_offset_a) =
-                    a.generate_mesh(chunk, adjacent);
-                let (vertices_b, indices_b, index_offset_b) = b.generate_mesh(chunk, adjacent);
-                vertices_a.extend(vertices_b);
-                indices_a.extend(indices_b.iter().map(|i| i + index_offset_a));
-                (vertices_a, indices_a, index_offset_a + index_offset_b)
-            }
-        }
-    }
 }
 
 // [start, end)
 struct ChunkNodePos {
-    pub x0: usize,
-    pub x1: usize,
-    pub y0: usize,
-    pub y1: usize,
-    pub z0: usize,
-    pub z1: usize,
+    x0: usize,
+    x1: usize,
+    y0: usize,
+    y1: usize,
+    z0: usize,
+    z1: usize,
 }
 impl ChunkNodePos {
     fn new(x0: usize, x1: usize, y0: usize, y1: usize, z0: usize, z1: usize) -> Self {
@@ -354,17 +354,17 @@ impl ChunkNodePos {
     }
 
     #[inline]
-    pub fn size_x(&self) -> usize {
+    fn size_x(&self) -> usize {
         self.x1 - self.x0
     }
 
     #[inline]
-    pub fn size_y(&self) -> usize {
+    fn size_y(&self) -> usize {
         self.y1 - self.y0
     }
 
     #[inline]
-    pub fn size_z(&self) -> usize {
+    fn size_z(&self) -> usize {
         self.z1 - self.z0
     }
 }
