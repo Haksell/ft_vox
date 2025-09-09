@@ -484,7 +484,7 @@ impl Chunk {
                     );
                     self.root.any_empty_in_region(&region)
                 } else {
-                    true
+                    false
                 }
             }
         }
