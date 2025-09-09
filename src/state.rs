@@ -7,6 +7,7 @@ use {
         vertex::Vertex,
         world::{calculate_lod, World, RENDER_DISTANCE},
     },
+    glam::Vec3,
     std::{collections::HashMap, f32::consts::SQRT_2, sync::Arc, time::Duration},
     wgpu::util::DeviceExt as _,
     winit::{dpi::PhysicalSize, event::*, window::Window},
@@ -159,8 +160,8 @@ impl<'a> State<'a> {
         let camera_distance_xy = (RENDER_DISTANCE + 1) as f32 * SQRT_2 * CHUNK_WIDTH as f32;
         let camera_distance = (camera_distance_xy.powi(2) + (CHUNK_HEIGHT as f32).powi(2)).sqrt();
         let camera = Camera::new(
-            glam::Vec3::new(0.0, 0.0, CHUNK_HEIGHT as f32),
-            glam::Vec3::new(0.0, 0.0, 1.0),
+            Vec3::new(0.0, 0.0, CHUNK_HEIGHT as f32),
+            Vec3::new(0.0, 0.0, 1.0),
             config.width as f32 / config.height as f32,
             (80.0_f32).to_radians(),
             0.1,

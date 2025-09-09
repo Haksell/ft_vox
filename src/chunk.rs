@@ -1,8 +1,11 @@
-use crate::{
-    aabb::AABB,
-    block::BlockType,
-    face::{Face, FACES},
-    vertex::Vertex,
+use {
+    crate::{
+        aabb::AABB,
+        block::BlockType,
+        face::{Face, FACES},
+        vertex::Vertex,
+    },
+    glam::Vec3,
 };
 
 pub const CHUNK_WIDTH: usize = 16;
@@ -30,18 +33,14 @@ impl Chunk {
         Self { index, blocks }
     }
 
-    pub fn get_index(&self) -> ChunkCoords {
-        self.index
-    }
-
     pub fn bounding_box(&self) -> AABB {
         let (x, y) = self.index;
         let world_x = x as f32 * CHUNK_WIDTH as f32;
         let world_y = y as f32 * CHUNK_WIDTH as f32;
 
         AABB::new(
-            glam::Vec3::new(world_x, world_y, 0.0),
-            glam::Vec3::new(
+            Vec3::new(world_x, world_y, 0.0),
+            Vec3::new(
                 world_x + CHUNK_WIDTH as f32,
                 world_y + CHUNK_WIDTH as f32,
                 CHUNK_HEIGHT as f32,
@@ -54,12 +53,6 @@ impl Chunk {
             self.blocks[x][y][z]
         } else {
             None
-        }
-    }
-
-    pub fn set_block(&mut self, x: usize, y: usize, z: usize, block: Option<BlockType>) {
-        if x < CHUNK_WIDTH && y < CHUNK_WIDTH && z < CHUNK_HEIGHT {
-            self.blocks[x][y][z] = block;
         }
     }
 
@@ -173,7 +166,7 @@ impl Chunk {
 
     fn create_face(
         block: BlockType,
-        position: glam::Vec3,
+        position: Vec3,
         face: Face,
         lod_step: usize,
     ) -> ([Vertex; 4], [u16; 6]) {
@@ -223,7 +216,7 @@ impl Chunk {
                         continue;
                     };
 
-                    let position = glam::Vec3::new(local_x as f32, local_y as f32, local_z as f32);
+                    let position = Vec3::new(local_x as f32, local_y as f32, local_z as f32);
 
                     for face in FACES {
                         let (dx, dy, dz) = face.normal();

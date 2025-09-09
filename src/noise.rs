@@ -1,4 +1,7 @@
-use crate::utils::{fade, lerp};
+use {
+    crate::utils::{fade, lerp},
+    glam::{Vec2, Vec3},
+};
 
 // TODO: remove PerlinNoiseBuilder in favor of PerlinNoise::new
 pub struct PerlinNoiseBuilder {
@@ -225,50 +228,50 @@ impl PerlinNoise {
     }
 
     #[rustfmt::skip]
-    const GRADIENT_2D: [glam::Vec2; 16] = [
-        glam::Vec2::new( 1.0,         0.0),
-        glam::Vec2::new(-1.0,         0.0),
-        glam::Vec2::new( 0.0,         1.0),
-        glam::Vec2::new( 0.0,        -1.0),
-        glam::Vec2::new( 0.70710677,  0.70710677),
-        glam::Vec2::new(-0.70710677,  0.70710677),
-        glam::Vec2::new( 0.70710677, -0.70710677),
-        glam::Vec2::new(-0.70710677, -0.70710677),
-        glam::Vec2::new( 0.96592583,  0.25881905),
-        glam::Vec2::new(-0.96592583,  0.25881905),
-        glam::Vec2::new( 0.96592583, -0.25881905),
-        glam::Vec2::new(-0.96592583, -0.25881905),
-        glam::Vec2::new( 0.25881905,  0.96592583),
-        glam::Vec2::new(-0.25881905,  0.96592583),
-        glam::Vec2::new( 0.25881905, -0.96592583),
-        glam::Vec2::new(-0.25881905, -0.96592583),
+    const GRADIENT_2D: [Vec2; 16] = [
+        Vec2::new( 1.0,         0.0),
+        Vec2::new(-1.0,         0.0),
+        Vec2::new( 0.0,         1.0),
+        Vec2::new( 0.0,        -1.0),
+        Vec2::new( 0.70710677,  0.70710677),
+        Vec2::new(-0.70710677,  0.70710677),
+        Vec2::new( 0.70710677, -0.70710677),
+        Vec2::new(-0.70710677, -0.70710677),
+        Vec2::new( 0.96592583,  0.25881905),
+        Vec2::new(-0.96592583,  0.25881905),
+        Vec2::new( 0.96592583, -0.25881905),
+        Vec2::new(-0.96592583, -0.25881905),
+        Vec2::new( 0.25881905,  0.96592583),
+        Vec2::new(-0.25881905,  0.96592583),
+        Vec2::new( 0.25881905, -0.96592583),
+        Vec2::new(-0.25881905, -0.96592583),
     ];
 
     #[rustfmt::skip]
-    const GRADIENT_3D: [glam::Vec3; 12] = [
-        glam::Vec3::new( 1.0,  1.0,  0.0),
-        glam::Vec3::new(-1.0,  1.0,  0.0),
-        glam::Vec3::new( 1.0, -1.0,  0.0),
-        glam::Vec3::new(-1.0, -1.0,  0.0),
-        glam::Vec3::new( 1.0,  0.0,  1.0),
-        glam::Vec3::new(-1.0,  0.0,  1.0),
-        glam::Vec3::new( 1.0,  0.0, -1.0),
-        glam::Vec3::new(-1.0,  0.0, -1.0),
-        glam::Vec3::new( 0.0,  1.0,  1.0),
-        glam::Vec3::new( 0.0, -1.0,  1.0),
-        glam::Vec3::new( 0.0,  1.0, -1.0),
-        glam::Vec3::new( 0.0, -1.0, -1.0),
+    const GRADIENT_3D: [Vec3; 12] = [
+        Vec3::new( 1.0,  1.0,  0.0),
+        Vec3::new(-1.0,  1.0,  0.0),
+        Vec3::new( 1.0, -1.0,  0.0),
+        Vec3::new(-1.0, -1.0,  0.0),
+        Vec3::new( 1.0,  0.0,  1.0),
+        Vec3::new(-1.0,  0.0,  1.0),
+        Vec3::new( 1.0,  0.0, -1.0),
+        Vec3::new(-1.0,  0.0, -1.0),
+        Vec3::new( 0.0,  1.0,  1.0),
+        Vec3::new( 0.0, -1.0,  1.0),
+        Vec3::new( 0.0,  1.0, -1.0),
+        Vec3::new( 0.0, -1.0, -1.0),
     ];
 
     fn grad2d(&self, hash: usize, x: f32, y: f32) -> f32 {
         let gradient = Self::GRADIENT_2D[hash & 15];
-        let position = glam::Vec2::new(x as f32, y as f32);
+        let position = Vec2::new(x as f32, y as f32);
         gradient.dot(position) as f32
     }
 
     fn grad3d(&self, hash: usize, x: f32, y: f32, z: f32) -> f32 {
         let gradient = Self::GRADIENT_3D[hash % 12];
-        let position = glam::Vec3::new(x as f32, y as f32, z as f32);
+        let position = Vec3::new(x as f32, y as f32, z as f32);
         gradient.dot(position) as f32
     }
 }

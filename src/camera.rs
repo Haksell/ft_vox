@@ -1,5 +1,6 @@
 use {
     crate::{chunk::CHUNK_HEIGHT, frustum::Frustum},
+    glam::{Mat4, Vec3, Vec4},
     std::f32::consts::FRAC_PI_2,
     winit::{
         event::{ElementState, KeyEvent, WindowEvent},
@@ -14,7 +15,6 @@ const MAX_PITCH: f32 = FRAC_PI_2 * 0.99; // avoids gimbal lock
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct CameraUniform {
     view_proj: [[f32; 4]; 4],
-    view_proj_inverse: [[f32; 4]; 4],
     view_proj_skybox_inverse: [[f32; 4]; 4],
 }
 
@@ -25,41 +25,32 @@ impl CameraUniform {
         let proj = camera.projection();
 
         let view_proj = proj * view;
-        let view_proj_inverse = view_proj.inverse();
         let view_proj_skybox = proj * view_skybox;
         let view_proj_skybox_inverse = view_proj_skybox.inverse();
 
         Self {
             view_proj: view_proj.to_cols_array_2d(),
-            view_proj_inverse: view_proj_inverse.to_cols_array_2d(),
             view_proj_skybox_inverse: view_proj_skybox_inverse.to_cols_array_2d(),
         }
     }
 }
 
 pub struct Camera {
-    eye: glam::Vec3,
-    up: glam::Vec3,
+    eye: Vec3,
+    up: Vec3,
     yaw: f32,
     pitch: f32,
     aspect: f32,
     fov_y: f32,
     near: f32,
     far: f32,
-    projection: glam::Mat4,
+    projection: Mat4,
 }
 
 impl Camera {
-    pub fn new(
-        eye: glam::Vec3,
-        up: glam::Vec3,
-        aspect: f32,
-        fov_x: f32,
-        near: f32,
-        far: f32,
-    ) -> Self {
+    pub fn new(eye: Vec3, up: Vec3, aspect: f32, fov_x: f32, near: f32, far: f32) -> Self {
         let fov_y = 2.0 * (fov_x / 2.0).tan().atan2(aspect);
-        let projection = glam::Mat4::perspective_rh(fov_y, aspect, near, far);
+        let projection = Mat4::perspective_rh(fov_y, aspect, near, far);
 
         Self {
             eye,
@@ -74,20 +65,30 @@ impl Camera {
         }
     }
 
-    pub fn look_at(&self) -> glam::Mat4 {
-        glam::Mat4::look_at_rh(self.eye, self.eye + self.direction(), self.up)
+    pub fn look_at(&self) -> Mat4 {
+        Mat4::look_at_rh(self.eye, self.eye + self.direction(), self.up)
     }
 
-    pub fn look_at_skybox(&self) -> glam::Mat4 {
-        glam::Mat4::look_at_rh(glam::Vec3::ZERO, self.direction(), self.up)
+    // same code as Mat4::look_to_rh but with the eye hardcoded at the origin
+    pub fn look_at_skybox(&self) -> Mat4 {
+        let f = self.direction();
+        let s = f.cross(self.up).normalize();
+        let u = s.cross(f);
+
+        Mat4::from_cols(
+            Vec4::new(s.x, u.x, -f.x, 0.0),
+            Vec4::new(s.y, u.y, -f.y, 0.0),
+            Vec4::new(s.z, u.z, -f.z, 0.0),
+            Vec4::new(0.0, 0.0, 0.0, 1.0),
+        )
     }
 
-    pub fn projection(&self) -> glam::Mat4 {
+    pub fn projection(&self) -> Mat4 {
         self.projection
     }
 
-    pub fn direction(&self) -> glam::Vec3 {
-        glam::Vec3::new(
+    pub fn direction(&self) -> Vec3 {
+        Vec3::new(
             self.yaw.sin() * self.pitch.cos(),
             self.yaw.cos() * self.pitch.cos(),
             self.pitch.sin(),
@@ -95,7 +96,7 @@ impl Camera {
         .normalize()
     }
 
-    pub fn position(&self) -> glam::Vec3 {
+    pub fn position(&self) -> Vec3 {
         self.eye
     }
 
@@ -106,7 +107,7 @@ impl Camera {
 
     pub fn resize(&mut self, width: u32, height: u32) {
         self.aspect = width as f32 / height as f32;
-        self.projection = glam::Mat4::perspective_rh(self.fov_y, self.aspect, self.near, self.far);
+        self.projection = Mat4::perspective_rh(self.fov_y, self.aspect, self.near, self.far);
     }
 }
 
@@ -179,14 +180,14 @@ impl CameraController {
                         self.is_right_pressed = is_pressed;
                         true
                     }
-                    // KeyCode::Space => {
-                    //     self.is_up_pressed = is_pressed;
-                    //     true
-                    // }
-                    // KeyCode::ShiftLeft | KeyCode::ControlLeft => {
-                    //     self.is_down_pressed = is_pressed;
-                    //     true
-                    // }
+                    KeyCode::Space => {
+                        self.is_up_pressed = is_pressed;
+                        true
+                    }
+                    KeyCode::ShiftLeft | KeyCode::ControlLeft => {
+                        self.is_down_pressed = is_pressed;
+                        true
+                    }
                     _ => false,
                 }
             }
@@ -204,7 +205,7 @@ impl CameraController {
         let right = forward.cross(camera.up);
         let up = camera.up;
 
-        let mut movement = glam::Vec3::ZERO;
+        let mut movement = Vec3::ZERO;
         movement += forward * (self.is_forward_pressed as i32) as f32;
         movement -= forward * (self.is_backward_pressed as i32) as f32;
         movement += right * (self.is_right_pressed as i32) as f32;
