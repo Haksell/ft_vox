@@ -6,7 +6,7 @@ use {
     },
     winit::{
         application::ApplicationHandler,
-        dpi::PhysicalSize,
+        dpi::{PhysicalPosition, PhysicalSize},
         event::{DeviceEvent, DeviceId, ElementState, KeyEvent, WindowEvent},
         event_loop::ActiveEventLoop,
         keyboard::{KeyCode, PhysicalKey},
@@ -144,6 +144,11 @@ impl<'a> ApplicationHandler for Application<'a> {
                 }
 
                 state.update(dt);
+
+                // reset cursor to center (TODO: only when not fullscreen)
+                let size = window.inner_size();
+                let center = PhysicalPosition::new(size.width / 2, size.height / 2);
+                window.set_cursor_position(center).unwrap();
 
                 match state.render() {
                     Ok(_) => {
