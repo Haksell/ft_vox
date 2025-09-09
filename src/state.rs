@@ -5,10 +5,15 @@ use {
         chunk::{ChunkCoords, CHUNK_HEIGHT, CHUNK_WIDTH},
         texture::Texture,
         vertex::Vertex,
-        world::{calculate_lod, World, RENDER_DISTANCE},
+        world::{World, RENDER_DISTANCE},
     },
     glam::Vec3,
-    std::{collections::HashMap, f32::consts::SQRT_2, sync::Arc, time::Duration},
+    std::{
+        collections::{HashMap, HashSet},
+        f32::consts::SQRT_2,
+        sync::Arc,
+        time::Duration,
+    },
     wgpu::util::DeviceExt as _,
     wgpu_text::{
         glyph_brush::{ab_glyph::FontRef, HorizontalAlign, Layout, Section, Text, VerticalAlign},
@@ -22,7 +27,6 @@ struct ChunkRenderData {
     index_buffer: wgpu::Buffer,
     num_indices: u32,
     aabb: AABB,
-    lod_step: usize,
 }
 
 pub struct State<'a> {
@@ -375,41 +379,29 @@ impl<'a> State<'a> {
         let render_distance = RENDER_DISTANCE as i32;
         let camera_chunk = world.get_chunk_index_from_position(camera_pos.x, camera_pos.y);
 
-        let mut chunks_in_range = HashMap::new();
+        let mut chunks_in_range = HashSet::new();
 
         for dx in -render_distance..=render_distance {
             for dy in -render_distance..=render_distance {
                 let chunk_coords = (camera_chunk.0 + dx, camera_chunk.1 + dy);
-                let lod_step = calculate_lod(camera_chunk, chunk_coords);
-                chunks_in_range.insert(chunk_coords, lod_step);
+                chunks_in_range.insert(chunk_coords);
                 world.get_chunk(chunk_coords);
             }
         }
 
         self.chunk_render_data
-            .retain(|&coords, _| chunks_in_range.contains_key(&coords));
+            .retain(|&coords, _| chunks_in_range.contains(&coords));
 
-        for (&chunk_coords, &lod_step) in &chunks_in_range {
-            if self
-                .chunk_render_data
-                .get(&chunk_coords)
-                .is_none_or(|crd| crd.lod_step != lod_step)
-            {
-                self.generate_chunk_mesh(world, camera_chunk, lod_step, chunk_coords);
+        for &chunk_coords in &chunks_in_range {
+            if !self.chunk_render_data.contains_key(&chunk_coords) {
+                self.generate_chunk_mesh(world, chunk_coords);
             }
         }
     }
 
-    fn generate_chunk_mesh(
-        &mut self,
-        world: &mut World,
-        camera_chunk: ChunkCoords,
-        lod_step: usize,
-        chunk_coords: ChunkCoords,
-    ) {
+    fn generate_chunk_mesh(&mut self, world: &mut World, chunk_coords: ChunkCoords) {
         let (chunk_x, chunk_y) = chunk_coords;
-        let (mut vertices, indices) =
-            world.generate_chunk_mesh(camera_chunk, lod_step, chunk_coords);
+        let (mut vertices, indices) = world.generate_chunk_mesh(chunk_coords);
         if vertices.is_empty() || indices.is_empty() {
             return;
         }
@@ -446,7 +438,6 @@ impl<'a> State<'a> {
             index_buffer,
             num_indices: indices.len() as u32,
             aabb,
-            lod_step,
         };
 
         self.chunk_render_data
