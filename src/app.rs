@@ -157,7 +157,8 @@ impl<'a> ApplicationHandler for Application<'a> {
                         if elapsed >= Duration::from_secs(1) {
                             let secs = elapsed.as_secs_f64();
                             let fps = self.frames_since_log as f64 / secs;
-                            log::info!("FPS: {:.1} | CHUNK: {:?}", fps, camera_chunk);
+                            log::info!("FPS: {:.1} | CHUNK: {:?}", state.fps, camera_chunk);
+                            state.fps = fps.round() as u32;
                             self.frames_since_log = 0;
                             self.last_fps_log = Instant::now();
                         }

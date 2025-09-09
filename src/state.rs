@@ -10,6 +10,10 @@ use {
     glam::Vec3,
     std::{collections::HashMap, f32::consts::SQRT_2, sync::Arc, time::Duration},
     wgpu::util::DeviceExt as _,
+    wgpu_text::{
+        glyph_brush::{ab_glyph::FontRef, HorizontalAlign, Layout, Section, Text, VerticalAlign},
+        BrushBuilder, TextBrush,
+    },
     winit::{dpi::PhysicalSize, event::*, window::Window},
 };
 
@@ -41,6 +45,9 @@ pub struct State<'a> {
 
     skybox_pipeline: wgpu::RenderPipeline,
     skybox_bind_group: wgpu::BindGroup,
+
+    pub fps: u32,
+    pub text_brush: TextBrush<FontRef<'a>>,
 }
 
 impl<'a> State<'a> {
@@ -316,6 +323,12 @@ impl<'a> State<'a> {
             cache: None,
         });
 
+        let text_brush =
+            BrushBuilder::using_font_bytes(include_bytes!("../assets/EP-Boxi-Bold.otf"))
+                .unwrap()
+                .with_depth_stencil(None)
+                .build(&device, config.width, config.height, config.format);
+
         Self {
             surface,
             device,
@@ -332,6 +345,8 @@ impl<'a> State<'a> {
             camera_controller,
             skybox_pipeline,
             skybox_bind_group,
+            fps: 0,
+            text_brush,
         }
     }
 
@@ -347,6 +362,8 @@ impl<'a> State<'a> {
         self.surface.configure(&self.device, &self.config);
 
         self.camera.resize(new_size.width, new_size.height);
+        self.text_brush
+            .resize_view(new_size.width as f32, new_size.height as f32, &self.queue);
 
         self.depth_texture = Texture::create_depth_texture(&self.device, &self.config);
     }
@@ -521,6 +538,52 @@ impl<'a> State<'a> {
             }
         }
 
+        fn render_text(
+            state: &mut State,
+            encoder: &mut wgpu::CommandEncoder,
+            texture_view: &wgpu::TextureView,
+        ) {
+            let fps_text = format!("FPS:{}", state.fps);
+
+            let section = Section::default()
+                .with_layout(
+                    Layout::default()
+                        .h_align(HorizontalAlign::Left)
+                        .v_align(VerticalAlign::Top),
+                )
+                .with_screen_position((12.0, 12.0))
+                .add_text(
+                    Text::new(&fps_text)
+                        .with_scale(24.0)
+                        .with_color([0.7, 0.12, 0.12, 1.0]),
+                );
+
+            if let Err(brush_error) = state
+                .text_brush
+                .queue(&state.device, &state.queue, [section])
+            {
+                log::warn!("Brush error: {:?}", brush_error);
+            }
+
+            let mut text_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("text_pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: texture_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                    depth_slice: None,
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+
+            state.text_brush.draw(&mut text_pass);
+        }
+
         let output = match self.surface.get_current_texture() {
             Ok(output) => output,
             Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
@@ -541,6 +604,7 @@ impl<'a> State<'a> {
 
         render_skybox(self, &mut encoder, &texture_view);
         render_voxels(self, &mut encoder, &texture_view);
+        render_text(self, &mut encoder, &texture_view);
 
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
