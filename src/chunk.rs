@@ -12,10 +12,149 @@ pub const CHUNK_WIDTH: usize = 16;
 pub const CHUNK_HEIGHT: usize = 256;
 
 pub type ChunkCoords = (i32, i32);
+pub type ChunkNodeSize = (usize, usize, usize);
 
 pub struct Chunk {
     index: ChunkCoords,
-    blocks: [[[Option<BlockType>; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH],
+    root: ChunkNode,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum SplitDir {
+    LeftRight,
+    FrontBack,
+    TopBottom,
+}
+
+enum ChunkNode {
+    Leaf(Option<BlockType>, ChunkNodeSize),
+    Inner(Box<ChunkNode>, Box<ChunkNode>, SplitDir, ChunkNodeSize),
+}
+
+impl ChunkNode {
+    fn from_region(
+        blocks: &Blocks,
+        x0: usize,
+        x1: usize,
+        y0: usize,
+        y1: usize,
+        z0: usize,
+        z1: usize,
+    ) -> Self {
+        let sx = x1 - x0;
+        let sy = y1 - y0;
+        let sz = z1 - z0;
+        debug_assert!(sx > 0 && sy > 0 && sz > 0);
+        let size = (sx, sy, sz);
+
+        if let Some(u) = uniform(blocks, x0, x1, y0, y1, z0, z1) {
+            // Whole region is the same block (including "all air")
+            return ChunkNode::Leaf(u, size);
+        }
+
+        // Choose the longest axis to split
+        if sz >= sx && sz >= sy && sz > 1 {
+            // Split along Z (TopBottom)
+            let mid = z0 + sz / 2;
+            let a = Box::new(ChunkNode::from_region(blocks, x0, x1, y0, y1, z0, mid));
+            let b = Box::new(ChunkNode::from_region(blocks, x0, x1, y0, y1, mid, z1));
+            return ChunkNode::merge_if_same(a, b, SplitDir::TopBottom, size);
+        } else if sx >= sy && sx > 1 {
+            // Split along X (LeftRight)
+            let mid = x0 + sx / 2;
+            let a = Box::new(ChunkNode::from_region(blocks, x0, mid, y0, y1, z0, z1));
+            let b = Box::new(ChunkNode::from_region(blocks, mid, x1, y0, y1, z0, z1));
+            return ChunkNode::merge_if_same(a, b, SplitDir::LeftRight, size);
+        } else if sy > 1 {
+            // Split along Y (FrontBack)
+            let mid = y0 + sy / 2;
+            let a = Box::new(ChunkNode::from_region(blocks, x0, x1, y0, mid, z0, z1));
+            let b = Box::new(ChunkNode::from_region(blocks, x0, x1, mid, y1, z0, z1));
+            return ChunkNode::merge_if_same(a, b, SplitDir::FrontBack, size);
+        }
+
+        // Fallback: region isn't uniform but we cannot split further (a 1×1×1 non-uniform is impossible,
+        // so this covers degenerate ranges). Treat as a single mixed voxel (pick one) — or panic.
+        // Safer is to make a leaf from the actual single cell value.
+        let v = blocks[x0][y0][z0];
+        ChunkNode::Leaf(v, size)
+    }
+
+    fn merge_if_same(
+        a: Box<ChunkNode>,
+        b: Box<ChunkNode>,
+        dir: SplitDir,
+        size: ChunkNodeSize,
+    ) -> Self {
+        match (&*a, &*b) {
+            (ChunkNode::Leaf(va, _), ChunkNode::Leaf(vb, _)) if va == vb => {
+                ChunkNode::Leaf(*va, size)
+            }
+            _ => ChunkNode::Inner(a, b, dir, size),
+        }
+    }
+
+    fn get_at(
+        &self,
+        x: usize,
+        y: usize,
+        z: usize,
+        ox: usize,
+        oy: usize,
+        oz: usize,
+    ) -> Option<BlockType> {
+        match self {
+            ChunkNode::Leaf(v, _size) => *v,
+            ChunkNode::Inner(a, b, dir, (sx, sy, sz)) => match dir {
+                SplitDir::LeftRight => {
+                    let midx = ox + sx / 2;
+                    if x < midx {
+                        a.get_at(x, y, z, ox, oy, oz)
+                    } else {
+                        b.get_at(x, y, z, midx, oy, oz)
+                    }
+                }
+                SplitDir::FrontBack => {
+                    let midy = oy + sy / 2;
+                    if y < midy {
+                        a.get_at(x, y, z, ox, oy, oz)
+                    } else {
+                        b.get_at(x, y, z, ox, midy, oz)
+                    }
+                }
+                SplitDir::TopBottom => {
+                    let midz = oz + sz / 2;
+                    if z < midz {
+                        a.get_at(x, y, z, ox, oy, oz)
+                    } else {
+                        b.get_at(x, y, z, ox, oy, midz)
+                    }
+                }
+            },
+        }
+    }
+}
+
+fn uniform(
+    blocks: &Blocks,
+    x0: usize,
+    x1: usize,
+    y0: usize,
+    y1: usize,
+    z0: usize,
+    z1: usize,
+) -> Option<Option<BlockType>> {
+    let first = blocks[x0][y0][z0];
+    for x in x0..x1 {
+        for y in y0..y1 {
+            for z in z0..z1 {
+                if blocks[x][y][z] != first {
+                    return None;
+                }
+            }
+        }
+    }
+    Some(first)
 }
 
 pub struct AdjacentChunks<'a> {
@@ -25,12 +164,12 @@ pub struct AdjacentChunks<'a> {
     pub west: Option<(&'a Chunk, usize)>,  // -x direction
 }
 
+type Blocks = [[[Option<BlockType>; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH];
+
 impl Chunk {
-    pub fn new(
-        index: ChunkCoords,
-        blocks: [[[Option<BlockType>; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH],
-    ) -> Self {
-        Self { index, blocks }
+    pub fn new(index: ChunkCoords, blocks: Blocks) -> Self {
+        let root = ChunkNode::from_region(&blocks, 0, CHUNK_WIDTH, 0, CHUNK_WIDTH, 0, CHUNK_HEIGHT);
+        Self { index, root }
     }
 
     pub fn bounding_box(&self) -> AABB {
@@ -49,10 +188,10 @@ impl Chunk {
     }
 
     pub fn get_block(&self, x: usize, y: usize, z: usize) -> Option<BlockType> {
-        if x < CHUNK_WIDTH && y < CHUNK_WIDTH && z < CHUNK_HEIGHT {
-            self.blocks[x][y][z]
-        } else {
+        if x >= CHUNK_WIDTH || y >= CHUNK_WIDTH || z >= CHUNK_HEIGHT {
             None
+        } else {
+            self.root.get_at(x, y, z, 0, 0, 0)
         }
     }
 
