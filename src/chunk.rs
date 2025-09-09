@@ -12,7 +12,43 @@ pub const CHUNK_WIDTH: usize = 16;
 pub const CHUNK_HEIGHT: usize = 256;
 
 pub type ChunkCoords = (i32, i32);
-pub type ChunkNodeSize = (usize, usize, usize);
+
+// [start, end)
+struct ChunkNodePos {
+    pub x0: usize,
+    pub x1: usize,
+    pub y0: usize,
+    pub y1: usize,
+    pub z0: usize,
+    pub z1: usize,
+}
+impl ChunkNodePos {
+    fn from_dimensions(x: usize, y: usize, z: usize) -> Self {
+        Self {
+            x0: 0,
+            x1: x,
+            y0: 0,
+            y1: y,
+            z0: 0,
+            z1: z,
+        }
+    }
+
+    #[inline]
+    pub fn size_x(&self) -> usize {
+        self.x1 - self.x0
+    }
+
+    #[inline]
+    pub fn size_y(&self) -> usize {
+        self.y1 - self.y0
+    }
+
+    #[inline]
+    pub fn size_z(&self) -> usize {
+        self.z1 - self.z0
+    }
+}
 
 pub struct Chunk {
     coords: ChunkCoords,
@@ -27,70 +63,104 @@ enum SplitDir {
 }
 
 enum ChunkNode {
-    Leaf(Option<BlockType>, ChunkNodeSize),
-    Inner(Box<ChunkNode>, Box<ChunkNode>, SplitDir, ChunkNodeSize),
+    Leaf(Option<BlockType>, ChunkNodePos),
+    Inner(Box<ChunkNode>, Box<ChunkNode>, SplitDir, ChunkNodePos),
 }
 
 impl ChunkNode {
-    fn from_region(
-        blocks: &Blocks,
-        x0: usize,
-        x1: usize,
-        y0: usize,
-        y1: usize,
-        z0: usize,
-        z1: usize,
-    ) -> Self {
+    fn from_region(blocks: &Blocks, chunk_node_pos: ChunkNodePos) -> Self {
+        let ChunkNodePos {
+            x0,
+            x1,
+            y0,
+            y1,
+            z0,
+            z1,
+        } = chunk_node_pos;
+
         let sx = x1 - x0;
         let sy = y1 - y0;
         let sz = z1 - z0;
         debug_assert!(sx > 0 && sy > 0 && sz > 0);
-        let size = (sx, sy, sz);
 
         if let Some(u) = uniform(blocks, x0, x1, y0, y1, z0, z1) {
-            // Whole region is the same block (including "all air")
-            return ChunkNode::Leaf(u, size);
+            return ChunkNode::Leaf(u, chunk_node_pos);
         }
 
-        // Choose the longest axis to split
+        // choose the longest axis to split, with a preference for z
         if sz >= sx && sz >= sy && sz > 1 {
-            // Split along Z (TopBottom)
             let mid = z0 + sz / 2;
-            let a = Box::new(ChunkNode::from_region(blocks, x0, x1, y0, y1, z0, mid));
-            let b = Box::new(ChunkNode::from_region(blocks, x0, x1, y0, y1, mid, z1));
-            return ChunkNode::merge_if_same(a, b, SplitDir::TopBottom, size);
+            let a = Box::new(ChunkNode::from_region(
+                blocks,
+                ChunkNodePos {
+                    z1: mid,
+                    ..chunk_node_pos
+                },
+            ));
+            let b = Box::new(ChunkNode::from_region(
+                blocks,
+                ChunkNodePos {
+                    z0: mid,
+                    ..chunk_node_pos
+                },
+            ));
+            return ChunkNode::merge_if_same(a, b, SplitDir::TopBottom, chunk_node_pos);
         } else if sx >= sy && sx > 1 {
-            // Split along X (LeftRight)
             let mid = x0 + sx / 2;
-            let a = Box::new(ChunkNode::from_region(blocks, x0, mid, y0, y1, z0, z1));
-            let b = Box::new(ChunkNode::from_region(blocks, mid, x1, y0, y1, z0, z1));
-            return ChunkNode::merge_if_same(a, b, SplitDir::LeftRight, size);
+            let a = Box::new(ChunkNode::from_region(
+                blocks,
+                ChunkNodePos {
+                    x1: mid,
+                    ..chunk_node_pos
+                },
+            ));
+            let b = Box::new(ChunkNode::from_region(
+                blocks,
+                ChunkNodePos {
+                    x0: mid,
+                    ..chunk_node_pos
+                },
+            ));
+            return ChunkNode::merge_if_same(a, b, SplitDir::LeftRight, chunk_node_pos);
         } else if sy > 1 {
-            // Split along Y (FrontBack)
             let mid = y0 + sy / 2;
-            let a = Box::new(ChunkNode::from_region(blocks, x0, x1, y0, mid, z0, z1));
-            let b = Box::new(ChunkNode::from_region(blocks, x0, x1, mid, y1, z0, z1));
-            return ChunkNode::merge_if_same(a, b, SplitDir::FrontBack, size);
+            let a = Box::new(ChunkNode::from_region(
+                blocks,
+                ChunkNodePos {
+                    y1: mid,
+                    ..chunk_node_pos
+                },
+            ));
+            let b = Box::new(ChunkNode::from_region(
+                blocks,
+                ChunkNodePos {
+                    y0: mid,
+                    ..chunk_node_pos
+                },
+            ));
+            return ChunkNode::merge_if_same(a, b, SplitDir::FrontBack, chunk_node_pos);
         }
+
+        // TODO?: unreachable!()
 
         // Fallback: region isn't uniform but we cannot split further (a 1×1×1 non-uniform is impossible,
         // so this covers degenerate ranges). Treat as a single mixed voxel (pick one) — or panic.
         // Safer is to make a leaf from the actual single cell value.
         let v = blocks[x0][y0][z0];
-        ChunkNode::Leaf(v, size)
+        ChunkNode::Leaf(v, chunk_node_pos)
     }
 
     fn merge_if_same(
         a: Box<ChunkNode>,
         b: Box<ChunkNode>,
         dir: SplitDir,
-        size: ChunkNodeSize,
+        chunk_node_pos: ChunkNodePos,
     ) -> Self {
         match (&*a, &*b) {
             (ChunkNode::Leaf(va, _), ChunkNode::Leaf(vb, _)) if va == vb => {
-                ChunkNode::Leaf(*va, size)
+                ChunkNode::Leaf(*va, chunk_node_pos)
             }
-            _ => ChunkNode::Inner(a, b, dir, size),
+            _ => ChunkNode::Inner(a, b, dir, chunk_node_pos),
         }
     }
 
@@ -104,10 +174,10 @@ impl ChunkNode {
         oz: usize,
     ) -> Option<BlockType> {
         match self {
-            ChunkNode::Leaf(v, _size) => *v,
-            ChunkNode::Inner(a, b, dir, (sx, sy, sz)) => match dir {
+            ChunkNode::Leaf(v, _) => *v,
+            ChunkNode::Inner(a, b, dir, chunk_node_pos) => match dir {
                 SplitDir::LeftRight => {
-                    let midx = ox + sx / 2;
+                    let midx = ox + chunk_node_pos.size_x() / 2;
                     if x < midx {
                         a.get_at(x, y, z, ox, oy, oz)
                     } else {
@@ -115,7 +185,7 @@ impl ChunkNode {
                     }
                 }
                 SplitDir::FrontBack => {
-                    let midy = oy + sy / 2;
+                    let midy = oy + chunk_node_pos.size_y() / 2;
                     if y < midy {
                         a.get_at(x, y, z, ox, oy, oz)
                     } else {
@@ -123,7 +193,7 @@ impl ChunkNode {
                     }
                 }
                 SplitDir::TopBottom => {
-                    let midz = oz + sz / 2;
+                    let midz = oz + chunk_node_pos.size_z() / 2;
                     if z < midz {
                         a.get_at(x, y, z, ox, oy, oz)
                     } else {
@@ -175,7 +245,10 @@ type Blocks = [[[Option<BlockType>; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH];
 
 impl Chunk {
     pub fn new(coords: ChunkCoords, blocks: Blocks) -> Self {
-        let root = ChunkNode::from_region(&blocks, 0, CHUNK_WIDTH, 0, CHUNK_WIDTH, 0, CHUNK_HEIGHT);
+        let root = ChunkNode::from_region(
+            &blocks,
+            ChunkNodePos::from_dimensions(CHUNK_WIDTH, CHUNK_WIDTH, CHUNK_HEIGHT),
+        );
         log::info!(
             "Chunk {:?} : {}/{} leaves",
             coords,
@@ -395,47 +468,47 @@ impl Chunk {
     }
 }
 
-impl ChunkNode {
-    fn generate_mesh(&self, lod_step: usize, adjacent: &AdjacentChunks) -> (Vec<Vertex>, Vec<u16>) {
-        match self {
-            ChunkNode::Leaf(block_type, (sx, sy, sz)) => todo!(),
-            ChunkNode::Inner(chunk_node, chunk_node1, split_dir, (sx, sy, sz)) => todo!(),
-        }
+// impl ChunkNode {
+//     fn generate_mesh(&self, lod_step: usize, adjacent: &AdjacentChunks) -> (Vec<Vertex>, Vec<u16>) {
+//         match self {
+//             ChunkNode::Leaf(block_type, (sx, sy, sz)) => todo!(),
+//             ChunkNode::Inner(chunk_node, chunk_node1, split_dir, (sx, sy, sz)) => todo!(),
+//         }
 
-        // let mut vertices = Vec::new();
-        // let mut indices = Vec::new();
-        // let mut index_offset = 0;
+//         // let mut vertices = Vec::new();
+//         // let mut indices = Vec::new();
+//         // let mut index_offset = 0;
 
-        // for local_x in (0..CHUNK_WIDTH).step_by(lod_step) {
-        //     for local_y in (0..CHUNK_WIDTH).step_by(lod_step) {
-        //         for local_z in 0..CHUNK_HEIGHT {
-        //             let Some(block) = self.get_block(local_x, local_y, local_z) else {
-        //                 continue;
-        //             };
+//         // for local_x in (0..CHUNK_WIDTH).step_by(lod_step) {
+//         //     for local_y in (0..CHUNK_WIDTH).step_by(lod_step) {
+//         //         for local_z in 0..CHUNK_HEIGHT {
+//         //             let Some(block) = self.get_block(local_x, local_y, local_z) else {
+//         //                 continue;
+//         //             };
 
-        //             let position = Vec3::new(local_x as f32, local_y as f32, local_z as f32);
+//         //             let position = Vec3::new(local_x as f32, local_y as f32, local_z as f32);
 
-        //             for face in FACES {
-        //                 let (dx, dy, dz) = face.normal();
-        //                 let neighbor_x = local_x as i32 + dx * lod_step as i32;
-        //                 let neighbor_y = local_y as i32 + dy * lod_step as i32;
-        //                 let neighbor_z = local_z as i32 + dz as i32;
+//         //             for face in FACES {
+//         //                 let (dx, dy, dz) = face.normal();
+//         //                 let neighbor_x = local_x as i32 + dx * lod_step as i32;
+//         //                 let neighbor_y = local_y as i32 + dy * lod_step as i32;
+//         //                 let neighbor_z = local_z as i32 + dz as i32;
 
-        //                 if self
-        //                     .is_face_visible(neighbor_x, neighbor_y, neighbor_z, adjacent, lod_step)
-        //                 {
-        //                     let (face_verts, face_indices) =
-        //                         Self::create_face(block, position, face, lod_step);
+//         //                 if self
+//         //                     .is_face_visible(neighbor_x, neighbor_y, neighbor_z, adjacent, lod_step)
+//         //                 {
+//         //                     let (face_verts, face_indices) =
+//         //                         Self::create_face(block, position, face, lod_step);
 
-        //                     vertices.extend(face_verts);
-        //                     indices.extend(face_indices.iter().map(|i| *i + index_offset));
-        //                     index_offset += 4;
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
+//         //                     vertices.extend(face_verts);
+//         //                     indices.extend(face_indices.iter().map(|i| *i + index_offset));
+//         //                     index_offset += 4;
+//         //                 }
+//         //             }
+//         //         }
+//         //     }
+//         // }
 
-        // (vertices, indices)
-    }
-}
+//         // (vertices, indices)
+//     }
+// }
