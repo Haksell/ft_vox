@@ -45,24 +45,24 @@ impl World {
         // continentalness: determines land vs ocean
         let continentalness_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0xFF000055))
             .frequency(0.0002)
-            .octaves(12)
+            .octaves(16)
             .build();
 
         // erosion: affects terrain ruggedness
         let erosion_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0x44336699))
             .frequency(0.002)
-            .octaves(6)
+            .octaves(8)
             .build();
 
         // weirdness: creates unusual terrain features
         let weirdness_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0xFF110077))
             .frequency(0.0008)
-            .octaves(6)
+            .octaves(4)
             .build();
 
         let cave_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0x110099FF))
             .frequency(0.008)
-            .octaves(2)
+            .octaves(6)
             .build();
 
         Self {
@@ -119,7 +119,7 @@ impl World {
     // Continentalness spline: higher continentalness = higher terrain
     fn continentalness_spline(&self, continentalness: f32) -> f32 {
         match continentalness {
-            x if x < -0.45 => lerp(-40.0, -20.0, (x + 1.0) / ((-0.45) - (-1.0))),
+            x if x < -0.45 => lerp(-30.0, -20.0, (x + 1.0) / ((-0.45) - (-1.0))),
             x if x < -0.2 => lerp(-20.0, -5.0, (x - (-0.45)) / ((-0.2) - (-0.45))),
             x if x < -0.1 => lerp(-5.0, 5.0, (x - (-0.2)) / ((-0.1) - (-0.2))),
             x if x < 0.05 => lerp(5.0, 30.0, (x - (-0.1)) / (0.05 - (-0.1))),
@@ -614,18 +614,20 @@ impl World {
         }
     }
 
-    fn has_cave_at(&self, world_x: i32, world_y: i32, world_z: i32) -> bool {
-        return false;
-        // TODO: Improve this
-
+    fn has_cave_at(&self, world_x: i32, world_y: i32, world_z: i32, surface_height: i32) -> bool {
+        // TODO: spaghetti caves
+        
         let noise = self
             .cave_noise
             .noise3d(world_x as f32, world_y as f32, world_z as f32);
+        
+        let normalized_z = ((world_z - 8) as f32 / (surface_height) as f32).clamp(0.0, 1.0);
+        let probability = 4.0 * normalized_z * (1.0 - normalized_z);
+        
+        let spaghetti = noise.abs() < 0.02 * probability;
+        let cheese = noise * probability > 0.2;
 
-        let spaghetti = noise.abs() < 0.08;
-        let cheese = noise > 0.4;
-
-        cheese || spaghetti
+        cheese
     }
 
     fn generate_chunk_blocks(
@@ -641,17 +643,16 @@ impl World {
                 let world_y = (chunk_y * CHUNK_WIDTH as i32) + y as i32;
                 let height = self.generate_height_at(world_x as f32, world_y as f32) as usize;
                 let biome = self.determine_biome(world_x as f32, world_y as f32);
-
+                
                 for z in 0..=CHUNK_HEIGHT {
                     if z <= height {
-                        if self.has_cave_at(world_x, world_y, z as i32) {
+                        if self.has_cave_at(world_x, world_y, z as i32, height as i32) {
                             continue;
                         }
 
                         let depth_from_surface = height.saturating_sub(z);
                         blocks[x][y][z] = Some(match depth_from_surface {
-                            0 => biome.get_surface_block(),
-                            1..=3 => biome.get_subsurface_block(),
+                            0..=5 => biome.get_surface_block(),
                             _ => biome.get_deep_block(),
                         });
                     } else if z <= SEA {

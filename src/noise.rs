@@ -29,12 +29,12 @@ impl PerlinNoiseBuilder {
     }
 
     pub fn octaves(mut self, octaves: usize) -> Self {
-        self.octaves = octaves.max(1).min(16);
+        self.octaves = octaves.clamp(1, 24);
         self
     }
 
     pub fn persistence(mut self, persistence: f32) -> Self {
-        self.persistence = persistence.max(0.0).min(1.0);
+        self.persistence = persistence.clamp(0.0, 1.0);
         self
     }
 
