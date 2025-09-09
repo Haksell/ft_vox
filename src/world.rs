@@ -87,14 +87,12 @@ impl World {
         self.chunks.get(&chunk_coords)
     }
 
-    pub fn get_chunk(&mut self, chunk_coords: ChunkCoords) -> &Chunk {
+    pub fn load_chunk(&mut self, chunk_coords: ChunkCoords) {
         if !self.chunks.contains_key(&chunk_coords) {
             let blocks = self.generate_chunk_blocks(chunk_coords);
             let chunk = Chunk::new(chunk_coords, blocks);
             self.chunks.insert(chunk_coords, chunk);
         }
-
-        &self.chunks[&chunk_coords]
     }
 
     fn generate_height_at(&self, world_x: f32, world_y: f32) -> f32 {
@@ -700,11 +698,11 @@ impl World {
         (chunk_x, chunk_y): ChunkCoords,
     ) -> (Vec<Vertex>, Vec<u16>) {
         // Load the target chunk and its 4 cardinal neighbors
-        self.get_chunk((chunk_x, chunk_y));
-        self.get_chunk((chunk_x, chunk_y + 1));
-        self.get_chunk((chunk_x, chunk_y - 1));
-        self.get_chunk((chunk_x + 1, chunk_y));
-        self.get_chunk((chunk_x - 1, chunk_y));
+        self.load_chunk((chunk_x, chunk_y));
+        self.load_chunk((chunk_x, chunk_y + 1));
+        self.load_chunk((chunk_x, chunk_y - 1));
+        self.load_chunk((chunk_x + 1, chunk_y));
+        self.load_chunk((chunk_x - 1, chunk_y));
 
         let chunk = self.get_chunk_if_loaded((chunk_x, chunk_y)).unwrap();
 

@@ -385,7 +385,7 @@ impl<'a> State<'a> {
             for dy in -render_distance..=render_distance {
                 let chunk_coords = (camera_chunk.0 + dx, camera_chunk.1 + dy);
                 chunks_in_range.insert(chunk_coords);
-                world.get_chunk(chunk_coords);
+                world.load_chunk(chunk_coords);
             }
         }
 
