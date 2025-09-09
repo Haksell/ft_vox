@@ -229,11 +229,9 @@ impl Chunk {
                         let neighbor_y = local_y as i32 + dy * lod_step as i32;
                         let neighbor_z = local_z as i32 + dz as i32;
 
-                        let is_face_visible = self.is_face_visible(
-                            neighbor_x, neighbor_y, neighbor_z, adjacent, lod_step,
-                        );
-
-                        if is_face_visible {
+                        if self
+                            .is_face_visible(neighbor_x, neighbor_y, neighbor_z, adjacent, lod_step)
+                        {
                             let (face_verts, face_indices) =
                                 Self::create_face(block, position, face, lod_step);
 
