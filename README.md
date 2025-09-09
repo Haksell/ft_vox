@@ -53,7 +53,7 @@
 - [x] You can use a windowing library (winit)
 - [x] You can use a mathematics library for your calculations (glam)
 - [ ] The render should always be SMOOTH
-- [ ] Any crash (Uncaught exception, segfault, abort ...) will disqualify you
+- [ ] Any crash (uncaught exception, segfault, abort ...) will disqualify you
 - [ ] Your program must be able to run for hours without eating the whole memory or slowing down. Manage your RAM as well as VRAM very carefully.
 - [ ] Full screen mode by default
 - [ ] Camera speeds should be 1.0 and 20.0

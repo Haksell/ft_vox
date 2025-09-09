@@ -634,6 +634,7 @@ impl World {
     }
 
     fn has_cave_at(&self, world_x: i32, world_y: i32, world_z: i32) -> bool {
+        return false;
         // TODO: Improve this
 
         let noise = self
