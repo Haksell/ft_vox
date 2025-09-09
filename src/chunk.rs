@@ -360,7 +360,7 @@ impl Chunk {
                         chunk_node_pos.z1,
                     ))
                 } else {
-                    if let Some(west) = adjacent.west {
+                    adjacent.west.is_none_or(|west| {
                         west.root.any_empty_in_region(&ChunkNodePos::new(
                             CHUNK_WIDTH - 1,
                             CHUNK_WIDTH,
@@ -369,9 +369,7 @@ impl Chunk {
                             chunk_node_pos.z0,
                             chunk_node_pos.z1,
                         ))
-                    } else {
-                        true
-                    }
+                    })
                 }
             }
             Face::Right => {
@@ -385,7 +383,7 @@ impl Chunk {
                         chunk_node_pos.z1,
                     ))
                 } else {
-                    if let Some(east) = adjacent.east {
+                    adjacent.east.is_none_or(|east| {
                         east.root.any_empty_in_region(&ChunkNodePos::new(
                             0,
                             1,
@@ -394,9 +392,7 @@ impl Chunk {
                             chunk_node_pos.z0,
                             chunk_node_pos.z1,
                         ))
-                    } else {
-                        true
-                    }
+                    })
                 }
             }
             Face::Back => {
@@ -410,7 +406,7 @@ impl Chunk {
                         chunk_node_pos.z1,
                     ))
                 } else {
-                    if let Some(north) = adjacent.north {
+                    adjacent.north.is_none_or(|north| {
                         north.root.any_empty_in_region(&ChunkNodePos::new(
                             chunk_node_pos.x0,
                             chunk_node_pos.x1,
@@ -419,9 +415,7 @@ impl Chunk {
                             chunk_node_pos.z0,
                             chunk_node_pos.z1,
                         ))
-                    } else {
-                        true
-                    }
+                    })
                 }
             }
             Face::Front => {
@@ -435,7 +429,7 @@ impl Chunk {
                         chunk_node_pos.z1,
                     ))
                 } else {
-                    if let Some(south) = adjacent.south {
+                    adjacent.south.is_none_or(|south| {
                         south.root.any_empty_in_region(&ChunkNodePos::new(
                             chunk_node_pos.x0,
                             chunk_node_pos.x1,
@@ -444,14 +438,12 @@ impl Chunk {
                             chunk_node_pos.z0,
                             chunk_node_pos.z1,
                         ))
-                    } else {
-                        true
-                    }
+                    })
                 }
             }
             Face::Top => {
-                if chunk_node_pos.z1 < CHUNK_HEIGHT {
-                    self.root.any_empty_in_region(&ChunkNodePos::new(
+                chunk_node_pos.z1 >= CHUNK_HEIGHT
+                    || self.root.any_empty_in_region(&ChunkNodePos::new(
                         chunk_node_pos.x0,
                         chunk_node_pos.x1,
                         chunk_node_pos.y0,
@@ -459,12 +451,9 @@ impl Chunk {
                         chunk_node_pos.z1,
                         chunk_node_pos.z1 + 1,
                     ))
-                } else {
-                    true
-                }
             }
             Face::Bottom => {
-                if chunk_node_pos.z0 > 0 {
+                chunk_node_pos.z0 > 0 && {
                     self.root.any_empty_in_region(&ChunkNodePos::new(
                         chunk_node_pos.x0,
                         chunk_node_pos.x1,
@@ -473,8 +462,6 @@ impl Chunk {
                         chunk_node_pos.z0 - 1,
                         chunk_node_pos.z0,
                     ))
-                } else {
-                    false
                 }
             }
         }
