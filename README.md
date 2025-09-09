@@ -14,6 +14,7 @@
 - generative skybox textures
 - fix water to be transparent block
 - fix dead pixels
+- anisotropic filtering
 
 ## mandatory
 
