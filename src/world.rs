@@ -630,6 +630,135 @@ impl World {
         cheese
     }
 
+    // fn render_threaded(
+    //     world: Arc<World>,
+    //     camera: Arc<Camera>,
+    //     canvas: Arc<Mutex<Canvas>>,
+    //     num_threads: usize,
+    // ) {
+    //     println!(
+    //         "Starting master-worker rendering with {} threads",
+    //         num_threads
+    //     );
+
+    //     // Create work queue - each work item is a pixel coordinate
+    //     let total_pixels = camera.hsize * camera.vsize;
+    //     let (work_sender, work_receiver) = mpsc::channel::<(usize, usize)>();
+    //     let (result_sender, result_receiver) = mpsc::channel::<(usize, usize, u32)>();
+
+    //     // Share the work receiver among all worker threads
+    //     let work_receiver = Arc::new(Mutex::new(work_receiver));
+
+    //     // Spawn worker threads
+    //     let mut handles = Vec::new();
+    //     for thread_id in 0..num_threads {
+    //         let world = Arc::clone(&world);
+    //         let camera = Arc::clone(&camera);
+    //         let work_receiver = Arc::clone(&work_receiver);
+    //         let result_sender = result_sender.clone();
+
+    //         let handle = thread::spawn(move || {
+    //             loop {
+    //                 // Try to get work from the queue
+    //                 let work = {
+    //                     let receiver = work_receiver.lock().unwrap();
+    //                     receiver.recv()
+    //                 };
+
+    //                 match work {
+    //                     Ok((x, y)) => {
+    //                         // Render this pixel
+    //                         let ray = camera.ray_for_pixel(x, y);
+    //                         let color = world.color_at(&ray, camera.max_reflections);
+
+    //                         // Send result back to master
+    //                         if result_sender.send((x, y, color.to_u32())).is_err() {
+    //                             break; // Master thread has finished
+    //                         }
+    //                     }
+    //                     Err(_) => {
+    //                         // No more work available
+    //                         break;
+    //                     }
+    //                 }
+    //             }
+    //             println!("Worker thread {} finished", thread_id);
+    //         });
+
+    //         handles.push(handle);
+    //     }
+
+    //     // Master thread: distribute work
+    //     thread::spawn(move || {
+    //         for y in 0..camera.vsize {
+    //             for x in 0..camera.hsize {
+    //                 if work_sender.send((x, y)).is_err() {
+    //                     return; // Workers have shut down
+    //                 }
+    //             }
+    //         }
+    //         // Close the work channel to signal no more work
+    //         drop(work_sender);
+    //     });
+
+    //     // Master thread: collect results and update canvas
+    //     let mut pixels_completed = 0;
+    //     let progress_interval = total_pixels / 20; // Report progress every 5%
+
+    //     for (x, y, pixel) in result_receiver {
+    //         // Write pixel to canvas
+    //         {
+    //             let mut canvas_lock = canvas.lock().unwrap();
+    //             canvas_lock.write_pixel(x, y, pixel);
+    //         }
+
+    //         pixels_completed += 1;
+
+    //         // Progress reporting
+    //         if pixels_completed % progress_interval == 0 || pixels_completed == total_pixels {
+    //             let progress = (pixels_completed as f64 / total_pixels as f64) * 100.0;
+    //             println!(
+    //                 "Progress: {:.1}% ({}/{} pixels)",
+    //                 progress, pixels_completed, total_pixels
+    //             );
+    //         }
+
+    //         // Break if all pixels are done
+    //         if pixels_completed >= total_pixels {
+    //             break;
+    //         }
+    //     }
+
+    //     // Wait for all worker threads to finish
+    //     for handle in handles {
+    //         handle.join().unwrap();
+    //     }
+
+    //     println!("Rendering complete!");
+    // }
+
+    fn generate_column(&self, world_x: i32, world_y: i32) -> [Option<BlockType>; CHUNK_HEIGHT] {
+        let height = self.generate_height_at(world_x as f32, world_y as f32) as usize;
+        let biome = self.determine_biome(world_x as f32, world_y as f32);
+        let mut column = [None; CHUNK_HEIGHT];
+        for z in 0..=CHUNK_HEIGHT {
+            if z <= height {
+                if self.has_cave_at(world_x, world_y, z as i32, height as i32) {
+                    continue;
+                }
+
+                let depth_from_surface = height.saturating_sub(z);
+                column[z] = Some(match depth_from_surface {
+                    0..=5 => biome.get_surface_block(),
+                    _ => biome.get_deep_block(),
+                });
+            } else if z <= SEA {
+                column[z] = Some(BlockType::Water);
+            }
+        }
+        column
+    }
+
     fn generate_chunk_blocks(
         &self,
         (chunk_x, chunk_y): ChunkCoords,
@@ -638,28 +767,9 @@ impl World {
 
         for x in 0..CHUNK_WIDTH {
             let world_x = (chunk_x * CHUNK_WIDTH as i32) + x as i32;
-
             for y in 0..CHUNK_WIDTH {
                 let world_y = (chunk_y * CHUNK_WIDTH as i32) + y as i32;
-                let height = self.generate_height_at(world_x as f32, world_y as f32) as usize;
-                let biome = self.determine_biome(world_x as f32, world_y as f32);
-
-                for z in 0..=CHUNK_HEIGHT {
-                    if z <= height {
-                        if self.has_cave_at(world_x, world_y, z as i32, height as i32) {
-                            continue;
-                        }
-
-                        let depth_from_surface = height.saturating_sub(z);
-                        blocks[x][y][z] = Some(match depth_from_surface {
-                            0..=5 => biome.get_surface_block(),
-                            _ => biome.get_deep_block(),
-                        });
-                    } else if z <= SEA {
-                        // Fill with water above terrain at or below sea level
-                        blocks[x][y][z] = Some(BlockType::Water);
-                    }
-                }
+                blocks[x][y] = self.generate_column(world_x, world_y);
             }
         }
 
