@@ -83,7 +83,7 @@ impl ChunkNode {
         let sz = z1 - z0;
         debug_assert!(sx > 0 && sy > 0 && sz > 0);
 
-        if let Some(u) = uniform(blocks, x0, x1, y0, y1, z0, z1) {
+        if let Some(u) = uniform(blocks, &chunk_node_pos) {
             return ChunkNode::Leaf(u, chunk_node_pos);
         }
 
@@ -164,46 +164,7 @@ impl ChunkNode {
         }
     }
 
-    fn get_at(
-        &self,
-        x: usize,
-        y: usize,
-        z: usize,
-        ox: usize,
-        oy: usize,
-        oz: usize,
-    ) -> Option<BlockType> {
-        match self {
-            ChunkNode::Leaf(v, _) => *v,
-            ChunkNode::Inner(a, b, dir, chunk_node_pos) => match dir {
-                SplitDir::LeftRight => {
-                    let midx = ox + chunk_node_pos.size_x() / 2;
-                    if x < midx {
-                        a.get_at(x, y, z, ox, oy, oz)
-                    } else {
-                        b.get_at(x, y, z, midx, oy, oz)
-                    }
-                }
-                SplitDir::FrontBack => {
-                    let midy = oy + chunk_node_pos.size_y() / 2;
-                    if y < midy {
-                        a.get_at(x, y, z, ox, oy, oz)
-                    } else {
-                        b.get_at(x, y, z, ox, midy, oz)
-                    }
-                }
-                SplitDir::TopBottom => {
-                    let midz = oz + chunk_node_pos.size_z() / 2;
-                    if z < midz {
-                        a.get_at(x, y, z, ox, oy, oz)
-                    } else {
-                        b.get_at(x, y, z, ox, oy, midz)
-                    }
-                }
-            },
-        }
-    }
-
+    #[allow(unused)] // useful for debugging
     fn count_leaves(&self) -> u32 {
         match self {
             ChunkNode::Leaf(..) => 1,
@@ -214,12 +175,14 @@ impl ChunkNode {
 
 fn uniform(
     blocks: &Blocks,
-    x0: usize,
-    x1: usize,
-    y0: usize,
-    y1: usize,
-    z0: usize,
-    z1: usize,
+    &ChunkNodePos {
+        x0,
+        x1,
+        y0,
+        y1,
+        z0,
+        z1,
+    }: &ChunkNodePos,
 ) -> Option<Option<BlockType>> {
     let first = blocks[x0][y0][z0];
     for x in x0..x1 {
@@ -273,96 +236,28 @@ impl Chunk {
         )
     }
 
-    pub fn get_block(&self, x: usize, y: usize, z: usize) -> Option<BlockType> {
-        if x >= CHUNK_WIDTH || y >= CHUNK_WIDTH || z >= CHUNK_HEIGHT {
-            None
-        } else {
-            self.root.get_at(x, y, z, 0, 0, 0)
-        }
-    }
-
     fn is_face_visible(
         &self,
-        neighbor_x: i32,
-        neighbor_y: i32,
-        neighbor_z: i32,
+        chunk_node_pos: &ChunkNodePos,
+        face: Face,
         adjacent: &AdjacentChunks,
     ) -> bool {
-        if neighbor_z < 0 {
-            return false;
-        }
-        if neighbor_z >= CHUNK_HEIGHT as i32 {
-            return true;
-        }
-
-        if neighbor_x >= 0
-            && neighbor_x < CHUNK_WIDTH as i32
-            && neighbor_y >= 0
-            && neighbor_y < CHUNK_WIDTH as i32
-        {
-            return self
-                .get_block(
-                    neighbor_x as usize,
-                    neighbor_y as usize,
-                    neighbor_z as usize,
-                )
-                .is_none();
-        }
-
-        // TODO: is_none_or for all 4
-
-        match (neighbor_x, neighbor_y) {
-            (x, y) if x >= CHUNK_WIDTH as i32 && y >= 0 && y < CHUNK_WIDTH as i32 => {
-                let Some(adj_chunk) = adjacent.east else {
-                    return true;
-                };
-                if adj_chunk
-                    .get_block(0, y as usize + 0, neighbor_z as usize)
-                    .is_none()
-                {
-                    return true;
-                }
-                false
-            }
-            (x, y) if x < 0 && y >= 0 && y < CHUNK_WIDTH as i32 => {
-                let Some(adj_chunk) = adjacent.west else {
-                    return true;
-                };
-                if adj_chunk
-                    .get_block(CHUNK_WIDTH - 1, y as usize, neighbor_z as usize)
-                    .is_none()
-                {
-                    return true;
-                }
-                false
-            }
-            (x, y) if y >= CHUNK_WIDTH as i32 && x >= 0 && x < CHUNK_WIDTH as i32 => {
-                adjacent.north.is_none_or(|adj_chunk| {
-                    adj_chunk
-                        .get_block(x as usize, 0, neighbor_z as usize)
-                        .is_none()
-                })
-            }
-            (x, y) if y < 0 && x >= 0 && x < CHUNK_WIDTH as i32 => {
-                adjacent.south.is_none_or(|adj_chunk| {
-                    adj_chunk
-                        .get_block(x as usize, CHUNK_WIDTH - 1, neighbor_z as usize)
-                        .is_none()
-                })
-            }
-            _ => unreachable!(),
-        }
+        return true;
     }
 
     pub fn generate_mesh(&self, adjacent: &AdjacentChunks) -> (Vec<Vertex>, Vec<u16>) {
-        let (v, i, _) = self.root.generate_mesh(adjacent);
+        let (v, i, _) = self.root.generate_mesh(self, adjacent);
         println!("{} {}", v.len(), i.len());
         return (v, i);
     }
 }
 
 impl ChunkNode {
-    fn generate_mesh(&self, adjacent: &AdjacentChunks) -> (Vec<Vertex>, Vec<u16>, u16) {
+    fn generate_mesh(
+        &self,
+        chunk: &Chunk,
+        adjacent: &AdjacentChunks,
+    ) -> (Vec<Vertex>, Vec<u16>, u16) {
         match self {
             ChunkNode::Leaf(None, _) => (vec![], vec![], 0),
             ChunkNode::Leaf(Some(block_type), chunk_node_pos) => {
@@ -378,21 +273,22 @@ impl ChunkNode {
                 // );
 
                 for face in FACES {
-                    // if chunk.is_face_visible() {
-                    let (face_verts, face_indices) =
-                        create_face(face, *block_type, &chunk_node_pos);
+                    if chunk.is_face_visible(chunk_node_pos, face, adjacent) {
+                        let (face_verts, face_indices) =
+                            create_face(face, *block_type, &chunk_node_pos);
 
-                    vertices.extend(face_verts);
-                    indices.extend(face_indices.iter().map(|i| *i + index_offset));
-                    index_offset += 4;
-                    // }
+                        vertices.extend(face_verts);
+                        indices.extend(face_indices.iter().map(|i| *i + index_offset));
+                        index_offset += 4;
+                    }
                 }
 
                 (vertices, indices, index_offset)
             }
             ChunkNode::Inner(a, b, _, _) => {
-                let (mut vertices_a, mut indices_a, index_offset_a) = a.generate_mesh(adjacent);
-                let (vertices_b, indices_b, index_offset_b) = b.generate_mesh(adjacent);
+                let (mut vertices_a, mut indices_a, index_offset_a) =
+                    a.generate_mesh(chunk, adjacent);
+                let (vertices_b, indices_b, index_offset_b) = b.generate_mesh(chunk, adjacent);
                 vertices_a.extend(vertices_b);
                 indices_a.extend(indices_b.iter().map(|i| i + index_offset_a));
                 (vertices_a, indices_a, index_offset_a + index_offset_b)
