@@ -23,6 +23,17 @@ struct ChunkNodePos {
     pub z1: usize,
 }
 impl ChunkNodePos {
+    fn new(x0: usize, x1: usize, y0: usize, y1: usize, z0: usize, z1: usize) -> Self {
+        Self {
+            x0,
+            x1,
+            y0,
+            y1,
+            z0,
+            z1,
+        }
+    }
+
     fn from_dimensions(x: usize, y: usize, z: usize) -> Self {
         Self {
             x0: 0,
@@ -337,40 +348,27 @@ impl Chunk {
         // if the slab is inside this chunk, query `self`. If it lies outside, query the
         // corresponding adjacent chunk (or treat as empty if missing).
 
-        let make_region =
-            |x0: usize, x1: usize, y0: usize, y1: usize, z0: usize, z1: usize| ChunkNodePos {
-                x0,
-                x1,
-                y0,
-                y1,
-                z0,
-                z1,
-            };
-
         match face {
             Face::Left => {
                 if chunk_node_pos.x0 > 0 {
-                    let region = make_region(
+                    self.root.any_empty_in_region(&ChunkNodePos::new(
                         chunk_node_pos.x0 - 1,
                         chunk_node_pos.x0,
                         chunk_node_pos.y0,
                         chunk_node_pos.y1,
                         chunk_node_pos.z0,
                         chunk_node_pos.z1,
-                    );
-                    self.root.any_empty_in_region(&region)
+                    ))
                 } else {
-                    // Need west neighbor; if none, it's air.
                     if let Some(west) = adjacent.west {
-                        let region = make_region(
+                        west.root.any_empty_in_region(&ChunkNodePos::new(
                             CHUNK_WIDTH - 1,
                             CHUNK_WIDTH,
                             chunk_node_pos.y0,
                             chunk_node_pos.y1,
                             chunk_node_pos.z0,
                             chunk_node_pos.z1,
-                        );
-                        west.root.any_empty_in_region(&region)
+                        ))
                     } else {
                         true
                     }
@@ -378,26 +376,24 @@ impl Chunk {
             }
             Face::Right => {
                 if chunk_node_pos.x1 < CHUNK_WIDTH {
-                    let region = make_region(
+                    self.root.any_empty_in_region(&ChunkNodePos::new(
                         chunk_node_pos.x1,
                         chunk_node_pos.x1 + 1,
                         chunk_node_pos.y0,
                         chunk_node_pos.y1,
                         chunk_node_pos.z0,
                         chunk_node_pos.z1,
-                    );
-                    self.root.any_empty_in_region(&region)
+                    ))
                 } else {
                     if let Some(east) = adjacent.east {
-                        let region = make_region(
+                        east.root.any_empty_in_region(&ChunkNodePos::new(
                             0,
                             1,
                             chunk_node_pos.y0,
                             chunk_node_pos.y1,
                             chunk_node_pos.z0,
                             chunk_node_pos.z1,
-                        );
-                        east.root.any_empty_in_region(&region)
+                        ))
                     } else {
                         true
                     }
@@ -405,26 +401,24 @@ impl Chunk {
             }
             Face::Back => {
                 if chunk_node_pos.y1 < CHUNK_WIDTH {
-                    let region = make_region(
+                    self.root.any_empty_in_region(&ChunkNodePos::new(
                         chunk_node_pos.x0,
                         chunk_node_pos.x1,
                         chunk_node_pos.y1,
                         chunk_node_pos.y1 + 1,
                         chunk_node_pos.z0,
                         chunk_node_pos.z1,
-                    );
-                    self.root.any_empty_in_region(&region)
+                    ))
                 } else {
                     if let Some(north) = adjacent.north {
-                        let region = make_region(
+                        north.root.any_empty_in_region(&ChunkNodePos::new(
                             chunk_node_pos.x0,
                             chunk_node_pos.x1,
                             0,
                             1,
                             chunk_node_pos.z0,
                             chunk_node_pos.z1,
-                        );
-                        north.root.any_empty_in_region(&region)
+                        ))
                     } else {
                         true
                     }
@@ -432,26 +426,24 @@ impl Chunk {
             }
             Face::Front => {
                 if chunk_node_pos.y0 > 0 {
-                    let region = make_region(
+                    self.root.any_empty_in_region(&ChunkNodePos::new(
                         chunk_node_pos.x0,
                         chunk_node_pos.x1,
                         chunk_node_pos.y0 - 1,
                         chunk_node_pos.y0,
                         chunk_node_pos.z0,
                         chunk_node_pos.z1,
-                    );
-                    self.root.any_empty_in_region(&region)
+                    ))
                 } else {
                     if let Some(south) = adjacent.south {
-                        let region = make_region(
+                        south.root.any_empty_in_region(&ChunkNodePos::new(
                             chunk_node_pos.x0,
                             chunk_node_pos.x1,
                             CHUNK_WIDTH - 1,
                             CHUNK_WIDTH,
                             chunk_node_pos.z0,
                             chunk_node_pos.z1,
-                        );
-                        south.root.any_empty_in_region(&region)
+                        ))
                     } else {
                         true
                     }
@@ -459,30 +451,28 @@ impl Chunk {
             }
             Face::Top => {
                 if chunk_node_pos.z1 < CHUNK_HEIGHT {
-                    let region = make_region(
+                    self.root.any_empty_in_region(&ChunkNodePos::new(
                         chunk_node_pos.x0,
                         chunk_node_pos.x1,
                         chunk_node_pos.y0,
                         chunk_node_pos.y1,
                         chunk_node_pos.z1,
                         chunk_node_pos.z1 + 1,
-                    );
-                    self.root.any_empty_in_region(&region)
+                    ))
                 } else {
                     true
                 }
             }
             Face::Bottom => {
                 if chunk_node_pos.z0 > 0 {
-                    let region = make_region(
+                    self.root.any_empty_in_region(&ChunkNodePos::new(
                         chunk_node_pos.x0,
                         chunk_node_pos.x1,
                         chunk_node_pos.y0,
                         chunk_node_pos.y1,
                         chunk_node_pos.z0 - 1,
                         chunk_node_pos.z0,
-                    );
-                    self.root.any_empty_in_region(&region)
+                    ))
                 } else {
                     false
                 }
