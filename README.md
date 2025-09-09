@@ -2,16 +2,18 @@
 
 ## todo
 
-- greedy meshing
+- block deletion
 - mipmap to avoid moire patterns
 - fix grass color (https://minecraft.fandom.com/wiki/Grass_Block, https://minecraft.fandom.com/wiki/Color#Biome_colors) (or simpler atlas)
-- more textures
+- fix water color + animation
+- greedy meshing
 - use cubemap instead of panorama for skybox 
 - better assets for everything
 - threading for chunk generation, so not laggy ?
 - ray tracing/casting/marching/whatever (https://www.youtube.com/watch?v=gXSHtBZFxEI, https://www.youtube.com/watch?v=P2bGF6GPmfc)
 - port to wasm
-- generative skybox textures
+- generative skyboxes
+- sun(s) (from `scratch` branch)
 - fix water to be transparent block
 - fix dead pixels
 - anisotropic filtering
