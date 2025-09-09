@@ -236,15 +236,6 @@ impl Chunk {
         )
     }
 
-    fn is_face_visible(
-        &self,
-        chunk_node_pos: &ChunkNodePos,
-        face: Face,
-        adjacent: &AdjacentChunks,
-    ) -> bool {
-        return true;
-    }
-
     pub fn generate_mesh(&self, adjacent: &AdjacentChunks) -> (Vec<Vertex>, Vec<u16>) {
         let (v, i, _) = self.root.generate_mesh(self, adjacent);
         println!("{} {}", v.len(), i.len());
@@ -337,4 +328,197 @@ fn create_face(
     let indices = [0, 1, 2, 2, 3, 0];
 
     (vertices, indices)
+}
+
+// Helper: axis-aligned region overlap
+#[inline]
+fn intersects(a: &ChunkNodePos, b: &ChunkNodePos) -> bool {
+    a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0 && a.z0 < b.z1 && a.z1 > b.z0
+}
+
+impl ChunkNode {
+    /// Returns true if the given region overlaps at least one empty (None) voxel.
+    fn any_empty_in_region(&self, region: &ChunkNodePos) -> bool {
+        match self {
+            ChunkNode::Leaf(val, pos) => {
+                if !intersects(pos, region) {
+                    false
+                } else {
+                    val.is_none()
+                }
+            }
+            ChunkNode::Inner(a, b, _, pos) => {
+                if !intersects(pos, region) {
+                    false
+                } else {
+                    a.any_empty_in_region(region) || b.any_empty_in_region(region)
+                }
+            }
+        }
+    }
+}
+
+impl Chunk {
+    fn is_face_visible(
+        &self,
+        chunk_node_pos: &ChunkNodePos,
+        face: Face,
+        adjacent: &AdjacentChunks,
+    ) -> bool {
+        // build the 1-voxel-thick neighbor "slab" touching `chunk_node_pos` on `face`.
+        // if the slab is inside this chunk, query `self`. If it lies outside, query the
+        // corresponding adjacent chunk (or treat as empty if missing).
+
+        let make_region =
+            |x0: usize, x1: usize, y0: usize, y1: usize, z0: usize, z1: usize| ChunkNodePos {
+                x0,
+                x1,
+                y0,
+                y1,
+                z0,
+                z1,
+            };
+
+        match face {
+            Face::Left => {
+                if chunk_node_pos.x0 > 0 {
+                    let region = make_region(
+                        chunk_node_pos.x0 - 1,
+                        chunk_node_pos.x0,
+                        chunk_node_pos.y0,
+                        chunk_node_pos.y1,
+                        chunk_node_pos.z0,
+                        chunk_node_pos.z1,
+                    );
+                    self.root.any_empty_in_region(&region)
+                } else {
+                    // Need west neighbor; if none, it's air.
+                    if let Some(west) = adjacent.west {
+                        let region = make_region(
+                            CHUNK_WIDTH - 1,
+                            CHUNK_WIDTH,
+                            chunk_node_pos.y0,
+                            chunk_node_pos.y1,
+                            chunk_node_pos.z0,
+                            chunk_node_pos.z1,
+                        );
+                        west.root.any_empty_in_region(&region)
+                    } else {
+                        true
+                    }
+                }
+            }
+            Face::Right => {
+                if chunk_node_pos.x1 < CHUNK_WIDTH {
+                    let region = make_region(
+                        chunk_node_pos.x1,
+                        chunk_node_pos.x1 + 1,
+                        chunk_node_pos.y0,
+                        chunk_node_pos.y1,
+                        chunk_node_pos.z0,
+                        chunk_node_pos.z1,
+                    );
+                    self.root.any_empty_in_region(&region)
+                } else {
+                    if let Some(east) = adjacent.east {
+                        let region = make_region(
+                            0,
+                            1,
+                            chunk_node_pos.y0,
+                            chunk_node_pos.y1,
+                            chunk_node_pos.z0,
+                            chunk_node_pos.z1,
+                        );
+                        east.root.any_empty_in_region(&region)
+                    } else {
+                        true
+                    }
+                }
+            }
+            Face::Back => {
+                if chunk_node_pos.y1 < CHUNK_WIDTH {
+                    let region = make_region(
+                        chunk_node_pos.x0,
+                        chunk_node_pos.x1,
+                        chunk_node_pos.y1,
+                        chunk_node_pos.y1 + 1,
+                        chunk_node_pos.z0,
+                        chunk_node_pos.z1,
+                    );
+                    self.root.any_empty_in_region(&region)
+                } else {
+                    if let Some(north) = adjacent.north {
+                        let region = make_region(
+                            chunk_node_pos.x0,
+                            chunk_node_pos.x1,
+                            0,
+                            1,
+                            chunk_node_pos.z0,
+                            chunk_node_pos.z1,
+                        );
+                        north.root.any_empty_in_region(&region)
+                    } else {
+                        true
+                    }
+                }
+            }
+            Face::Front => {
+                if chunk_node_pos.y0 > 0 {
+                    let region = make_region(
+                        chunk_node_pos.x0,
+                        chunk_node_pos.x1,
+                        chunk_node_pos.y0 - 1,
+                        chunk_node_pos.y0,
+                        chunk_node_pos.z0,
+                        chunk_node_pos.z1,
+                    );
+                    self.root.any_empty_in_region(&region)
+                } else {
+                    if let Some(south) = adjacent.south {
+                        let region = make_region(
+                            chunk_node_pos.x0,
+                            chunk_node_pos.x1,
+                            CHUNK_WIDTH - 1,
+                            CHUNK_WIDTH,
+                            chunk_node_pos.z0,
+                            chunk_node_pos.z1,
+                        );
+                        south.root.any_empty_in_region(&region)
+                    } else {
+                        true
+                    }
+                }
+            }
+            Face::Top => {
+                if chunk_node_pos.z1 < CHUNK_HEIGHT {
+                    let region = make_region(
+                        chunk_node_pos.x0,
+                        chunk_node_pos.x1,
+                        chunk_node_pos.y0,
+                        chunk_node_pos.y1,
+                        chunk_node_pos.z1,
+                        chunk_node_pos.z1 + 1,
+                    );
+                    self.root.any_empty_in_region(&region)
+                } else {
+                    true
+                }
+            }
+            Face::Bottom => {
+                if chunk_node_pos.z0 > 0 {
+                    let region = make_region(
+                        chunk_node_pos.x0,
+                        chunk_node_pos.x1,
+                        chunk_node_pos.y0,
+                        chunk_node_pos.y1,
+                        chunk_node_pos.z0 - 1,
+                        chunk_node_pos.z0,
+                    );
+                    self.root.any_empty_in_region(&region)
+                } else {
+                    true
+                }
+            }
+        }
+    }
 }
