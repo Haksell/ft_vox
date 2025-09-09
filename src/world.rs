@@ -7,6 +7,7 @@ use {
         utils::lerp,
         vertex::Vertex,
     },
+    rayon::prelude::*,
     std::collections::HashMap,
 };
 
@@ -737,16 +738,40 @@ impl World {
     //     println!("Rendering complete!");
     // }
 
+    fn generate_chunk_blocks(
+        &self,
+        (chunk_x, chunk_y): ChunkCoords,
+    ) -> [[[Option<BlockType>; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH] {
+        let mut blocks = [[[None; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH];
+
+        // Coerce the 3D array to a mutable slice so Rayon can par_iter_mut over it.
+        (&mut blocks[..])
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(x, plane)| {
+                let world_x = (chunk_x * CHUNK_WIDTH as i32) + x as i32;
+
+                // Fill each column at (x, y) sequentially inside the worker.
+                for (y, column) in plane.iter_mut().enumerate() {
+                    let world_y = (chunk_y * CHUNK_WIDTH as i32) + y as i32;
+                    *column = self.generate_column(world_x, world_y);
+                }
+            });
+
+        blocks
+    }
+
+    // Also fix the z-loop bound to avoid indexing at CHUNK_HEIGHT.
     fn generate_column(&self, world_x: i32, world_y: i32) -> [Option<BlockType>; CHUNK_HEIGHT] {
         let height = self.generate_height_at(world_x as f32, world_y as f32) as usize;
         let biome = self.determine_biome(world_x as f32, world_y as f32);
         let mut column = [None; CHUNK_HEIGHT];
-        for z in 0..=CHUNK_HEIGHT {
+
+        for z in 0..CHUNK_HEIGHT {
             if z <= height {
                 if self.has_cave_at(world_x, world_y, z as i32, height as i32) {
                     continue;
                 }
-
                 let depth_from_surface = height.saturating_sub(z);
                 column[z] = Some(match depth_from_surface {
                     0..=5 => biome.get_surface_block(),
@@ -757,23 +782,6 @@ impl World {
             }
         }
         column
-    }
-
-    fn generate_chunk_blocks(
-        &self,
-        (chunk_x, chunk_y): ChunkCoords,
-    ) -> [[[Option<BlockType>; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH] {
-        let mut blocks = [[[None; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH];
-
-        for x in 0..CHUNK_WIDTH {
-            let world_x = (chunk_x * CHUNK_WIDTH as i32) + x as i32;
-            for y in 0..CHUNK_WIDTH {
-                let world_y = (chunk_y * CHUNK_WIDTH as i32) + y as i32;
-                blocks[x][y] = self.generate_column(world_x, world_y);
-            }
-        }
-
-        blocks
     }
 
     pub fn generate_chunk_mesh(

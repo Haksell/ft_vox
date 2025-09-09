@@ -764,6 +764,7 @@ dependencies = [
  "image",
  "log",
  "pollster",
+ "rayon",
  "wgpu",
  "wgpu_text",
  "winit",
