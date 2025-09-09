@@ -2,7 +2,6 @@
 
 ## todo
 
-- refactor code with (i32, i32) everywhere instead of sometimes as 2 arguments (`type ChunkCoord = (i32, i32)`)
 - greedy meshing
 - mipmap to avoid moire patterns
 - fix grass color (https://minecraft.fandom.com/wiki/Grass_Block, https://minecraft.fandom.com/wiki/Color#Biome_colors) (or simpler atlas)
@@ -14,11 +13,12 @@
 - port to wasm
 - generative skybox textures
 - fix water to be transparent block
+- fix dead pixels
 
 ## mandatory
 
 - [x] Your program will have to run in full screen mode. Reduce the default frame buffer is prohibited.
-- [ ] You must be able to create a very large procedural world. For this project, user should be able to visit at least 16384\*256\*16384 cubes (256 is the height).
+- [x] You must be able to create a very large procedural world. For this project, user should be able to visit at least 16384\*256\*16384 cubes (256 is the height).
 - [x] Some cubes may be empty, others can have different types, like grass, ground, sand, etc...
 - [x] Except for the empty cubes, they will all be opaque but will have their own textures.
 - [ ] There should be hills.
@@ -28,7 +28,7 @@
 - [x] This generation has to be determinist, which means the same seed will spawn the exact same map.
 - [x] Each visited piece of terrain must be saved in the memory up to some limit you will set yourself and after which you can start deleting cubes from the memory.
 - [x] In the open, minimal distance render will be 10 chunks
-- [ ] Each cube must be textured, and you must have at least 2 different textures and 2 different types of cubes.
+- [x] Each cube must be textured, and you must have at least 2 different textures and 2 different types of cubes.
 - [x] FoV must be 80 degrees.
 - [x] You will set up a skybox.
 - [x] The mouse must be able to control the camera on 2 axis at least.
@@ -40,7 +40,7 @@
 ## bonus
 
 - [x] Have a render distance always higher than 14 chunks and always have a smooth display.
-- [ ] A fps counter is displayed.
+- [ ] A FPS counter is displayed.
 - [ ] Render is smooth and doesn't freeze, at x20 speed.
 - [ ] Being able to delete blocks with the mouse.
 - [ ] Having a lot of different biomes.
@@ -49,7 +49,9 @@
 
 - [x] You're free to use your language, but keep an eye on its performances (Rust)
 - [x] You must work directly with the APIs (WebGPU)
-- [ ] You can use a library to load 3D objects and pictures, a windowing library and a mathematics library for your matrix/quaternions/vectors calculations
+- [x] You can use a library to load 3D objects and pictures (image)
+- [x] You can use a windowing library (winit)
+- [x] You can use a mathematics library for your calculations (glam)
 - [ ] The render should always be SMOOTH
 - [ ] Any crash (Uncaught exception, segfault, abort ...) will disqualify you
 - [ ] Your program must be able to run for hours without eating the whole memory or slowing down. Manage your RAM as well as VRAM very carefully.

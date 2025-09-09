@@ -2,7 +2,7 @@ use {
     crate::{
         aabb::AABB,
         camera::{Camera, CameraController, CameraUniform},
-        chunk::{CHUNK_HEIGHT, CHUNK_WIDTH},
+        chunk::{ChunkCoords, CHUNK_HEIGHT, CHUNK_WIDTH},
         texture::Texture,
         vertex::Vertex,
         world::{calculate_lod, World, RENDER_DISTANCE},
@@ -27,7 +27,7 @@ pub struct State<'a> {
     config: wgpu::SurfaceConfiguration,
     pub size: PhysicalSize<u32>,
 
-    chunk_render_data: HashMap<(i32, i32), ChunkRenderData>,
+    chunk_render_data: HashMap<ChunkCoords, ChunkRenderData>,
 
     pub camera: Camera,
     pub camera_controller: CameraController,
@@ -353,14 +353,14 @@ impl<'a> State<'a> {
     pub fn update_chunks(&mut self, world: &mut World) {
         let camera_pos = self.camera.position();
         let render_distance = RENDER_DISTANCE as i32;
-        let current_chunk = world.get_chunk_index_from_position(camera_pos.x, camera_pos.y);
+        let camera_chunk = world.get_chunk_index_from_position(camera_pos.x, camera_pos.y);
 
         let mut chunks_in_range = HashMap::new();
 
         for dx in -render_distance..=render_distance {
             for dy in -render_distance..=render_distance {
-                let chunk_coords = (current_chunk.0 + dx, current_chunk.1 + dy);
-                let lod_step = calculate_lod(current_chunk, chunk_coords);
+                let chunk_coords = (camera_chunk.0 + dx, camera_chunk.1 + dy);
+                let lod_step = calculate_lod(camera_chunk, chunk_coords);
                 chunks_in_range.insert(chunk_coords, lod_step);
                 world.get_chunk(chunk_coords);
             }
@@ -375,8 +375,7 @@ impl<'a> State<'a> {
                 .get(&chunk_coords)
                 .is_none_or(|crd| crd.lod_step != lod_step)
             {
-                let (chunk_x, chunk_y) = chunk_coords;
-                self.generate_chunk_mesh(world, current_chunk, lod_step, chunk_x, chunk_y);
+                self.generate_chunk_mesh(world, camera_chunk, lod_step, chunk_coords);
             }
         }
     }
@@ -384,13 +383,13 @@ impl<'a> State<'a> {
     fn generate_chunk_mesh(
         &mut self,
         world: &mut World,
-        current_chunk: (i32, i32),
+        camera_chunk: ChunkCoords,
         lod_step: usize,
-        chunk_x: i32,
-        chunk_y: i32,
+        chunk_coords: ChunkCoords,
     ) {
+        let (chunk_x, chunk_y) = chunk_coords;
         let (mut vertices, indices) =
-            world.generate_chunk_mesh(current_chunk, lod_step, (chunk_x, chunk_y));
+            world.generate_chunk_mesh(camera_chunk, lod_step, chunk_coords);
         if vertices.is_empty() || indices.is_empty() {
             return;
         }
@@ -419,7 +418,7 @@ impl<'a> State<'a> {
                 usage: wgpu::BufferUsages::INDEX,
             });
 
-        let chunk = world.get_chunk_if_loaded((chunk_x, chunk_y)).unwrap();
+        let chunk = world.get_chunk_if_loaded(chunk_coords).unwrap();
         let aabb = chunk.bounding_box();
 
         let render_data = ChunkRenderData {

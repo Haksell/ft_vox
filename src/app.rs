@@ -1,5 +1,5 @@
 use {
-    crate::{state::State, world::World},
+    crate::{chunk::ChunkCoords, state::State, world::World},
     std::{
         sync::Arc,
         time::{Duration, Instant},
@@ -19,7 +19,7 @@ pub struct Application<'a> {
     state: Option<State<'a>>,
     window: Option<Arc<Window>>,
     world: World,
-    last_chunk: Option<(i32, i32)>,
+    last_chunk: Option<ChunkCoords>,
     last_render: Instant,
     last_fps_log: Instant,
     frames_since_log: u32,
@@ -121,12 +121,12 @@ impl<'a> ApplicationHandler for Application<'a> {
                 self.last_render = now;
 
                 let camera_pos = state.camera.position();
-                let current_chunk = self
+                let camera_chunk = self
                     .world
                     .get_chunk_index_from_position(camera_pos.x, camera_pos.y);
 
-                if self.last_chunk != Some(current_chunk) {
-                    self.last_chunk = Some(current_chunk);
+                if self.last_chunk != Some(camera_chunk) {
+                    self.last_chunk = Some(camera_chunk);
                     state.update_chunks(&mut self.world);
                 }
 
@@ -139,7 +139,7 @@ impl<'a> ApplicationHandler for Application<'a> {
                         if elapsed >= Duration::from_secs(1) {
                             let secs = elapsed.as_secs_f64();
                             let fps = self.frames_since_log as f64 / secs;
-                            log::info!("FPS: {:.1} | CHUNK: {:?}", fps, current_chunk);
+                            log::info!("FPS: {:.1} | CHUNK: {:?}", fps, camera_chunk);
                             self.frames_since_log = 0;
                             self.last_fps_log = Instant::now();
                         }

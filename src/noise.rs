@@ -1,7 +1,5 @@
 use crate::utils::{fade, lerp};
 
-#[allow(unused)] // TODO: remove
-
 // TODO: remove PerlinNoiseBuilder in favor of PerlinNoise::new
 pub struct PerlinNoiseBuilder {
     seed: u64,

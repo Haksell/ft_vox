@@ -8,8 +8,10 @@ use crate::{
 pub const CHUNK_WIDTH: usize = 16;
 pub const CHUNK_HEIGHT: usize = 256;
 
+pub type ChunkCoords = (i32, i32);
+
 pub struct Chunk {
-    index: (i32, i32),
+    index: ChunkCoords,
     blocks: [[[Option<BlockType>; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH],
 }
 
@@ -22,13 +24,13 @@ pub struct AdjacentChunks<'a> {
 
 impl Chunk {
     pub fn new(
-        index: (i32, i32),
+        index: ChunkCoords,
         blocks: [[[Option<BlockType>; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH],
     ) -> Self {
         Self { index, blocks }
     }
 
-    pub fn get_index(&self) -> (i32, i32) {
+    pub fn get_index(&self) -> ChunkCoords {
         self.index
     }
 

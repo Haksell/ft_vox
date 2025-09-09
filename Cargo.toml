@@ -3,7 +3,6 @@ name = "ft_vox"
 version = "0.1.0"
 edition = "2021"
 
-# TODO: remove as much as possible
 [dependencies]
 bytemuck = { version = "1.23", features = ["derive"] }
 env_logger = "0.11"

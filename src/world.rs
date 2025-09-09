@@ -2,7 +2,7 @@ use {
     crate::{
         biome::BiomeType,
         block::BlockType,
-        chunk::{AdjacentChunks, Chunk, CHUNK_HEIGHT, CHUNK_WIDTH},
+        chunk::{AdjacentChunks, Chunk, ChunkCoords, CHUNK_HEIGHT, CHUNK_WIDTH},
         noise::{PerlinNoise, PerlinNoiseBuilder},
         utils::lerp,
         vertex::Vertex,
@@ -13,11 +13,15 @@ use {
 pub const LOD_FULL: usize = 5;
 pub const LOD_HALF: usize = 10;
 pub const RENDER_DISTANCE: usize = 15;
+
 pub const SURFACE: usize = 64;
 pub const SEA: usize = 62;
 
 // TODO: use euclidean distance instead
-pub fn calculate_lod((current_x, current_y): (i32, i32), (chunk_x, chunk_y): (i32, i32)) -> usize {
+pub fn calculate_lod(
+    (current_x, current_y): ChunkCoords,
+    (chunk_x, chunk_y): ChunkCoords,
+) -> usize {
     let dx = (current_x - chunk_x).abs() as usize;
     let dy = (current_y - chunk_y).abs() as usize;
 
@@ -38,7 +42,7 @@ pub struct World {
     weirdness_noise: PerlinNoise,
     cave_noise: PerlinNoise,
 
-    chunks: HashMap<(i32, i32), Chunk>,
+    chunks: HashMap<ChunkCoords, Chunk>,
 }
 
 impl World {
@@ -91,26 +95,25 @@ impl World {
         }
     }
 
-    pub fn get_chunk_index_from_position(&self, world_x: f32, world_y: f32) -> (i32, i32) {
+    pub fn get_chunk_index_from_position(&self, world_x: f32, world_y: f32) -> ChunkCoords {
         let chunk_x = (world_x / CHUNK_WIDTH as f32).floor() as i32;
         let chunk_y = (world_y / CHUNK_WIDTH as f32).floor() as i32;
 
         (chunk_x, chunk_y)
     }
 
-    pub fn get_chunk_if_loaded(&self, (chunk_x, chunk_y): (i32, i32)) -> Option<&Chunk> {
-        self.chunks.get(&(chunk_x, chunk_y))
+    pub fn get_chunk_if_loaded(&self, chunk_coords: ChunkCoords) -> Option<&Chunk> {
+        self.chunks.get(&chunk_coords)
     }
 
-    pub fn get_chunk(&mut self, (chunk_x, chunk_y): (i32, i32)) -> &Chunk {
-        if !self.chunks.contains_key(&(chunk_x, chunk_y)) {
-            let index = (chunk_x, chunk_y);
-            let blocks = self.generate_chunk_blocks(index);
-            let chunk = Chunk::new(index, blocks);
-            self.chunks.insert(index, chunk);
+    pub fn get_chunk(&mut self, chunk_coords: ChunkCoords) -> &Chunk {
+        if !self.chunks.contains_key(&chunk_coords) {
+            let blocks = self.generate_chunk_blocks(chunk_coords);
+            let chunk = Chunk::new(chunk_coords, blocks);
+            self.chunks.insert(chunk_coords, chunk);
         }
 
-        &self.chunks[&(chunk_x, chunk_y)]
+        &self.chunks[&chunk_coords]
     }
 
     fn generate_height_at(&self, world_x: f32, world_y: f32) -> f32 {
@@ -633,7 +636,9 @@ impl World {
     fn has_cave_at(&self, world_x: i32, world_y: i32, world_z: i32) -> bool {
         // TODO: Improve this
 
-        let noise = self.cave_noise.noise3d(world_x as f32, world_y as f32, world_z as f32);
+        let noise = self
+            .cave_noise
+            .noise3d(world_x as f32, world_y as f32, world_z as f32);
 
         let spaghetti = noise.abs() < 0.08;
         let cheese = noise > 0.4;
@@ -643,7 +648,7 @@ impl World {
 
     fn generate_chunk_blocks(
         &self,
-        (chunk_x, chunk_y): (i32, i32),
+        (chunk_x, chunk_y): ChunkCoords,
     ) -> [[[Option<BlockType>; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH] {
         let mut blocks = [[[None; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH];
 
@@ -680,9 +685,9 @@ impl World {
 
     pub fn generate_chunk_mesh(
         &mut self,
-        current_chunk: (i32, i32),
+        camera_chunk: ChunkCoords,
         lod_step: usize,
-        (chunk_x, chunk_y): (i32, i32),
+        (chunk_x, chunk_y): ChunkCoords,
     ) -> (Vec<Vertex>, Vec<u16>) {
         // Load the target chunk and its 4 cardinal neighbors
         self.get_chunk((chunk_x, chunk_y));
@@ -696,16 +701,16 @@ impl World {
         let adjacent = AdjacentChunks {
             north: self
                 .get_chunk_if_loaded((chunk_x, chunk_y + 1))
-                .map(|c| (c, calculate_lod(current_chunk, (chunk_x, chunk_y + 1)))),
+                .map(|c| (c, calculate_lod(camera_chunk, (chunk_x, chunk_y + 1)))),
             south: self
                 .get_chunk_if_loaded((chunk_x, chunk_y - 1))
-                .map(|c| (c, calculate_lod(current_chunk, (chunk_x, chunk_y - 1)))),
+                .map(|c| (c, calculate_lod(camera_chunk, (chunk_x, chunk_y - 1)))),
             east: self
                 .get_chunk_if_loaded((chunk_x + 1, chunk_y))
-                .map(|c| (c, calculate_lod(current_chunk, (chunk_x + 1, chunk_y)))),
+                .map(|c| (c, calculate_lod(camera_chunk, (chunk_x + 1, chunk_y)))),
             west: self
                 .get_chunk_if_loaded((chunk_x - 1, chunk_y))
-                .map(|c| (c, calculate_lod(current_chunk, (chunk_x - 1, chunk_y)))),
+                .map(|c| (c, calculate_lod(camera_chunk, (chunk_x - 1, chunk_y)))),
         };
 
         chunk.generate_mesh(lod_step, &adjacent)
