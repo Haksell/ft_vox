@@ -394,3 +394,48 @@ impl Chunk {
         (vertices, indices)
     }
 }
+
+impl ChunkNode {
+    fn generate_mesh(&self, lod_step: usize, adjacent: &AdjacentChunks) -> (Vec<Vertex>, Vec<u16>) {
+        match self {
+            ChunkNode::Leaf(block_type, (sx, sy, sz)) => todo!(),
+            ChunkNode::Inner(chunk_node, chunk_node1, split_dir, (sx, sy, sz)) => todo!(),
+        }
+
+        // let mut vertices = Vec::new();
+        // let mut indices = Vec::new();
+        // let mut index_offset = 0;
+
+        // for local_x in (0..CHUNK_WIDTH).step_by(lod_step) {
+        //     for local_y in (0..CHUNK_WIDTH).step_by(lod_step) {
+        //         for local_z in 0..CHUNK_HEIGHT {
+        //             let Some(block) = self.get_block(local_x, local_y, local_z) else {
+        //                 continue;
+        //             };
+
+        //             let position = Vec3::new(local_x as f32, local_y as f32, local_z as f32);
+
+        //             for face in FACES {
+        //                 let (dx, dy, dz) = face.normal();
+        //                 let neighbor_x = local_x as i32 + dx * lod_step as i32;
+        //                 let neighbor_y = local_y as i32 + dy * lod_step as i32;
+        //                 let neighbor_z = local_z as i32 + dz as i32;
+
+        //                 if self
+        //                     .is_face_visible(neighbor_x, neighbor_y, neighbor_z, adjacent, lod_step)
+        //                 {
+        //                     let (face_verts, face_indices) =
+        //                         Self::create_face(block, position, face, lod_step);
+
+        //                     vertices.extend(face_verts);
+        //                     indices.extend(face_indices.iter().map(|i| *i + index_offset));
+        //                     index_offset += 4;
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
+
+        // (vertices, indices)
+    }
+}
