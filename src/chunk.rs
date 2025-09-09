@@ -15,7 +15,7 @@ pub type ChunkCoords = (i32, i32);
 pub type ChunkNodeSize = (usize, usize, usize);
 
 pub struct Chunk {
-    index: ChunkCoords,
+    coords: ChunkCoords,
     root: ChunkNode,
 }
 
@@ -133,6 +133,13 @@ impl ChunkNode {
             },
         }
     }
+
+    fn count_leaves(&self) -> u32 {
+        match self {
+            ChunkNode::Leaf(..) => 1,
+            ChunkNode::Inner(a, b, ..) => a.count_leaves() + b.count_leaves(),
+        }
+    }
 }
 
 fn uniform(
@@ -167,13 +174,19 @@ pub struct AdjacentChunks<'a> {
 type Blocks = [[[Option<BlockType>; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH];
 
 impl Chunk {
-    pub fn new(index: ChunkCoords, blocks: Blocks) -> Self {
+    pub fn new(coords: ChunkCoords, blocks: Blocks) -> Self {
         let root = ChunkNode::from_region(&blocks, 0, CHUNK_WIDTH, 0, CHUNK_WIDTH, 0, CHUNK_HEIGHT);
-        Self { index, root }
+        log::info!(
+            "Chunk {:?} : {}/{} leaves",
+            coords,
+            root.count_leaves(),
+            CHUNK_WIDTH * CHUNK_WIDTH * CHUNK_HEIGHT
+        );
+        Self { coords, root }
     }
 
     pub fn bounding_box(&self) -> AABB {
-        let (x, y) = self.index;
+        let (x, y) = self.coords;
         let world_x = x as f32 * CHUNK_WIDTH as f32;
         let world_y = y as f32 * CHUNK_WIDTH as f32;
 
