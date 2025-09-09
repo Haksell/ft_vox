@@ -46,7 +46,7 @@ pub struct State<'a> {
     skybox_pipeline: wgpu::RenderPipeline,
     skybox_bind_group: wgpu::BindGroup,
 
-    pub fps: u32,
+    pub fps: f32,
     pub text_brush: TextBrush<FontRef<'a>>,
 }
 
@@ -329,6 +329,8 @@ impl<'a> State<'a> {
                 .with_depth_stencil(None)
                 .build(&device, config.width, config.height, config.format);
 
+        let fps = 60.0; // dummy value before first calculation
+
         Self {
             surface,
             device,
@@ -345,7 +347,7 @@ impl<'a> State<'a> {
             camera_controller,
             skybox_pipeline,
             skybox_bind_group,
-            fps: 0,
+            fps,
             text_brush,
         }
     }
@@ -543,7 +545,7 @@ impl<'a> State<'a> {
             encoder: &mut wgpu::CommandEncoder,
             texture_view: &wgpu::TextureView,
         ) {
-            let fps_text = format!("FPS:{}", state.fps);
+            let fps_text = format!("FPS:{:.0}", state.fps);
 
             let section = Section::default()
                 .with_layout(
@@ -555,7 +557,7 @@ impl<'a> State<'a> {
                 .add_text(
                     Text::new(&fps_text)
                         .with_scale(24.0)
-                        .with_color([0.7, 0.12, 0.12, 1.0]),
+                        .with_color([1.0, 0.15, 0.15, 1.0]),
                 );
 
             if let Err(brush_error) = state
