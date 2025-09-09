@@ -55,32 +55,16 @@ pub struct Chunk {
     root: ChunkNode,
 }
 
-#[derive(Debug, Clone, Copy)]
-enum SplitDir {
-    LeftRight,
-    FrontBack,
-    TopBottom,
-}
-
 enum ChunkNode {
     Leaf(Option<BlockType>, ChunkNodePos),
-    Inner(Box<ChunkNode>, Box<ChunkNode>, SplitDir, ChunkNodePos),
+    Inner(Box<ChunkNode>, Box<ChunkNode>, ChunkNodePos),
 }
 
 impl ChunkNode {
     fn from_region(blocks: &Blocks, chunk_node_pos: ChunkNodePos) -> Self {
-        let ChunkNodePos {
-            x0,
-            x1,
-            y0,
-            y1,
-            z0,
-            z1,
-        } = chunk_node_pos;
-
-        let sx = x1 - x0;
-        let sy = y1 - y0;
-        let sz = z1 - z0;
+        let sx = chunk_node_pos.size_x();
+        let sy = chunk_node_pos.size_y();
+        let sz = chunk_node_pos.size_z();
         debug_assert!(sx > 0 && sy > 0 && sz > 0);
 
         if let Some(u) = uniform(blocks, &chunk_node_pos) {
@@ -89,7 +73,7 @@ impl ChunkNode {
 
         // choose the longest axis to split, with a preference for z
         if sz >= sx && sz >= sy && sz > 1 {
-            let mid = z0 + sz / 2;
+            let mid = chunk_node_pos.z0 + sz / 2;
             let a = Box::new(ChunkNode::from_region(
                 blocks,
                 ChunkNodePos {
@@ -104,26 +88,9 @@ impl ChunkNode {
                     ..chunk_node_pos
                 },
             ));
-            return ChunkNode::merge_if_same(a, b, SplitDir::TopBottom, chunk_node_pos);
-        } else if sx >= sy && sx > 1 {
-            let mid = x0 + sx / 2;
-            let a = Box::new(ChunkNode::from_region(
-                blocks,
-                ChunkNodePos {
-                    x1: mid,
-                    ..chunk_node_pos
-                },
-            ));
-            let b = Box::new(ChunkNode::from_region(
-                blocks,
-                ChunkNodePos {
-                    x0: mid,
-                    ..chunk_node_pos
-                },
-            ));
-            return ChunkNode::merge_if_same(a, b, SplitDir::LeftRight, chunk_node_pos);
-        } else if sy > 1 {
-            let mid = y0 + sy / 2;
+            return merge_if_same(a, b, chunk_node_pos);
+        } else if sy >= sx {
+            let mid = chunk_node_pos.y0 + sy / 2;
             let a = Box::new(ChunkNode::from_region(
                 blocks,
                 ChunkNodePos {
@@ -138,29 +105,24 @@ impl ChunkNode {
                     ..chunk_node_pos
                 },
             ));
-            return ChunkNode::merge_if_same(a, b, SplitDir::FrontBack, chunk_node_pos);
-        }
-
-        // TODO?: unreachable!()
-
-        // Fallback: region isn't uniform but we cannot split further (a 1×1×1 non-uniform is impossible,
-        // so this covers degenerate ranges). Treat as a single mixed voxel (pick one) — or panic.
-        // Safer is to make a leaf from the actual single cell value.
-        let v = blocks[x0][y0][z0];
-        ChunkNode::Leaf(v, chunk_node_pos)
-    }
-
-    fn merge_if_same(
-        a: Box<ChunkNode>,
-        b: Box<ChunkNode>,
-        dir: SplitDir,
-        chunk_node_pos: ChunkNodePos,
-    ) -> Self {
-        match (&*a, &*b) {
-            (ChunkNode::Leaf(va, _), ChunkNode::Leaf(vb, _)) if va == vb => {
-                ChunkNode::Leaf(*va, chunk_node_pos)
-            }
-            _ => ChunkNode::Inner(a, b, dir, chunk_node_pos),
+            return merge_if_same(a, b, chunk_node_pos);
+        } else {
+            let mid = chunk_node_pos.x0 + sx / 2;
+            let a = Box::new(ChunkNode::from_region(
+                blocks,
+                ChunkNodePos {
+                    x1: mid,
+                    ..chunk_node_pos
+                },
+            ));
+            let b = Box::new(ChunkNode::from_region(
+                blocks,
+                ChunkNodePos {
+                    x0: mid,
+                    ..chunk_node_pos
+                },
+            ));
+            return merge_if_same(a, b, chunk_node_pos);
         }
     }
 
@@ -170,6 +132,15 @@ impl ChunkNode {
             ChunkNode::Leaf(..) => 1,
             ChunkNode::Inner(a, b, ..) => a.count_leaves() + b.count_leaves(),
         }
+    }
+}
+
+fn merge_if_same(a: Box<ChunkNode>, b: Box<ChunkNode>, chunk_node_pos: ChunkNodePos) -> ChunkNode {
+    match (&*a, &*b) {
+        (ChunkNode::Leaf(va, _), ChunkNode::Leaf(vb, _)) if va == vb => {
+            ChunkNode::Leaf(*va, chunk_node_pos)
+        }
+        _ => ChunkNode::Inner(a, b, chunk_node_pos),
     }
 }
 
@@ -237,9 +208,8 @@ impl Chunk {
     }
 
     pub fn generate_mesh(&self, adjacent: &AdjacentChunks) -> (Vec<Vertex>, Vec<u16>) {
-        let (v, i, _) = self.root.generate_mesh(self, adjacent);
-        println!("{} {}", v.len(), i.len());
-        return (v, i);
+        let (vertices, indices, _) = self.root.generate_mesh(self, adjacent);
+        return (vertices, indices);
     }
 }
 
@@ -276,7 +246,7 @@ impl ChunkNode {
 
                 (vertices, indices, index_offset)
             }
-            ChunkNode::Inner(a, b, _, _) => {
+            ChunkNode::Inner(a, b, _) => {
                 let (mut vertices_a, mut indices_a, index_offset_a) =
                     a.generate_mesh(chunk, adjacent);
                 let (vertices_b, indices_b, index_offset_b) = b.generate_mesh(chunk, adjacent);
@@ -330,14 +300,12 @@ fn create_face(
     (vertices, indices)
 }
 
-// Helper: axis-aligned region overlap
 #[inline]
 fn intersects(a: &ChunkNodePos, b: &ChunkNodePos) -> bool {
     a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0 && a.z0 < b.z1 && a.z1 > b.z0
 }
 
 impl ChunkNode {
-    /// Returns true if the given region overlaps at least one empty (None) voxel.
     fn any_empty_in_region(&self, region: &ChunkNodePos) -> bool {
         match self {
             ChunkNode::Leaf(val, pos) => {
@@ -347,7 +315,7 @@ impl ChunkNode {
                     val.is_none()
                 }
             }
-            ChunkNode::Inner(a, b, _, pos) => {
+            ChunkNode::Inner(a, b, pos) => {
                 if !intersects(pos, region) {
                     false
                 } else {
