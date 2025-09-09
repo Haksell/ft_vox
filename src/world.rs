@@ -616,14 +616,14 @@ impl World {
 
     fn has_cave_at(&self, world_x: i32, world_y: i32, world_z: i32, surface_height: i32) -> bool {
         // TODO: spaghetti caves
-        
+
         let noise = self
             .cave_noise
             .noise3d(world_x as f32, world_y as f32, world_z as f32);
-        
+
         let normalized_z = ((world_z - 8) as f32 / (surface_height) as f32).clamp(0.0, 1.0);
         let probability = 4.0 * normalized_z * (1.0 - normalized_z);
-        
+
         let spaghetti = noise.abs() < 0.02 * probability;
         let cheese = noise * probability > 0.2;
 
@@ -643,7 +643,7 @@ impl World {
                 let world_y = (chunk_y * CHUNK_WIDTH as i32) + y as i32;
                 let height = self.generate_height_at(world_x as f32, world_y as f32) as usize;
                 let biome = self.determine_biome(world_x as f32, world_y as f32);
-                
+
                 for z in 0..=CHUNK_HEIGHT {
                     if z <= height {
                         if self.has_cave_at(world_x, world_y, z as i32, height as i32) {
