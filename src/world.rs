@@ -4,10 +4,10 @@ use {
         block::BlockType,
         chunk::{AdjacentChunks, Chunk, ChunkCoords, CHUNK_HEIGHT, CHUNK_WIDTH},
         noise::{PerlinNoise, PerlinNoiseBuilder},
-        utils::lerp,
+        utils::{ceil_div, lerp},
         vertex::Vertex,
     },
-    std::collections::HashMap,
+    std::{collections::HashMap, thread},
 };
 
 pub const RENDER_DISTANCE: usize = 15;
@@ -87,14 +87,12 @@ impl World {
         self.chunks.get(&chunk_coords)
     }
 
-    pub fn get_chunk(&mut self, chunk_coords: ChunkCoords) -> &Chunk {
+    pub fn load_chunk(&mut self, chunk_coords: ChunkCoords) {
         if !self.chunks.contains_key(&chunk_coords) {
             let blocks = self.generate_chunk_blocks(chunk_coords);
             let chunk = Chunk::new(chunk_coords, blocks);
             self.chunks.insert(chunk_coords, chunk);
         }
-
-        &self.chunks[&chunk_coords]
     }
 
     fn generate_height_at(&self, world_x: f32, world_y: f32) -> f32 {
@@ -636,34 +634,63 @@ impl World {
     ) -> [[[Option<BlockType>; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH] {
         let mut blocks = [[[None; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH];
 
-        for x in 0..CHUNK_WIDTH {
-            let world_x = (chunk_x * CHUNK_WIDTH as i32) + x as i32;
+        let workers = thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1)
+            .min(CHUNK_WIDTH);
 
-            for y in 0..CHUNK_WIDTH {
-                let world_y = (chunk_y * CHUNK_WIDTH as i32) + y as i32;
-                let height = self.generate_height_at(world_x as f32, world_y as f32) as usize;
-                let biome = self.determine_biome(world_x as f32, world_y as f32);
+        let chunk_size = ceil_div(CHUNK_WIDTH, workers);
+        thread::scope(|s| {
+            let mut remainder: &mut [[[Option<BlockType>; CHUNK_HEIGHT]; CHUNK_WIDTH]] =
+                &mut blocks;
+            let mut start_x = 0;
 
-                for z in 0..=CHUNK_HEIGHT {
-                    if z <= height {
-                        if self.has_cave_at(world_x, world_y, z as i32, height as i32) {
-                            continue;
+            for _ in 0..workers {
+                let len = (CHUNK_WIDTH - start_x).min(chunk_size);
+
+                let (head, tail) = remainder.split_at_mut(len);
+                let start_x_this = start_x;
+
+                s.spawn(move || {
+                    for (dx, plane) in head.iter_mut().enumerate() {
+                        let x = start_x_this + dx;
+                        let world_x = (chunk_x * CHUNK_WIDTH as i32) + x as i32;
+
+                        for (y, column) in plane.iter_mut().enumerate() {
+                            let world_y = (chunk_y * CHUNK_WIDTH as i32) + y as i32;
+                            *column = self.generate_column(world_x, world_y);
                         }
-
-                        let depth_from_surface = height.saturating_sub(z);
-                        blocks[x][y][z] = Some(match depth_from_surface {
-                            0..=5 => biome.get_surface_block(),
-                            _ => biome.get_deep_block(),
-                        });
-                    } else if z <= SEA {
-                        // Fill with water above terrain at or below sea level
-                        blocks[x][y][z] = Some(BlockType::Water);
                     }
-                }
+                });
+
+                remainder = tail;
+                start_x += len;
             }
-        }
+        });
 
         blocks
+    }
+
+    fn generate_column(&self, world_x: i32, world_y: i32) -> [Option<BlockType>; CHUNK_HEIGHT] {
+        let height = self.generate_height_at(world_x as f32, world_y as f32) as usize;
+        let biome = self.determine_biome(world_x as f32, world_y as f32);
+        let mut column = [None; CHUNK_HEIGHT];
+
+        for z in 0..CHUNK_HEIGHT {
+            if z <= height {
+                if self.has_cave_at(world_x, world_y, z as i32, height as i32) {
+                    continue;
+                }
+                let depth_from_surface = height.saturating_sub(z);
+                column[z] = Some(match depth_from_surface {
+                    0..=5 => biome.get_surface_block(),
+                    _ => biome.get_deep_block(),
+                });
+            } else if z <= SEA {
+                column[z] = Some(BlockType::Water);
+            }
+        }
+        column
     }
 
     pub fn generate_chunk_mesh(
@@ -671,11 +698,11 @@ impl World {
         (chunk_x, chunk_y): ChunkCoords,
     ) -> (Vec<Vertex>, Vec<u16>) {
         // Load the target chunk and its 4 cardinal neighbors
-        self.get_chunk((chunk_x, chunk_y));
-        self.get_chunk((chunk_x, chunk_y + 1));
-        self.get_chunk((chunk_x, chunk_y - 1));
-        self.get_chunk((chunk_x + 1, chunk_y));
-        self.get_chunk((chunk_x - 1, chunk_y));
+        self.load_chunk((chunk_x, chunk_y));
+        self.load_chunk((chunk_x, chunk_y + 1));
+        self.load_chunk((chunk_x, chunk_y - 1));
+        self.load_chunk((chunk_x + 1, chunk_y));
+        self.load_chunk((chunk_x - 1, chunk_y));
 
         let chunk = self.get_chunk_if_loaded((chunk_x, chunk_y)).unwrap();
 
