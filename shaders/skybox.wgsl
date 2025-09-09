@@ -4,7 +4,7 @@ const TAU: f32 = 6.283185307179586;
 struct CameraUniform {
     view_proj: mat4x4<f32>,
     view_proj_inverse: mat4x4<f32>,
-    camera_dir: vec3<f32>,
+    view_proj_skybox_inverse: mat4x4<f32>,
 };
 
 @group(1) @binding(0) var<uniform> camera: CameraUniform;
@@ -23,7 +23,7 @@ fn vs_main(@builtin(vertex_index) vi: u32) -> VertexOutput {
     var pos = array<vec2<f32>, 3>(
         vec2<f32>(-1.0, -3.0),
         vec2<f32>(3.0, 1.0),
-        vec2<f32>(-1.0, 1.0)
+        vec2<f32>(-1.0, 1.0),
     );
 
     var out: VertexOutput;
@@ -33,8 +33,8 @@ fn vs_main(@builtin(vertex_index) vi: u32) -> VertexOutput {
 }
 
 fn world_dir_from_ndc(ndc: vec2<f32>) -> vec3<f32> {
-    let p0 = camera.view_proj_inverse * vec4<f32>(ndc, 0.0, 1.0);
-    let p1 = camera.view_proj_inverse * vec4<f32>(ndc, 1.0, 1.0);
+    let p0 = camera.view_proj_skybox_inverse * vec4<f32>(ndc, 0.0, 1.0);
+    let p1 = camera.view_proj_skybox_inverse * vec4<f32>(ndc, 1.0, 1.0);
     let w0 = p0.xyz / p0.w;
     let w1 = p1.xyz / p1.w;
     return normalize(w1 - w0);
@@ -52,9 +52,7 @@ fn pano_uv(dir: vec3<f32>) -> vec2<f32> {
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let dir = world_dir_from_ndc(in.ndc);
-    return vec4(fract(dir.x * 32.0), fract(dir.y * 32.0), fract(dir.z * 32.0), 1.0);
-    // let uv = pano_uv(dir);
-    // return vec4<f32>(fract(uv.x * 32.0), fract(uv.y * 32.0), 1.0, 1.0);
-    // // let c = textureSample(sky_texture, sky_sampler, uv);
-    // // return vec4<f32>(c.rgb, 1.0);
+    let uv = pano_uv(dir);
+    let c = textureSample(sky_texture, sky_sampler, uv);
+    return vec4<f32>(c.rgb, 1.0);
 }
