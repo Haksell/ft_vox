@@ -11,30 +11,38 @@ use {
 pub const CHUNK_WIDTH: usize = 16;
 pub const CHUNK_HEIGHT: usize = 256;
 
+type Blocks = [[[Option<BlockType>; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH];
+
 pub type ChunkCoords = (i32, i32);
 
-pub struct Chunk {
-    index: ChunkCoords,
-    blocks: [[[Option<BlockType>; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH],
-}
-
 pub struct AdjacentChunks<'a> {
-    pub north: Option<(&'a Chunk, usize)>, // +y direction
-    pub south: Option<(&'a Chunk, usize)>, // -y direction
-    pub east: Option<(&'a Chunk, usize)>,  // +x direction
-    pub west: Option<(&'a Chunk, usize)>,  // -x direction
+    pub north: Option<&'a Chunk>,
+    pub south: Option<&'a Chunk>,
+    pub east: Option<&'a Chunk>,
+    pub west: Option<&'a Chunk>,
 }
 
+pub struct Chunk {
+    coords: ChunkCoords,
+    root: ChunkNode,
+}
 impl Chunk {
-    pub fn new(
-        index: ChunkCoords,
-        blocks: [[[Option<BlockType>; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH],
-    ) -> Self {
-        Self { index, blocks }
+    pub fn new(coords: ChunkCoords, blocks: Blocks) -> Self {
+        let root = ChunkNode::from_region(
+            &blocks,
+            ChunkNodePos::new(0, CHUNK_WIDTH, 0, CHUNK_WIDTH, 0, CHUNK_HEIGHT),
+        );
+        log::info!(
+            "Chunk {:?} : {}/{} leaves",
+            coords,
+            root.count_leaves(),
+            CHUNK_WIDTH * CHUNK_WIDTH * CHUNK_HEIGHT
+        );
+        Self { coords, root }
     }
 
     pub fn bounding_box(&self) -> AABB {
-        let (x, y) = self.index;
+        let (x, y) = self.coords;
         let world_x = x as f32 * CHUNK_WIDTH as f32;
         let world_y = y as f32 * CHUNK_WIDTH as f32;
 
@@ -48,197 +56,395 @@ impl Chunk {
         )
     }
 
-    pub fn get_block(&self, x: usize, y: usize, z: usize) -> Option<BlockType> {
-        if x < CHUNK_WIDTH && y < CHUNK_WIDTH && z < CHUNK_HEIGHT {
-            self.blocks[x][y][z]
-        } else {
-            None
-        }
+    pub fn generate_mesh(&self, adjacent: &AdjacentChunks) -> (Vec<Vertex>, Vec<u16>) {
+        let (vertices, indices, _) = self.root.generate_mesh(self, adjacent);
+        return (vertices, indices);
     }
 
     fn is_face_visible(
         &self,
-        neighbor_x: i32,
-        neighbor_y: i32,
-        neighbor_z: i32,
-        adjacent: &AdjacentChunks,
-        lod_step: usize,
-    ) -> bool {
-        if neighbor_z < 0 {
-            return false;
-        }
-        if neighbor_z >= CHUNK_HEIGHT as i32 {
-            return true;
-        }
-
-        if neighbor_x >= 0
-            && neighbor_x < CHUNK_WIDTH as i32
-            && neighbor_y >= 0
-            && neighbor_y < CHUNK_WIDTH as i32
-        {
-            return self
-                .get_block(
-                    neighbor_x as usize,
-                    neighbor_y as usize,
-                    neighbor_z as usize,
-                )
-                .is_none();
-        }
-
-        // TODO: no loops, just check if used neighbor is present
-
-        match (neighbor_x, neighbor_y) {
-            (x, y) if x >= CHUNK_WIDTH as i32 && y >= 0 && y < CHUNK_WIDTH as i32 => {
-                let Some((adj_chunk, adj_lod_step)) = adjacent.east else {
-                    return true;
-                };
-                for dx in 0..lod_step {
-                    for dy in 0..lod_step {
-                        if adj_chunk
-                            .get_block(dx, y as usize + dy, neighbor_z as usize)
-                            .is_none()
-                        {
-                            return true;
-                        }
-                    }
-                }
-                false
-            }
-            (x, y) if x < 0 && y >= 0 && y < CHUNK_WIDTH as i32 => {
-                let Some((adj_chunk, adj_lod_step)) = adjacent.west else {
-                    return true;
-                };
-                for dx in 0..lod_step {
-                    for dy in 0..lod_step {
-                        if adj_chunk
-                            .get_block(
-                                CHUNK_WIDTH - lod_step + dx,
-                                y as usize + dy,
-                                neighbor_z as usize,
-                            )
-                            .is_none()
-                        {
-                            return true;
-                        }
-                    }
-                }
-                false
-            }
-            (x, y) if y >= CHUNK_WIDTH as i32 && x >= 0 && x < CHUNK_WIDTH as i32 => {
-                let Some((adj_chunk, adj_lod_step)) = adjacent.north else {
-                    return true;
-                };
-                for dx in 0..lod_step {
-                    for dy in 0..lod_step {
-                        if adj_chunk
-                            .get_block(x as usize + dx, dy, neighbor_z as usize)
-                            .is_none()
-                        {
-                            return true;
-                        }
-                    }
-                }
-                false
-            }
-            (x, y) if y < 0 && x >= 0 && x < CHUNK_WIDTH as i32 => {
-                let Some((adj_chunk, adj_lod_step)) = adjacent.south else {
-                    return true;
-                };
-                for dx in 0..lod_step {
-                    for dy in 0..lod_step {
-                        if adj_chunk
-                            .get_block(
-                                x as usize + dx,
-                                CHUNK_WIDTH - lod_step + dy,
-                                neighbor_z as usize,
-                            )
-                            .is_none()
-                        {
-                            return true;
-                        }
-                    }
-                }
-                false
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    fn create_face(
-        block: BlockType,
-        position: Vec3,
+        chunk_node_pos: &ChunkNodePos,
         face: Face,
-        lod_step: usize,
-    ) -> ([Vertex; 4], [u16; 6]) {
-        let positions = face.positions();
-
-        // stretch uv in x and y but not z direction
-        let mut uvs = face.uvs();
-        for y in 0..4 {
-            uvs[y][0] *= lod_step as f32;
-            if matches!(face, Face::Top | Face::Bottom) {
-                uvs[y][1] *= lod_step as f32;
-            }
-        }
-
-        let vertices = std::array::from_fn(|i| Vertex {
-            position: [
-                position.x + positions[i][0] * lod_step as f32,
-                position.y + positions[i][1] * lod_step as f32,
-                position.z + positions[i][2] as f32,
-            ],
-            tex_coords: uvs[i],
-            atlas_offset: match face {
-                Face::Top => block.atlas_offset_top(),
-                Face::Bottom => block.atlas_offset_bottom(),
-                Face::Left | Face::Right | Face::Front | Face::Back => block.atlas_offset_side(),
-            },
-        });
-
-        let indices = [0, 1, 2, 2, 3, 0];
-
-        (vertices, indices)
-    }
-
-    pub fn generate_mesh(
-        &self,
-        lod_step: usize,
         adjacent: &AdjacentChunks,
-    ) -> (Vec<Vertex>, Vec<u16>) {
-        let mut vertices = Vec::new();
-        let mut indices = Vec::new();
-        let mut index_offset = 0;
+    ) -> bool {
+        // build the 1-voxel-thick neighbor "slab" touching `chunk_node_pos` on `face`.
+        // if the slab is inside this chunk, query `self`. If it lies outside, query the
+        // corresponding adjacent chunk (or treat as empty if missing).
 
-        for local_x in (0..CHUNK_WIDTH).step_by(lod_step) {
-            for local_y in (0..CHUNK_WIDTH).step_by(lod_step) {
-                for local_z in 0..CHUNK_HEIGHT {
-                    let Some(block) = self.get_block(local_x, local_y, local_z) else {
-                        continue;
-                    };
-
-                    let position = Vec3::new(local_x as f32, local_y as f32, local_z as f32);
-
-                    for face in FACES {
-                        let (dx, dy, dz) = face.normal();
-                        let neighbor_x = local_x as i32 + dx * lod_step as i32;
-                        let neighbor_y = local_y as i32 + dy * lod_step as i32;
-                        let neighbor_z = local_z as i32 + dz as i32;
-
-                        if self
-                            .is_face_visible(neighbor_x, neighbor_y, neighbor_z, adjacent, lod_step)
-                        {
-                            let (face_verts, face_indices) =
-                                Self::create_face(block, position, face, lod_step);
-
-                            vertices.extend(face_verts);
-                            indices.extend(face_indices.iter().map(|i| *i + index_offset));
-                            index_offset += 4;
-                        }
-                    }
+        match face {
+            Face::Left => {
+                if chunk_node_pos.x0 > 0 {
+                    self.root.any_empty_in_region(&ChunkNodePos::new(
+                        chunk_node_pos.x0 - 1,
+                        chunk_node_pos.x0,
+                        chunk_node_pos.y0,
+                        chunk_node_pos.y1,
+                        chunk_node_pos.z0,
+                        chunk_node_pos.z1,
+                    ))
+                } else {
+                    adjacent.west.is_none_or(|west| {
+                        west.root.any_empty_in_region(&ChunkNodePos::new(
+                            CHUNK_WIDTH - 1,
+                            CHUNK_WIDTH,
+                            chunk_node_pos.y0,
+                            chunk_node_pos.y1,
+                            chunk_node_pos.z0,
+                            chunk_node_pos.z1,
+                        ))
+                    })
+                }
+            }
+            Face::Right => {
+                if chunk_node_pos.x1 < CHUNK_WIDTH {
+                    self.root.any_empty_in_region(&ChunkNodePos::new(
+                        chunk_node_pos.x1,
+                        chunk_node_pos.x1 + 1,
+                        chunk_node_pos.y0,
+                        chunk_node_pos.y1,
+                        chunk_node_pos.z0,
+                        chunk_node_pos.z1,
+                    ))
+                } else {
+                    adjacent.east.is_none_or(|east| {
+                        east.root.any_empty_in_region(&ChunkNodePos::new(
+                            0,
+                            1,
+                            chunk_node_pos.y0,
+                            chunk_node_pos.y1,
+                            chunk_node_pos.z0,
+                            chunk_node_pos.z1,
+                        ))
+                    })
+                }
+            }
+            Face::Back => {
+                if chunk_node_pos.y1 < CHUNK_WIDTH {
+                    self.root.any_empty_in_region(&ChunkNodePos::new(
+                        chunk_node_pos.x0,
+                        chunk_node_pos.x1,
+                        chunk_node_pos.y1,
+                        chunk_node_pos.y1 + 1,
+                        chunk_node_pos.z0,
+                        chunk_node_pos.z1,
+                    ))
+                } else {
+                    adjacent.north.is_none_or(|north| {
+                        north.root.any_empty_in_region(&ChunkNodePos::new(
+                            chunk_node_pos.x0,
+                            chunk_node_pos.x1,
+                            0,
+                            1,
+                            chunk_node_pos.z0,
+                            chunk_node_pos.z1,
+                        ))
+                    })
+                }
+            }
+            Face::Front => {
+                if chunk_node_pos.y0 > 0 {
+                    self.root.any_empty_in_region(&ChunkNodePos::new(
+                        chunk_node_pos.x0,
+                        chunk_node_pos.x1,
+                        chunk_node_pos.y0 - 1,
+                        chunk_node_pos.y0,
+                        chunk_node_pos.z0,
+                        chunk_node_pos.z1,
+                    ))
+                } else {
+                    adjacent.south.is_none_or(|south| {
+                        south.root.any_empty_in_region(&ChunkNodePos::new(
+                            chunk_node_pos.x0,
+                            chunk_node_pos.x1,
+                            CHUNK_WIDTH - 1,
+                            CHUNK_WIDTH,
+                            chunk_node_pos.z0,
+                            chunk_node_pos.z1,
+                        ))
+                    })
+                }
+            }
+            Face::Top => {
+                chunk_node_pos.z1 >= CHUNK_HEIGHT
+                    || self.root.any_empty_in_region(&ChunkNodePos::new(
+                        chunk_node_pos.x0,
+                        chunk_node_pos.x1,
+                        chunk_node_pos.y0,
+                        chunk_node_pos.y1,
+                        chunk_node_pos.z1,
+                        chunk_node_pos.z1 + 1,
+                    ))
+            }
+            Face::Bottom => {
+                chunk_node_pos.z0 > 0 && {
+                    self.root.any_empty_in_region(&ChunkNodePos::new(
+                        chunk_node_pos.x0,
+                        chunk_node_pos.x1,
+                        chunk_node_pos.y0,
+                        chunk_node_pos.y1,
+                        chunk_node_pos.z0 - 1,
+                        chunk_node_pos.z0,
+                    ))
                 }
             }
         }
-
-        (vertices, indices)
     }
+}
+
+enum ChunkNode {
+    Leaf(Option<BlockType>, ChunkNodePos),
+    Inner(Box<ChunkNode>, Box<ChunkNode>, ChunkNodePos),
+}
+impl ChunkNode {
+    fn generate_mesh(
+        &self,
+        chunk: &Chunk,
+        adjacent: &AdjacentChunks,
+    ) -> (Vec<Vertex>, Vec<u16>, u16) {
+        match self {
+            Self::Leaf(None, _) => (vec![], vec![], 0),
+            Self::Leaf(Some(block_type), chunk_node_pos) => {
+                let mut vertices = Vec::new();
+                let mut indices = Vec::new();
+                let mut index_offset = 0;
+
+                // TODO: use again to avoid computing it 6 times
+                // let position = Vec3::new(
+                //     chunk_node_pos.x0 as f32,
+                //     chunk_node_pos.y0 as f32,
+                //     chunk_node_pos.z0 as f32,
+                // );
+
+                for face in FACES {
+                    if chunk.is_face_visible(chunk_node_pos, face, adjacent) {
+                        let (face_verts, face_indices) =
+                            create_face(face, *block_type, &chunk_node_pos);
+
+                        vertices.extend(face_verts);
+                        indices.extend(face_indices.iter().map(|i| *i + index_offset));
+                        index_offset += 4;
+                    }
+                }
+
+                (vertices, indices, index_offset)
+            }
+            Self::Inner(a, b, _) => {
+                let (mut vertices_a, mut indices_a, index_offset_a) =
+                    a.generate_mesh(chunk, adjacent);
+                let (vertices_b, indices_b, index_offset_b) = b.generate_mesh(chunk, adjacent);
+                vertices_a.extend(vertices_b);
+                indices_a.extend(indices_b.iter().map(|i| i + index_offset_a));
+                (vertices_a, indices_a, index_offset_a + index_offset_b)
+            }
+        }
+    }
+
+    fn from_region(blocks: &Blocks, chunk_node_pos: ChunkNodePos) -> Self {
+        let sx = chunk_node_pos.size_x();
+        let sy = chunk_node_pos.size_y();
+        let sz = chunk_node_pos.size_z();
+        debug_assert!(sx > 0 && sy > 0 && sz > 0);
+
+        if let Some(u) = uniform(blocks, &chunk_node_pos) {
+            return Self::Leaf(u, chunk_node_pos);
+        }
+
+        // choose the longest axis to split, with a preference for z
+        if sz >= sx && sz >= sy && sz > 1 {
+            let mid = chunk_node_pos.z0 + sz / 2;
+            let a = Box::new(Self::from_region(
+                blocks,
+                ChunkNodePos {
+                    z1: mid,
+                    ..chunk_node_pos
+                },
+            ));
+            let b = Box::new(Self::from_region(
+                blocks,
+                ChunkNodePos {
+                    z0: mid,
+                    ..chunk_node_pos
+                },
+            ));
+            return merge_if_same(a, b, chunk_node_pos);
+        } else if sy >= sx {
+            let mid = chunk_node_pos.y0 + sy / 2;
+            let a = Box::new(Self::from_region(
+                blocks,
+                ChunkNodePos {
+                    y1: mid,
+                    ..chunk_node_pos
+                },
+            ));
+            let b = Box::new(Self::from_region(
+                blocks,
+                ChunkNodePos {
+                    y0: mid,
+                    ..chunk_node_pos
+                },
+            ));
+            return merge_if_same(a, b, chunk_node_pos);
+        } else {
+            let mid = chunk_node_pos.x0 + sx / 2;
+            let a = Box::new(Self::from_region(
+                blocks,
+                ChunkNodePos {
+                    x1: mid,
+                    ..chunk_node_pos
+                },
+            ));
+            let b = Box::new(Self::from_region(
+                blocks,
+                ChunkNodePos {
+                    x0: mid,
+                    ..chunk_node_pos
+                },
+            ));
+            return merge_if_same(a, b, chunk_node_pos);
+        }
+    }
+
+    #[allow(unused)] // useful for debugging
+    fn count_leaves(&self) -> u32 {
+        match self {
+            Self::Leaf(..) => 1,
+            Self::Inner(a, b, ..) => a.count_leaves() + b.count_leaves(),
+        }
+    }
+
+    fn any_empty_in_region(&self, region: &ChunkNodePos) -> bool {
+        match self {
+            Self::Leaf(val, pos) => {
+                if !intersects(pos, region) {
+                    false
+                } else {
+                    val.is_none()
+                }
+            }
+            Self::Inner(a, b, pos) => {
+                if !intersects(pos, region) {
+                    false
+                } else {
+                    a.any_empty_in_region(region) || b.any_empty_in_region(region)
+                }
+            }
+        }
+    }
+}
+
+// [start, end)
+struct ChunkNodePos {
+    x0: usize,
+    x1: usize,
+    y0: usize,
+    y1: usize,
+    z0: usize,
+    z1: usize,
+}
+impl ChunkNodePos {
+    fn new(x0: usize, x1: usize, y0: usize, y1: usize, z0: usize, z1: usize) -> Self {
+        Self {
+            x0,
+            x1,
+            y0,
+            y1,
+            z0,
+            z1,
+        }
+    }
+
+    #[inline]
+    fn size_x(&self) -> usize {
+        self.x1 - self.x0
+    }
+
+    #[inline]
+    fn size_y(&self) -> usize {
+        self.y1 - self.y0
+    }
+
+    #[inline]
+    fn size_z(&self) -> usize {
+        self.z1 - self.z0
+    }
+}
+
+fn merge_if_same(a: Box<ChunkNode>, b: Box<ChunkNode>, chunk_node_pos: ChunkNodePos) -> ChunkNode {
+    match (&*a, &*b) {
+        (ChunkNode::Leaf(va, _), ChunkNode::Leaf(vb, _)) if va == vb => {
+            ChunkNode::Leaf(*va, chunk_node_pos)
+        }
+        _ => ChunkNode::Inner(a, b, chunk_node_pos),
+    }
+}
+
+fn uniform(
+    blocks: &Blocks,
+    &ChunkNodePos {
+        x0,
+        x1,
+        y0,
+        y1,
+        z0,
+        z1,
+    }: &ChunkNodePos,
+) -> Option<Option<BlockType>> {
+    let first = blocks[x0][y0][z0];
+    for x in x0..x1 {
+        for y in y0..y1 {
+            for z in z0..z1 {
+                if blocks[x][y][z] != first {
+                    return None;
+                }
+            }
+        }
+    }
+    Some(first)
+}
+
+fn create_face(
+    face: Face,
+    block: BlockType,
+    chunk_node_pos: &ChunkNodePos,
+) -> ([Vertex; 4], [u16; 6]) {
+    let face_positions = face.positions();
+
+    // TODO: stretch uv in x and y but not z direction
+    let face_uvs = face.uvs();
+    // for y in 0..4 {
+    //     uvs[y][0] *= ??? as f32;
+    //     if matches!(face, Face::Top | Face::Bottom) {
+    //         uvs[y][1] *= ??? as f32;
+    //     }
+    // }
+
+    // TODO: in calling function
+    let position = Vec3::new(
+        chunk_node_pos.x0 as f32,
+        chunk_node_pos.y0 as f32,
+        chunk_node_pos.z0 as f32,
+    );
+
+    let vertices = std::array::from_fn(|i| Vertex {
+        position: [
+            position.x + face_positions[i][0] * chunk_node_pos.size_x() as f32,
+            position.y + face_positions[i][1] * chunk_node_pos.size_y() as f32,
+            position.z + face_positions[i][2] * chunk_node_pos.size_z() as f32,
+        ],
+        tex_coords: face_uvs[i],
+        atlas_offset: match face {
+            Face::Top => block.atlas_offset_top(),
+            Face::Bottom => block.atlas_offset_bottom(),
+            Face::Left | Face::Right | Face::Front | Face::Back => block.atlas_offset_side(),
+        },
+    });
+
+    let indices = [0, 1, 2, 2, 3, 0];
+
+    (vertices, indices)
+}
+
+#[inline]
+fn intersects(a: &ChunkNodePos, b: &ChunkNodePos) -> bool {
+    a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0 && a.z0 < b.z1 && a.z1 > b.z0
 }

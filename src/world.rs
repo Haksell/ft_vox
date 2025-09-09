@@ -10,29 +10,10 @@ use {
     std::collections::HashMap,
 };
 
-pub const LOD_FULL: usize = 5;
-pub const LOD_HALF: usize = 10;
 pub const RENDER_DISTANCE: usize = 15;
 
 pub const SURFACE: usize = 64;
 pub const SEA: usize = 62;
-
-// TODO: use euclidean distance instead
-pub fn calculate_lod(
-    (current_x, current_y): ChunkCoords,
-    (chunk_x, chunk_y): ChunkCoords,
-) -> usize {
-    let dx = (current_x - chunk_x).abs() as usize;
-    let dy = (current_y - chunk_y).abs() as usize;
-
-    if dx <= LOD_FULL && dy <= LOD_FULL {
-        1
-    } else if dx <= LOD_HALF && dy <= LOD_HALF {
-        2
-    } else {
-        4
-    }
-}
 
 pub struct World {
     temperature_noise: PerlinNoise,
@@ -686,8 +667,6 @@ impl World {
 
     pub fn generate_chunk_mesh(
         &mut self,
-        camera_chunk: ChunkCoords,
-        lod_step: usize,
         (chunk_x, chunk_y): ChunkCoords,
     ) -> (Vec<Vertex>, Vec<u16>) {
         // Load the target chunk and its 4 cardinal neighbors
@@ -700,20 +679,12 @@ impl World {
         let chunk = self.get_chunk_if_loaded((chunk_x, chunk_y)).unwrap();
 
         let adjacent = AdjacentChunks {
-            north: self
-                .get_chunk_if_loaded((chunk_x, chunk_y + 1))
-                .map(|c| (c, calculate_lod(camera_chunk, (chunk_x, chunk_y + 1)))),
-            south: self
-                .get_chunk_if_loaded((chunk_x, chunk_y - 1))
-                .map(|c| (c, calculate_lod(camera_chunk, (chunk_x, chunk_y - 1)))),
-            east: self
-                .get_chunk_if_loaded((chunk_x + 1, chunk_y))
-                .map(|c| (c, calculate_lod(camera_chunk, (chunk_x + 1, chunk_y)))),
-            west: self
-                .get_chunk_if_loaded((chunk_x - 1, chunk_y))
-                .map(|c| (c, calculate_lod(camera_chunk, (chunk_x - 1, chunk_y)))),
+            north: self.get_chunk_if_loaded((chunk_x, chunk_y + 1)),
+            south: self.get_chunk_if_loaded((chunk_x, chunk_y - 1)),
+            east: self.get_chunk_if_loaded((chunk_x + 1, chunk_y)),
+            west: self.get_chunk_if_loaded((chunk_x - 1, chunk_y)),
         };
 
-        chunk.generate_mesh(lod_step, &adjacent)
+        chunk.generate_mesh(&adjacent)
     }
 }

@@ -1,22 +1,24 @@
 # ft_vox
 
-## todo
+## todo ft_vox
 
 - block deletion
 - mipmap to avoid moire patterns
 - fix grass color (https://minecraft.fandom.com/wiki/Grass_Block, https://minecraft.fandom.com/wiki/Color#Biome_colors) (or simpler atlas)
 - fix water color + animation
-- greedy meshing
 - use cubemap instead of panorama for skybox 
-- better assets for everything
 - threading for chunk generation, so not laggy ?
-- ray tracing/casting/marching/whatever (https://www.youtube.com/watch?v=gXSHtBZFxEI, https://www.youtube.com/watch?v=P2bGF6GPmfc)
-- port to wasm
-- generative skyboxes
-- sun(s) (from `scratch` branch)
 - fix water to be transparent block
+
+## todo ft_minecraft
+
+- ray tracing/casting/marching/whatever (https://www.youtube.com/watch?v=gXSHtBZFxEI, https://www.youtube.com/watch?v=P2bGF6GPmfc)
+- generative skyboxes
+- make our own pixel art
+- sun(s) (from `scratch` branch)
 - fix dead pixels
 - anisotropic filtering
+- port to wasm
 
 ## mandatory
 
