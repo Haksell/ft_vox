@@ -34,8 +34,7 @@
 - [x] The mouse must be able to control the camera on 2 axis at least.
 - [x] You will set 4 keys that will make the camera go forth, back, right and left according to its rotation.
 - [x] Of course, the user must be able to keep going if he keeps pressing a key.
-- [ ] The default camera speed should be 1 cube/second.
-- [ ] There should be a key to multiply the speed to 20 cubes/second.
+- [x] There should be a default camera speed and an accelerated camera speed.
 
 ## bonus
 
@@ -56,3 +55,4 @@
 - [ ] Any crash (Uncaught exception, segfault, abort ...) will disqualify you
 - [ ] Your program must be able to run for hours without eating the whole memory or slowing down. Manage your RAM as well as VRAM very carefully.
 - [ ] Full screen mode by default
+- [ ] Camera speeds should be 1.0 and 20.0

@@ -111,8 +111,10 @@ impl Camera {
 }
 
 pub struct CameraController {
-    speed: f32,
+    normal_speed: f32,
+    fast_speed: f32,
     sensitivity: f32,
+    is_fast: bool,
     is_forward_pressed: bool,
     is_backward_pressed: bool,
     is_left_pressed: bool,
@@ -125,8 +127,10 @@ pub struct CameraController {
 impl CameraController {
     pub fn new() -> Self {
         Self {
-            speed: 200.0,
+            normal_speed: 50.0, // TODO: 1.0
+            fast_speed: 200.0,  // TODO: 20.0
             sensitivity: 0.004,
+            is_fast: false,
             is_forward_pressed: false,
             is_backward_pressed: false,
             is_left_pressed: false,
@@ -140,6 +144,10 @@ impl CameraController {
     pub fn process_mouse(&mut self, delta_x: f32, delta_y: f32) {
         self.mouse_delta.0 += delta_x;
         self.mouse_delta.1 += delta_y;
+    }
+
+    pub fn process_click(&mut self, is_pressed: bool) {
+        self.is_fast = is_pressed;
     }
 
     pub fn process_keyboard(&mut self, event: &WindowEvent) -> bool {
@@ -203,7 +211,13 @@ impl CameraController {
         movement -= right * (self.is_left_pressed as i32) as f32;
         movement += up * (self.is_up_pressed as i32) as f32;
         movement -= up * (self.is_down_pressed as i32) as f32;
-        movement = movement.normalize_or_zero() * self.speed * dt;
+
+        let speed = if self.is_fast {
+            self.fast_speed
+        } else {
+            self.normal_speed
+        };
+        movement = movement.normalize_or_zero() * speed * dt;
 
         camera.eye += movement;
         camera.eye.z = camera.eye.z.clamp(
