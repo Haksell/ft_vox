@@ -10,8 +10,6 @@ use {
     std::{collections::HashMap, thread},
 };
 
-pub const RENDER_DISTANCE: usize = 15;
-
 pub const SURFACE: usize = 64;
 pub const SEA: usize = 62;
 
@@ -45,12 +43,12 @@ impl World {
         // continentalness: determines land vs ocean
         let continentalness_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0xFF000055))
             .frequency(0.0002)
-            .octaves(16)
+            .octaves(8)
             .build();
 
         // erosion: affects terrain ruggedness
         let erosion_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0x44336699))
-            .frequency(0.002)
+            .frequency(0.0008)
             .octaves(8)
             .build();
 
@@ -505,7 +503,7 @@ impl World {
     fn determine_badlands_biome(&self, humidity_level: i32, weirdness_level: i32) -> BiomeType {
         match (humidity_level, weirdness_level) {
             (0..=1, 0) => BiomeType::Badlands,
-            (0..=1, 1) => BiomeType::ErrodedBadlands,
+            (0..=1, 1) => BiomeType::ErodedBadlands,
             (2, _) => BiomeType::Badlands,
             _ => BiomeType::WoodedBadlands,
         }
@@ -580,7 +578,7 @@ impl World {
             (3, 2..=3, _) => BiomeType::Forest,
             (3, 4, _) => BiomeType::Jungle,
             (4, 0..=1, 0) => BiomeType::Badlands,
-            (4, 0..=1, 1) => BiomeType::ErrodedBadlands,
+            (4, 0..=1, 1) => BiomeType::ErodedBadlands,
             (4, 2, _) => BiomeType::Badlands,
             (4, 3..=4, _) => BiomeType::WoodedBadlands,
 
@@ -669,7 +667,8 @@ impl World {
                                     }
                                     let depth_from_surface = height.saturating_sub(z);
                                     column[z] = Some(match depth_from_surface {
-                                        0..=5 => biome.get_surface_block(),
+                                        0 => biome.get_surface_block(),
+                                        1..=5 => biome.get_subsurface_block(),
                                         _ => biome.get_deep_block(),
                                     });
                                 } else if z <= SEA {
