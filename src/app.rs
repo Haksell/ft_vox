@@ -57,12 +57,7 @@ impl<'a> ApplicationHandler for Application<'a> {
         self.state = Some(state);
     }
 
-    fn device_event(
-        &mut self,
-        _event_loop: &ActiveEventLoop,
-        _device_id: DeviceId,
-        event: DeviceEvent,
-    ) {
+    fn device_event(&mut self, _: &ActiveEventLoop, _: DeviceId, event: DeviceEvent) {
         match event {
             DeviceEvent::MouseMotion { delta: (dx, dy) } => {
                 self.state
