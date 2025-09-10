@@ -11,17 +11,7 @@
 - fix water to be transparent block
 - args (seed, fullscreen, ...)
 
-## todo ft_minecraft
-
-- ray tracing/casting/marching/whatever (https://www.youtube.com/watch?v=gXSHtBZFxEI, https://www.youtube.com/watch?v=P2bGF6GPmfc)
-- generative skyboxes
-- make our own pixel art
-- sun(s) (from `scratch` branch)
-- fix dead pixels
-- anisotropic filtering
-- port to wasm
-
-## mandatory
+## mandatory ft_vox
 
 - [x] Your program will have to run in full screen mode. Reduce the default frame buffer is prohibited.
 - [x] You must be able to create a very large procedural world. For this project, user should be able to visit at least 16384\*256\*16384 cubes (256 is the height).
@@ -42,7 +32,7 @@
 - [x] Of course, the user must be able to keep going if he keeps pressing a key.
 - [x] There should be a default camera speed and an accelerated camera speed.
 
-## bonus
+## bonus ft_vox
 
 - [x] Have a render distance always higher than 14 chunks and always have a smooth display.
 - [x] A FPS counter is displayed.
@@ -50,7 +40,7 @@
 - [ ] Being able to delete blocks with the mouse.
 - [ ] Having a lot of different biomes.
 
-## push check
+## push check ft_vox
 
 - [x] You're free to use your language, but keep an eye on its performances (Rust)
 - [x] You must work directly with the APIs (WebGPU)
@@ -62,3 +52,13 @@
 - [ ] Your program must be able to run for hours without eating the whole memory or slowing down. Manage your RAM as well as VRAM very carefully.
 - [ ] Full screen mode by default
 - [ ] Camera speeds should be 1.0 and 20.0
+
+## todo ft_minecraft
+
+- ray tracing/casting/marching/whatever (https://www.youtube.com/watch?v=gXSHtBZFxEI, https://www.youtube.com/watch?v=P2bGF6GPmfc)
+- generative skyboxes
+- make our own pixel art
+- sun(s) (from `scratch` branch)
+- fix dead pixels
+- anisotropic filtering
+- port to wasm
