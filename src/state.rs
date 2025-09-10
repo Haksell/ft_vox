@@ -531,7 +531,7 @@ impl<'a> State<'a> {
             }
         }
 
-        fn render_text(
+        fn render_overlay(
             state: &mut State,
             encoder: &mut wgpu::CommandEncoder,
             texture_view: &wgpu::TextureView,
@@ -558,7 +558,7 @@ impl<'a> State<'a> {
                 log::warn!("Brush error: {:?}", brush_error);
             }
 
-            let mut text_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut overlay_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("text_pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: texture_view,
@@ -574,7 +574,7 @@ impl<'a> State<'a> {
                 timestamp_writes: None,
             });
 
-            state.text_brush.draw(&mut text_pass);
+            state.text_brush.draw(&mut overlay_pass);
         }
 
         let output = match self.surface.get_current_texture() {
@@ -597,7 +597,7 @@ impl<'a> State<'a> {
 
         render_skybox(self, &mut encoder, &texture_view);
         render_voxels(self, &mut encoder, &texture_view);
-        render_text(self, &mut encoder, &texture_view);
+        render_overlay(self, &mut encoder, &texture_view);
 
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
