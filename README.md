@@ -6,11 +6,9 @@
 - mipmap to avoid moire patterns
 - fix grass color (https://minecraft.fandom.com/wiki/Grass_Block, https://minecraft.fandom.com/wiki/Color#Biome_colors) (or simpler atlas)
 - fix water color + animation
-- use cubemap instead of panorama for skybox 
-- args (seed, fullscreen, fps counter, ...)
-- compute shader for world generation
-- frustum culling during face generation instead of after checking chunks
+- more cave openings
 - random rare textures in caves
+- args (seed, fullscreen, display fps, ...)
 
 ## mandatory ft_vox
 
@@ -56,6 +54,9 @@
 
 ## todo ft_minecraft
 
+- frustum culling during face generation instead of after checking chunks
+- use cubemap instead of panorama for skybox
+- compute shader for world generation
 - ray tracing/casting/marching/whatever (https://www.youtube.com/watch?v=gXSHtBZFxEI, https://www.youtube.com/watch?v=P2bGF6GPmfc)
 - generative skyboxes
 - transparent water
