@@ -42,13 +42,17 @@ impl Chunk {
     }
 
     pub fn get_block(&self, x: usize, y: usize, z: usize) -> Option<BlockType> {
-        if x >= CHUNK_WIDTH || y >= CHUNK_WIDTH || z >= CHUNK_HEIGHT {
-            return None;
-        }
+        debug_assert!(x < CHUNK_WIDTH);
+        debug_assert!(y < CHUNK_WIDTH);
+        debug_assert!(z < CHUNK_HEIGHT);
         self.root.get_at(x, y, z, 0, 0, 0)
     }
 
-    pub fn delete_block(&self, x: usize, y: usize, z: usize) {}
+    pub fn delete_block(&mut self, x: usize, y: usize, z: usize) {
+        debug_assert!(x < CHUNK_WIDTH);
+        debug_assert!(y < CHUNK_WIDTH);
+        debug_assert!(z < CHUNK_HEIGHT);
+    }
 
     pub fn bounding_box(&self) -> AABB {
         let (x, y) = self.coords;

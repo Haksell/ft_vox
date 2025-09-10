@@ -90,6 +90,10 @@ impl World {
         self.chunks.get(&chunk_coords)
     }
 
+    pub fn get_mut_chunk_if_loaded(&mut self, chunk_coords: ChunkCoords) -> Option<&mut Chunk> {
+        self.chunks.get_mut(&chunk_coords)
+    }
+
     pub fn load_chunk(&mut self, chunk_coords: ChunkCoords) {
         if !self.chunks.contains_key(&chunk_coords) {
             let blocks = self.generate_chunk_blocks(chunk_coords);
@@ -714,7 +718,7 @@ impl World {
         chunk.generate_mesh(&adjacent)
     }
 
-    pub fn delete_center_block(&self, camera: &Camera) -> Option<BlockType> {
+    pub fn delete_center_block(&mut self, camera: &Camera) -> Option<BlockType> {
         let ((x, y, z), block) = self.find_center_block(camera, MAX_DELETE_DISTANCE)?;
         self.delete_block(x, y, z);
         Some(block)
@@ -815,7 +819,7 @@ impl World {
         chunk.get_block(block_x, block_y, block_z)
     }
 
-    fn delete_block(&self, x: i32, y: i32, z: i32) {
+    fn delete_block(&mut self, x: i32, y: i32, z: i32) {
         let Some(block_z) = (z >= 0 && z < CHUNK_HEIGHT as i32).then(|| z as usize) else {
             return;
         };
@@ -825,7 +829,7 @@ impl World {
         let chunk_y = y.div_euclid(CHUNK_WIDTH as i32);
         let block_y = y.rem_euclid(CHUNK_WIDTH as i32) as usize;
 
-        let Some(chunk) = self.get_chunk_if_loaded((chunk_x, chunk_y)) else {
+        let Some(chunk) = self.get_mut_chunk_if_loaded((chunk_x, chunk_y)) else {
             return;
         };
 
