@@ -2,9 +2,10 @@ use {
     crate::{
         biome::BiomeType,
         block::BlockType,
+        camera::Camera,
         chunk::{AdjacentChunks, Chunk, ChunkCoords, CHUNK_HEIGHT, CHUNK_WIDTH},
         noise::{PerlinNoise, PerlinNoiseBuilder},
-        utils::{ceil_div, lerp},
+        utils::{ceil_div, lerp, sign},
         vertex::Vertex,
     },
     std::{collections::HashMap, thread},
@@ -12,6 +13,8 @@ use {
 
 pub const SURFACE: usize = 64;
 pub const SEA: usize = 62;
+
+pub const MAX_DELETE_DISTANCE: f32 = 48.0;
 
 pub struct World {
     temperature_noise: PerlinNoise,
@@ -622,7 +625,7 @@ impl World {
         let normalized_z = ((world_z - 8) as f32 / (surface_height) as f32).clamp(0.0, 1.0);
         let probability = 4.0 * normalized_z * (1.0 - normalized_z);
 
-        let spaghetti = noise.abs() < 0.02 * probability;
+        let _spaghetti = noise.abs() < 0.02 * probability;
         let cheese = noise * probability > 0.2;
 
         cheese
@@ -693,7 +696,6 @@ impl World {
         &mut self,
         (chunk_x, chunk_y): ChunkCoords,
     ) -> (Vec<Vertex>, Vec<u16>) {
-        // Load the target chunk and its 4 cardinal neighbors
         self.load_chunk((chunk_x, chunk_y));
         self.load_chunk((chunk_x, chunk_y + 1));
         self.load_chunk((chunk_x, chunk_y - 1));
@@ -710,5 +712,100 @@ impl World {
         };
 
         chunk.generate_mesh(&adjacent)
+    }
+
+    pub fn delete_block(&self, camera: &Camera) -> Option<BlockType> {
+        self.find_center_block(camera, MAX_DELETE_DISTANCE)
+    }
+
+    pub fn find_center_block(&self, camera: &Camera, max_distance: f32) -> Option<BlockType> {
+        let dir = camera.direction();
+        let start = camera.position();
+
+        let mut ix = start.x.floor() as i32;
+        let mut iy = start.y.floor() as i32;
+        let mut iz = start.z.floor() as i32;
+
+        if self.get_block(ix, iy, iz).is_some() {
+            return None;
+        }
+
+        let step_x = sign(dir.x);
+        let step_y = sign(dir.y);
+        let step_z = sign(dir.z);
+
+        let next_boundary = |i: i32, d: f32| -> f32 { (i + (d > 0.0) as i32) as f32 };
+
+        let init_t_max = |i: i32, s: f32, d: f32| -> f32 {
+            if step_x != 0 {
+                (next_boundary(i, d) - s) / d
+            } else {
+                f32::INFINITY
+            }
+        };
+
+        let mut t_max_x = init_t_max(ix, start.x, dir.x);
+        let mut t_max_y = init_t_max(iy, start.y, dir.y);
+        let mut t_max_z = init_t_max(iz, start.z, dir.z);
+
+        let init_t_delta = |step: i32, d: f32| -> f32 {
+            if step != 0 {
+                (1.0 / d).abs()
+            } else {
+                f32::INFINITY
+            }
+        };
+
+        let t_delta_x = init_t_delta(step_x, dir.x);
+        let t_delta_y = init_t_delta(step_y, dir.y);
+        let t_delta_z = init_t_delta(step_z, dir.z);
+
+        let mut t = 0.0;
+
+        while t <= max_distance {
+            if t_max_x < t_max_y {
+                if t_max_x < t_max_z {
+                    ix += step_x;
+                    t = t_max_x;
+                    t_max_x += t_delta_x;
+                } else {
+                    iz += step_z;
+                    t = t_max_z;
+                    t_max_z += t_delta_z;
+                }
+            } else {
+                if t_max_y < t_max_z {
+                    iy += step_y;
+                    t = t_max_y;
+                    t_max_y += t_delta_y;
+                } else {
+                    iz += step_z;
+                    t = t_max_z;
+                    t_max_z += t_delta_z;
+                }
+            }
+
+            if iz < 0 || iz >= CHUNK_HEIGHT as i32 {
+                return None;
+            }
+
+            if let Some(block) = self.get_block(ix, iy, iz) {
+                return Some(block);
+            }
+        }
+
+        None
+    }
+
+    fn get_block(&self, x: i32, y: i32, z: i32) -> Option<BlockType> {
+        let block_z = (z >= 0 && z < CHUNK_HEIGHT as i32).then(|| z as usize)?;
+
+        let chunk_x = x.div_euclid(CHUNK_WIDTH as i32);
+        let block_x = x.rem_euclid(CHUNK_WIDTH as i32) as usize;
+        let chunk_y = y.div_euclid(CHUNK_WIDTH as i32);
+        let block_y = y.rem_euclid(CHUNK_WIDTH as i32) as usize;
+
+        let chunk = self.get_chunk_if_loaded((chunk_x, chunk_y))?;
+        chunk.get_block(block_x, block_y, block_z)
     }
 }

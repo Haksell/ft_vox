@@ -63,6 +63,7 @@ impl<'a> ApplicationHandler for Application<'a> {
         match event {
             DeviceEvent::MouseMotion { delta: (dx, dy) } => {
                 camera_controller.process_mouse_motion(dx as f32, dy as f32);
+                state.update_crosshair(&self.world);
             }
             DeviceEvent::Button {
                 button,
@@ -70,9 +71,14 @@ impl<'a> ApplicationHandler for Application<'a> {
             } => match button {
                 1 => camera_controller.process_boost(button_state.is_pressed()),
                 3 => {
-                    state.is_right_clicking = button_state.is_pressed();
-                    if !state.is_right_clicking {
-                        println!("click");
+                    if button_state.is_pressed() {
+                        state.is_right_clicking = true;
+                        state.update_crosshair(&self.world);
+                    } else {
+                        state.is_right_clicking = false;
+                        state.is_crosshair_active = false;
+                        let block = self.world.delete_block(&state.camera);
+                        println!("{:?}", block);
                     }
                 }
                 _ => {}

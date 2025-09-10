@@ -41,6 +41,13 @@ impl Chunk {
         Self { coords, root }
     }
 
+    pub fn get_block(&self, x: usize, y: usize, z: usize) -> Option<BlockType> {
+        if x >= CHUNK_WIDTH || y >= CHUNK_WIDTH || z >= CHUNK_HEIGHT {
+            return None;
+        }
+        self.root.get_at(x, y, z, 0, 0, 0)
+    }
+
     pub fn bounding_box(&self) -> AABB {
         let (x, y) = self.coords;
         let world_x = x as f32 * CHUNK_WIDTH as f32;
@@ -176,9 +183,16 @@ impl Chunk {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+enum SplitDir {
+    LeftRight,
+    FrontBack,
+    TopBottom,
+}
+
 enum ChunkNode {
     Leaf(Option<BlockType>, ChunkNodePos),
-    Inner(Box<ChunkNode>, Box<ChunkNode>, ChunkNodePos),
+    Inner(Box<ChunkNode>, Box<ChunkNode>, SplitDir, ChunkNodePos),
 }
 impl ChunkNode {
     fn generate_mesh(
@@ -210,7 +224,7 @@ impl ChunkNode {
 
                 (vertices, indices, index_offset)
             }
-            Self::Inner(a, b, _) => {
+            Self::Inner(a, b, _, _) => {
                 let (mut vertices_a, mut indices_a, index_offset_a) =
                     a.generate_mesh(chunk, adjacent);
                 let (vertices_b, indices_b, index_offset_b) = b.generate_mesh(chunk, adjacent);
@@ -234,17 +248,17 @@ impl ChunkNode {
             let mid = pos.z0 + sz / 2;
             let a = Box::new(Self::from_region(blocks, ChunkNodePos { z1: mid, ..pos }));
             let b = Box::new(Self::from_region(blocks, ChunkNodePos { z0: mid, ..pos }));
-            return merge_if_same(a, b, pos);
+            return merge_if_same(a, b, SplitDir::TopBottom, pos);
         } else if sy >= sx {
             let mid = pos.y0 + sy / 2;
             let a = Box::new(Self::from_region(blocks, ChunkNodePos { y1: mid, ..pos }));
             let b = Box::new(Self::from_region(blocks, ChunkNodePos { y0: mid, ..pos }));
-            return merge_if_same(a, b, pos);
+            return merge_if_same(a, b, SplitDir::FrontBack, pos);
         } else {
             let mid = pos.x0 + sx / 2;
             let a = Box::new(Self::from_region(blocks, ChunkNodePos { x1: mid, ..pos }));
             let b = Box::new(Self::from_region(blocks, ChunkNodePos { x0: mid, ..pos }));
-            return merge_if_same(a, b, pos);
+            return merge_if_same(a, b, SplitDir::LeftRight, pos);
         }
     }
 
@@ -259,10 +273,50 @@ impl ChunkNode {
     fn any_empty_in_region(&self, region: &ChunkNodePos) -> bool {
         match self {
             Self::Leaf(val, pos) => intersects(pos, region) && val.is_none(),
-            Self::Inner(a, b, pos) => {
+            Self::Inner(a, b, _, pos) => {
                 intersects(pos, region) && a.any_empty_in_region(region)
                     || b.any_empty_in_region(region)
             }
+        }
+    }
+
+    fn get_at(
+        &self,
+        x: usize,
+        y: usize,
+        z: usize,
+        ox: usize,
+        oy: usize,
+        oz: usize,
+    ) -> Option<BlockType> {
+        match self {
+            ChunkNode::Leaf(v, _size) => *v,
+            ChunkNode::Inner(a, b, dir, pos) => match dir {
+                SplitDir::LeftRight => {
+                    let midx = ox + pos.size_x() / 2;
+                    if x < midx {
+                        a.get_at(x, y, z, ox, oy, oz)
+                    } else {
+                        b.get_at(x, y, z, midx, oy, oz)
+                    }
+                }
+                SplitDir::FrontBack => {
+                    let midy = oy + pos.size_y() / 2;
+                    if y < midy {
+                        a.get_at(x, y, z, ox, oy, oz)
+                    } else {
+                        b.get_at(x, y, z, ox, midy, oz)
+                    }
+                }
+                SplitDir::TopBottom => {
+                    let midz = oz + pos.size_z() / 2;
+                    if z < midz {
+                        a.get_at(x, y, z, ox, oy, oz)
+                    } else {
+                        b.get_at(x, y, z, ox, oy, midz)
+                    }
+                }
+            },
         }
     }
 }
@@ -309,10 +363,15 @@ impl ChunkNodePos {
     }
 }
 
-fn merge_if_same(a: Box<ChunkNode>, b: Box<ChunkNode>, pos: ChunkNodePos) -> ChunkNode {
+fn merge_if_same(
+    a: Box<ChunkNode>,
+    b: Box<ChunkNode>,
+    dir: SplitDir,
+    pos: ChunkNodePos,
+) -> ChunkNode {
     match (&*a, &*b) {
         (ChunkNode::Leaf(va, _), ChunkNode::Leaf(vb, _)) if va == vb => ChunkNode::Leaf(*va, pos),
-        _ => ChunkNode::Inner(a, b, pos),
+        _ => ChunkNode::Inner(a, b, dir, pos),
     }
 }
 

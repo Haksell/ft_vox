@@ -5,7 +5,7 @@ use {
         chunk::{ChunkCoords, CHUNK_HEIGHT, CHUNK_WIDTH},
         texture::Texture,
         vertex::Vertex,
-        world::World,
+        world::{World, MAX_DELETE_DISTANCE},
     },
     glam::Vec3,
     std::{
@@ -35,7 +35,7 @@ struct ChunkRenderData {
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct CrosshairUniform {
     center: [f32; 2],
-    is_right_clicking: u32,
+    is_active: u32,
     _pad: [u8; 4],
 }
 
@@ -49,6 +49,7 @@ pub struct State<'a> {
     pub center: PhysicalSize<u32>,
     pub fps: f32,
     pub is_right_clicking: bool,
+    pub is_crosshair_active: bool,
 
     chunk_render_data: HashMap<ChunkCoords, ChunkRenderData>,
 
@@ -356,7 +357,7 @@ impl<'a> State<'a> {
             label: Some("crosshair_uniform"),
             contents: bytemuck::bytes_of(&CrosshairUniform {
                 center: [center.width as f32, center.height as f32],
-                is_right_clicking: 0,
+                is_active: 0,
                 _pad: [0; 4],
             }),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
@@ -447,6 +448,7 @@ impl<'a> State<'a> {
             fps: 60.0, // dummy value before first calculation
             text_brush,
             is_right_clicking: false,
+            is_crosshair_active: false,
             crosshair_pipeline,
             crosshair_bind_group,
             crosshair_uniform,
@@ -562,10 +564,17 @@ impl<'a> State<'a> {
             0,
             bytemuck::bytes_of(&CrosshairUniform {
                 center: [self.center.width as f32, self.center.height as f32],
-                is_right_clicking: self.is_right_clicking as u32,
+                is_active: self.is_crosshair_active as u32,
                 _pad: [0; 4],
             }),
         );
+    }
+
+    pub fn update_crosshair(&mut self, world: &World) {
+        self.is_crosshair_active = self.is_right_clicking
+            && world
+                .find_center_block(&self.camera, MAX_DELETE_DISTANCE)
+                .is_some();
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
