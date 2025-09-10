@@ -2,10 +2,7 @@ use {
     crate::{chunk::CHUNK_HEIGHT, frustum::Frustum},
     glam::{Mat4, Vec3, Vec4},
     std::f32::consts::{FRAC_PI_2, FRAC_PI_4},
-    winit::{
-        event::{ElementState, KeyEvent, WindowEvent},
-        keyboard::{KeyCode, PhysicalKey},
-    },
+    winit::{event::ElementState, keyboard::KeyCode},
 };
 
 const CAMERA_MAX_OUT_OF_BOUNDS: f32 = 16.0;
