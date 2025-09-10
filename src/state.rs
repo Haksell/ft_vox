@@ -677,13 +677,14 @@ impl<'a> State<'a> {
 
             state.text_brush.draw(&mut overlay_pass);
 
-            let r: u32 = 16;
-            let PhysicalSize {
-                width: cx,
-                height: cy,
-            } = state.center;
+            let arm_length: u32 = 8; // needs to stay bigger than the arm length defined in the shader
+            overlay_pass.set_scissor_rect(
+                state.center.width - arm_length,
+                state.center.height - arm_length,
+                2 * arm_length + 1,
+                2 * arm_length + 1,
+            );
 
-            // overlay_pass.set_scissor_rect(cx - r, cy + r, 2 * r, 2 * r);
             overlay_pass.set_pipeline(&state.crosshair_pipeline);
             overlay_pass.set_bind_group(0, &state.crosshair_bind_group, &[]);
             overlay_pass.draw(0..3, 0..1);
