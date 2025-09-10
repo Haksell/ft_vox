@@ -390,16 +390,9 @@ fn uniform(
     }: &ChunkNodePos,
 ) -> Option<Option<BlockType>> {
     let first = blocks[x0][y0][z0];
-    for x in x0..x1 {
-        for y in y0..y1 {
-            for z in z0..z1 {
-                if blocks[x][y][z] != first {
-                    return None;
-                }
-            }
-        }
-    }
-    Some(first)
+    (x0..x1)
+        .all(|x| (y0..y1).all(|y| (z0..z1).all(|z| blocks[x][y][z] == first)))
+        .then(|| first)
 }
 
 fn create_face(
