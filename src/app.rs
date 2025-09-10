@@ -77,7 +77,7 @@ impl<'a> ApplicationHandler for Application<'a> {
                     } else {
                         state.is_right_clicking = false;
                         state.is_crosshair_active = false;
-                        let block = self.world.delete_block(&state.camera);
+                        let block = self.world.delete_center_block(&state.camera);
                         println!("{:?}", block);
                     }
                 }
@@ -134,9 +134,12 @@ impl<'a> ApplicationHandler for Application<'a> {
                         ..
                     },
                 ..
-            } => state
-                .camera_controller
-                .process_keyboard(element_state, keycode),
+            } => {
+                state
+                    .camera_controller
+                    .process_keyboard(element_state, keycode);
+                state.update_crosshair(&self.world);
+            }
             WindowEvent::Resized(physical_size) => {
                 log::info!("physical_size: {physical_size:?}");
                 state.resize(physical_size);

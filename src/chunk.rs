@@ -48,6 +48,8 @@ impl Chunk {
         self.root.get_at(x, y, z, 0, 0, 0)
     }
 
+    pub fn delete_block(&self, x: usize, y: usize, z: usize) {}
+
     pub fn bounding_box(&self) -> AABB {
         let (x, y) = self.coords;
         let world_x = x as f32 * CHUNK_WIDTH as f32;

@@ -714,11 +714,17 @@ impl World {
         chunk.generate_mesh(&adjacent)
     }
 
-    pub fn delete_block(&self, camera: &Camera) -> Option<BlockType> {
-        self.find_center_block(camera, MAX_DELETE_DISTANCE)
+    pub fn delete_center_block(&self, camera: &Camera) -> Option<BlockType> {
+        let ((x, y, z), block) = self.find_center_block(camera, MAX_DELETE_DISTANCE)?;
+        self.delete_block(x, y, z);
+        Some(block)
     }
 
-    pub fn find_center_block(&self, camera: &Camera, max_distance: f32) -> Option<BlockType> {
+    pub fn find_center_block(
+        &self,
+        camera: &Camera,
+        max_distance: f32,
+    ) -> Option<((i32, i32, i32), BlockType)> {
         let dir = camera.direction();
         let start = camera.position();
 
@@ -790,7 +796,7 @@ impl World {
             }
 
             if let Some(block) = self.get_block(ix, iy, iz) {
-                return Some(block);
+                return Some(((ix, iz, iz), block));
             }
         }
 
@@ -807,5 +813,22 @@ impl World {
 
         let chunk = self.get_chunk_if_loaded((chunk_x, chunk_y))?;
         chunk.get_block(block_x, block_y, block_z)
+    }
+
+    fn delete_block(&self, x: i32, y: i32, z: i32) {
+        let Some(block_z) = (z >= 0 && z < CHUNK_HEIGHT as i32).then(|| z as usize) else {
+            return;
+        };
+
+        let chunk_x = x.div_euclid(CHUNK_WIDTH as i32);
+        let block_x = x.rem_euclid(CHUNK_WIDTH as i32) as usize;
+        let chunk_y = y.div_euclid(CHUNK_WIDTH as i32);
+        let block_y = y.rem_euclid(CHUNK_WIDTH as i32) as usize;
+
+        let Some(chunk) = self.get_chunk_if_loaded((chunk_x, chunk_y)) else {
+            return;
+        };
+
+        chunk.delete_block(block_x, block_y, block_z)
     }
 }
