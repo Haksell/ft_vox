@@ -1,7 +1,7 @@
 use {
     crate::{chunk::CHUNK_HEIGHT, frustum::Frustum},
     glam::{Mat4, Vec3, Vec4},
-    std::f32::consts::FRAC_PI_2,
+    std::f32::consts::{FRAC_PI_2, FRAC_PI_4},
     winit::{
         event::{ElementState, KeyEvent, WindowEvent},
         keyboard::{KeyCode, PhysicalKey},
@@ -57,7 +57,7 @@ impl Camera {
             up,
             aspect,
             yaw: 0.0,
-            pitch: 0.0,
+            pitch: -FRAC_PI_4,
             fov_y,
             near,
             far,
