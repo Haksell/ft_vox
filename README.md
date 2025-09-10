@@ -54,6 +54,8 @@
 
 ## todo ft_minecraft
 
+- block about to be deleted should look a bit darker
+- only delete block if raycast at start and end of click touch the same block 
 - frustum culling during face generation instead of after checking chunks
 - use cubemap instead of panorama for skybox
 - compute shader for world generation

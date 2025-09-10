@@ -65,7 +65,7 @@ impl<'a> ApplicationHandler for Application<'a> {
             }
             DeviceEvent::Button { button, state } => match button {
                 1 => camera_controller.process_boost(state.is_pressed()),
-                3 if state.is_pressed() => camera_controller.process_block_deletion(),
+                3 => camera_controller.process_block_deletion(state.is_pressed()),
                 _ => {}
             },
             _ => {}

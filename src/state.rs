@@ -19,7 +19,7 @@ use {
         glyph_brush::{ab_glyph::FontRef, HorizontalAlign, Layout, Section, Text, VerticalAlign},
         BrushBuilder, TextBrush,
     },
-    winit::{dpi::PhysicalSize, event::*, window::Window},
+    winit::{dpi::PhysicalSize, window::Window},
 };
 
 const RENDER_DISTANCE: f32 = 14.5;
@@ -35,7 +35,8 @@ struct ChunkRenderData {
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct CrosshairUniform {
     center: [f32; 2],
-    _pad: [f32; 2],
+    is_deleting: u32,
+    _pad: [u8; 4],
 }
 
 pub struct State<'a> {
@@ -348,7 +349,8 @@ impl<'a> State<'a> {
             label: Some("crosshair_uniform"),
             contents: bytemuck::bytes_of(&CrosshairUniform {
                 center: [center.width as f32, center.height as f32],
-                _pad: [0.0, 0.0],
+                is_deleting: 0,
+                _pad: [0; 4],
             }),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
@@ -463,12 +465,14 @@ impl<'a> State<'a> {
 
         self.depth_texture = Texture::create_depth_texture(&self.device, &self.config);
 
+        println!("{}", self.camera_controller.is_deleting as u32);
         self.queue.write_buffer(
             &self.crosshair_uniform,
             0,
             bytemuck::bytes_of(&CrosshairUniform {
                 center: [self.center.width as f32, self.center.height as f32],
-                _pad: [0.0, 0.0],
+                is_deleting: self.camera_controller.is_deleting as u32,
+                _pad: [0; 4],
             }),
         );
     }
@@ -557,6 +561,15 @@ impl<'a> State<'a> {
             0,
             bytemuck::cast_slice(&[CameraUniform::new(&self.camera)]),
         );
+        self.queue.write_buffer(
+            &self.crosshair_uniform,
+            0,
+            bytemuck::bytes_of(&CrosshairUniform {
+                center: [self.center.width as f32, self.center.height as f32],
+                is_deleting: self.camera_controller.is_deleting as u32,
+                _pad: [0; 4],
+            }),
+        );
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
@@ -632,32 +645,30 @@ impl<'a> State<'a> {
             }
         }
 
+        fn make_text<'a>(text: &'a str, corner_offset: f32, [r, g, b]: [f32; 3]) -> Section<'a> {
+            Section::default()
+                .with_layout(
+                    Layout::default()
+                        .h_align(HorizontalAlign::Left)
+                        .v_align(VerticalAlign::Top),
+                )
+                .with_screen_position((corner_offset, corner_offset))
+                .add_text(Text::new(&text).with_scale(24.0).with_color([r, g, b, 1.0]))
+        }
+
         fn render_overlay(
             state: &mut State,
             encoder: &mut wgpu::CommandEncoder,
             texture_view: &wgpu::TextureView,
         ) {
             let fps_text = format!("FPS:{:.0}", state.fps);
+            let core = make_text(&fps_text, 12.0, [1.0, 0.1, 0.1]);
+            let shadow = make_text(&fps_text, 14.0, [0.0; 3]);
 
-            let section = Section::default()
-                .with_layout(
-                    Layout::default()
-                        .h_align(HorizontalAlign::Left)
-                        .v_align(VerticalAlign::Top),
-                )
-                .with_screen_position((12.0, 12.0))
-                .add_text(
-                    Text::new(&fps_text)
-                        .with_scale(24.0)
-                        .with_color([1.0, 0.15, 0.15, 1.0]),
-                );
-
-            if let Err(brush_error) = state
+            let _ = state
                 .text_brush
-                .queue(&state.device, &state.queue, [section])
-            {
-                log::warn!("Brush error: {:?}", brush_error);
-            }
+                .queue(&state.device, &state.queue, [shadow, core])
+                .inspect_err(|brush_error| log::warn!("Brush error: {:?}", brush_error));
 
             let mut overlay_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("overlay_pass"),
