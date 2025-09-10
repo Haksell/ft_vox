@@ -58,24 +58,16 @@ impl<'a> ApplicationHandler for Application<'a> {
     }
 
     fn device_event(&mut self, _: &ActiveEventLoop, _: DeviceId, event: DeviceEvent) {
+        let camera_controller = &mut self.state.as_mut().unwrap().camera_controller;
         match event {
             DeviceEvent::MouseMotion { delta: (dx, dy) } => {
-                self.state
-                    .as_mut()
-                    .unwrap()
-                    .camera_controller
-                    .process_mouse(dx as f32, dy as f32);
+                camera_controller.process_mouse_motion(dx as f32, dy as f32);
             }
-            DeviceEvent::Button { button, state } => {
-                // left click
-                if button == 1 {
-                    self.state
-                        .as_mut()
-                        .unwrap()
-                        .camera_controller
-                        .process_click(state.is_pressed());
-                }
-            }
+            DeviceEvent::Button { button, state } => match button {
+                1 => camera_controller.process_boost(state.is_pressed()),
+                3 if state.is_pressed() => camera_controller.process_block_deletion(),
+                _ => {}
+            },
             _ => {}
         }
     }
@@ -89,7 +81,7 @@ impl<'a> ApplicationHandler for Application<'a> {
         let state = self.state.as_mut().unwrap();
         let window = self.window.as_mut().unwrap();
 
-        if window_id != window.id() || state.input(&event) {
+        if window_id != window.id() {
             return;
         }
 
@@ -119,6 +111,17 @@ impl<'a> ApplicationHandler for Application<'a> {
                     },
                 ..
             } => event_loop.exit(),
+            WindowEvent::KeyboardInput {
+                event:
+                    KeyEvent {
+                        state: element_state,
+                        physical_key: PhysicalKey::Code(keycode),
+                        ..
+                    },
+                ..
+            } => state
+                .camera_controller
+                .process_keyboard(element_state, keycode),
             WindowEvent::Resized(physical_size) => {
                 log::info!("physical_size: {physical_size:?}");
                 state.resize(physical_size);

@@ -541,10 +541,6 @@ impl<'a> State<'a> {
             .insert((chunk_x, chunk_y), render_data);
     }
 
-    pub fn input(&mut self, event: &WindowEvent) -> bool {
-        self.camera_controller.process_keyboard(event)
-    }
-
     pub fn update(&mut self, dt: Duration) {
         self.camera_controller
             .update(&mut self.camera, dt.as_secs_f32());

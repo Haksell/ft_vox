@@ -113,9 +113,9 @@ impl Camera {
 
 pub struct CameraController {
     normal_speed: f32,
-    fast_speed: f32,
+    boosted_speed: f32,
     sensitivity: f32,
-    is_fast: bool,
+    is_boosted: bool,
     is_forward_pressed: bool,
     is_backward_pressed: bool,
     is_left_pressed: bool,
@@ -128,10 +128,10 @@ pub struct CameraController {
 impl CameraController {
     pub fn new() -> Self {
         Self {
-            normal_speed: 50.0, // TODO: 1.0
-            fast_speed: 200.0,  // TODO: 20.0
+            normal_speed: 50.0,   // TODO: 1.0
+            boosted_speed: 200.0, // TODO: 20.0
             sensitivity: 0.004,
-            is_fast: false,
+            is_boosted: false,
             is_forward_pressed: false,
             is_backward_pressed: false,
             is_left_pressed: false,
@@ -142,56 +142,41 @@ impl CameraController {
         }
     }
 
-    pub fn process_mouse(&mut self, delta_x: f32, delta_y: f32) {
+    pub fn process_mouse_motion(&mut self, delta_x: f32, delta_y: f32) {
         self.mouse_delta.0 += delta_x;
         self.mouse_delta.1 += delta_y;
     }
 
-    pub fn process_click(&mut self, is_pressed: bool) {
-        self.is_fast = is_pressed;
+    pub fn process_boost(&mut self, is_pressed: bool) {
+        self.is_boosted = is_pressed;
     }
 
-    pub fn process_keyboard(&mut self, event: &WindowEvent) -> bool {
-        match event {
-            WindowEvent::KeyboardInput {
-                event:
-                    KeyEvent {
-                        state,
-                        physical_key: PhysicalKey::Code(keycode),
-                        ..
-                    },
-                ..
-            } => {
-                let is_pressed = *state == ElementState::Pressed;
-                match keycode {
-                    KeyCode::KeyW | KeyCode::ArrowUp => {
-                        self.is_forward_pressed = is_pressed;
-                        true
-                    }
-                    KeyCode::KeyA | KeyCode::ArrowLeft => {
-                        self.is_left_pressed = is_pressed;
-                        true
-                    }
-                    KeyCode::KeyS | KeyCode::ArrowDown => {
-                        self.is_backward_pressed = is_pressed;
-                        true
-                    }
-                    KeyCode::KeyD | KeyCode::ArrowRight => {
-                        self.is_right_pressed = is_pressed;
-                        true
-                    }
-                    KeyCode::Space => {
-                        self.is_up_pressed = is_pressed;
-                        true
-                    }
-                    KeyCode::ShiftLeft | KeyCode::ControlLeft => {
-                        self.is_down_pressed = is_pressed;
-                        true
-                    }
-                    _ => false,
-                }
+    pub fn process_block_deletion(&mut self) {
+        println!("click");
+    }
+
+    pub fn process_keyboard(&mut self, state: ElementState, keycode: KeyCode) {
+        let is_pressed = state == ElementState::Pressed;
+        match keycode {
+            KeyCode::KeyW | KeyCode::ArrowUp => {
+                self.is_forward_pressed = is_pressed;
             }
-            _ => false,
+            KeyCode::KeyA | KeyCode::ArrowLeft => {
+                self.is_left_pressed = is_pressed;
+            }
+            KeyCode::KeyS | KeyCode::ArrowDown => {
+                self.is_backward_pressed = is_pressed;
+            }
+            KeyCode::KeyD | KeyCode::ArrowRight => {
+                self.is_right_pressed = is_pressed;
+            }
+            KeyCode::Space => {
+                self.is_up_pressed = is_pressed;
+            }
+            KeyCode::ShiftLeft | KeyCode::ControlLeft => {
+                self.is_down_pressed = is_pressed;
+            }
+            _ => {}
         }
     }
 
@@ -213,8 +198,8 @@ impl CameraController {
         movement += up * (self.is_up_pressed as i32) as f32;
         movement -= up * (self.is_down_pressed as i32) as f32;
 
-        let speed = if self.is_fast {
-            self.fast_speed
+        let speed = if self.is_boosted {
+            self.boosted_speed
         } else {
             self.normal_speed
         };

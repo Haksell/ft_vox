@@ -10,7 +10,7 @@
 - use cubemap instead of panorama for skybox 
 - threading for chunk generation, so not laggy ?
 - fix water to be transparent block
-- args (seed, fullscreen, ...)
+- args (seed, fullscreen, fps counter, ...)
 - compute shader for world generation
 - frustum culling during face generation instead of after checking chunks
 
