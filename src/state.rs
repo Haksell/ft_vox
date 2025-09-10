@@ -559,7 +559,7 @@ impl<'a> State<'a> {
             }
 
             let mut overlay_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("text_pass"),
+                label: Some("overlay_pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: texture_view,
                     resolve_target: None,
