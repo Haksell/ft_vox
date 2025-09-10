@@ -82,14 +82,26 @@ impl<'a> State<'a> {
 
         let surface = instance.create_surface(window).unwrap();
 
-        let adapter = instance
+        // TODO: make the code cleaner
+        let mut adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::default(),
+                power_preference: wgpu::PowerPreference::HighPerformance,
                 compatible_surface: Some(&surface),
-                force_fallback_adapter: true,
+                force_fallback_adapter: false,
             })
-            .await
-            .unwrap();
+            .await;
+
+        if !adapter.is_ok() {
+            adapter = instance
+                .request_adapter(&wgpu::RequestAdapterOptions {
+                    power_preference: wgpu::PowerPreference::default(),
+                    compatible_surface: Some(&surface),
+                    force_fallback_adapter: true,
+                })
+                .await;
+        }
+
+        let adapter = adapter.expect("No suitable GPU adapters found on the system!");
 
         let (device, queue) = adapter
             .request_device(&wgpu::DeviceDescriptor {
@@ -116,11 +128,6 @@ impl<'a> State<'a> {
             .contains(&wgpu::PresentMode::Mailbox)
         {
             wgpu::PresentMode::Mailbox
-        } else if surface_caps
-            .present_modes
-            .contains(&wgpu::PresentMode::Immediate)
-        {
-            wgpu::PresentMode::Immediate
         } else {
             wgpu::PresentMode::Fifo
         };
