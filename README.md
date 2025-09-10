@@ -2,6 +2,7 @@
 
 ## todo ft_vox
 
+- (white/dark cross in middle of screen for mouse like minecraft https://www.youtube.com/watch?v=fl7KivlusfE&t=98s)
 - block deletion
 - mipmap to avoid moire patterns
 - fix grass color (https://minecraft.fandom.com/wiki/Grass_Block, https://minecraft.fandom.com/wiki/Color#Biome_colors) (or simpler atlas)
@@ -10,6 +11,7 @@
 - threading for chunk generation, so not laggy ?
 - fix water to be transparent block
 - args (seed, fullscreen, ...)
+- compute shader for world generation
 
 ## mandatory ft_vox
 
