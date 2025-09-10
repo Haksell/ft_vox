@@ -58,14 +58,23 @@ impl<'a> ApplicationHandler for Application<'a> {
     }
 
     fn device_event(&mut self, _: &ActiveEventLoop, _: DeviceId, event: DeviceEvent) {
-        let camera_controller = &mut self.state.as_mut().unwrap().camera_controller;
+        let state = self.state.as_mut().unwrap();
+        let camera_controller = &mut state.camera_controller;
         match event {
             DeviceEvent::MouseMotion { delta: (dx, dy) } => {
                 camera_controller.process_mouse_motion(dx as f32, dy as f32);
             }
-            DeviceEvent::Button { button, state } => match button {
-                1 => camera_controller.process_boost(state.is_pressed()),
-                3 => camera_controller.process_block_deletion(state.is_pressed()),
+            DeviceEvent::Button {
+                button,
+                state: button_state,
+            } => match button {
+                1 => camera_controller.process_boost(button_state.is_pressed()),
+                3 => {
+                    state.is_right_clicking = button_state.is_pressed();
+                    if !state.is_right_clicking {
+                        println!("click");
+                    }
+                }
                 _ => {}
             },
             _ => {}

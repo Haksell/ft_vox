@@ -112,8 +112,7 @@ pub struct CameraController {
     normal_speed: f32,
     boosted_speed: f32,
     sensitivity: f32,
-    pub is_boosted: bool,  // left click
-    pub is_deleting: bool, // right click
+    is_boosted: bool,
     is_forward_pressed: bool,
     is_backward_pressed: bool,
     is_left_pressed: bool,
@@ -130,7 +129,6 @@ impl CameraController {
             boosted_speed: 200.0, // TODO: 20.0
             sensitivity: 0.004,
             is_boosted: false,
-            is_deleting: false,
             is_forward_pressed: false,
             is_backward_pressed: false,
             is_left_pressed: false,
@@ -148,13 +146,6 @@ impl CameraController {
 
     pub fn process_boost(&mut self, is_pressed: bool) {
         self.is_boosted = is_pressed;
-    }
-
-    pub fn process_block_deletion(&mut self, is_pressed: bool) {
-        self.is_deleting = is_pressed;
-        if !is_pressed {
-            println!("click");
-        }
     }
 
     pub fn process_keyboard(&mut self, state: ElementState, keycode: KeyCode) {

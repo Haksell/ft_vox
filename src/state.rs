@@ -35,7 +35,7 @@ struct ChunkRenderData {
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct CrosshairUniform {
     center: [f32; 2],
-    is_deleting: u32,
+    is_right_clicking: u32,
     _pad: [u8; 4],
 }
 
@@ -47,6 +47,8 @@ pub struct State<'a> {
 
     pub size: PhysicalSize<u32>,
     pub center: PhysicalSize<u32>,
+    pub fps: f32,
+    pub is_right_clicking: bool,
 
     chunk_render_data: HashMap<ChunkCoords, ChunkRenderData>,
 
@@ -62,8 +64,7 @@ pub struct State<'a> {
     skybox_pipeline: wgpu::RenderPipeline,
     skybox_bind_group: wgpu::BindGroup,
 
-    pub fps: f32,
-    pub text_brush: TextBrush<FontRef<'a>>,
+    text_brush: TextBrush<FontRef<'a>>,
 
     crosshair_pipeline: wgpu::RenderPipeline,
     crosshair_bind_group: wgpu::BindGroup,
@@ -185,6 +186,7 @@ impl<'a> State<'a> {
             label: Some("diffuse_bind_group"),
         });
 
+        // === CAMERA ===
         let camera_distance_xy = (RENDER_DISTANCE + 1.0) * SQRT_2 * CHUNK_WIDTH as f32;
         let camera_distance = (camera_distance_xy.powi(2) + (CHUNK_HEIGHT as f32).powi(2)).sqrt();
         let camera = Camera::new(
@@ -281,8 +283,6 @@ impl<'a> State<'a> {
             cache: None,
         });
 
-        let chunk_render_data = HashMap::new();
-
         // === SKYBOX ===
         let skybox_texture = Texture::from_bytes(
             &device,
@@ -349,7 +349,7 @@ impl<'a> State<'a> {
             label: Some("crosshair_uniform"),
             contents: bytemuck::bytes_of(&CrosshairUniform {
                 center: [center.width as f32, center.height as f32],
-                is_deleting: 0,
+                is_right_clicking: 0,
                 _pad: [0; 4],
             }),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
@@ -419,7 +419,6 @@ impl<'a> State<'a> {
                 .unwrap()
                 .with_depth_stencil(None)
                 .build(&device, config.width, config.height, config.format);
-        let fps = 60.0; // dummy value before first calculation
 
         Self {
             surface,
@@ -429,7 +428,7 @@ impl<'a> State<'a> {
             size,
             center,
             voxels_pipeline,
-            chunk_render_data,
+            chunk_render_data: HashMap::new(),
             diffuse_bind_group,
             depth_texture,
             camera,
@@ -438,8 +437,9 @@ impl<'a> State<'a> {
             camera_controller,
             skybox_pipeline,
             skybox_bind_group,
-            fps,
+            fps: 60.0, // dummy value before first calculation
             text_brush,
+            is_right_clicking: false,
             crosshair_pipeline,
             crosshair_bind_group,
             crosshair_uniform,
@@ -464,17 +464,6 @@ impl<'a> State<'a> {
             .resize_view(new_size.width as f32, new_size.height as f32, &self.queue);
 
         self.depth_texture = Texture::create_depth_texture(&self.device, &self.config);
-
-        println!("{}", self.camera_controller.is_deleting as u32);
-        self.queue.write_buffer(
-            &self.crosshair_uniform,
-            0,
-            bytemuck::bytes_of(&CrosshairUniform {
-                center: [self.center.width as f32, self.center.height as f32],
-                is_deleting: self.camera_controller.is_deleting as u32,
-                _pad: [0; 4],
-            }),
-        );
     }
 
     pub fn update_chunks(&mut self, world: &mut World) {
@@ -566,7 +555,7 @@ impl<'a> State<'a> {
             0,
             bytemuck::bytes_of(&CrosshairUniform {
                 center: [self.center.width as f32, self.center.height as f32],
-                is_deleting: self.camera_controller.is_deleting as u32,
+                is_right_clicking: self.is_right_clicking as u32,
                 _pad: [0; 4],
             }),
         );
