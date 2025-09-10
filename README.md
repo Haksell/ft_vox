@@ -12,6 +12,7 @@
 - fix water to be transparent block
 - args (seed, fullscreen, ...)
 - compute shader for world generation
+- frustum culling during face generation instead of after checking chunks
 
 ## mandatory ft_vox
 
