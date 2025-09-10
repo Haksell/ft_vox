@@ -29,12 +29,21 @@ struct ChunkRenderData {
     aabb: AABB,
 }
 
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct CrosshairUniform {
+    center: [f32; 2],
+    _pad: [f32; 2],
+}
+
 pub struct State<'a> {
     surface: wgpu::Surface<'a>,
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
+
     pub size: PhysicalSize<u32>,
+    pub center: PhysicalSize<u32>,
 
     chunk_render_data: HashMap<ChunkCoords, ChunkRenderData>,
 
@@ -52,11 +61,16 @@ pub struct State<'a> {
 
     pub fps: f32,
     pub text_brush: TextBrush<FontRef<'a>>,
+
+    crosshair_pipeline: wgpu::RenderPipeline,
+    crosshair_bind_group: wgpu::BindGroup,
+    crosshair_uniform: wgpu::Buffer,
 }
 
 impl<'a> State<'a> {
     pub async fn new(window: Arc<Window>) -> State<'a> {
         let size = window.inner_size();
+        let center = PhysicalSize::new(size.width / 2, size.height / 2);
 
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: wgpu::Backends::PRIMARY,
@@ -327,12 +341,80 @@ impl<'a> State<'a> {
             cache: None,
         });
 
+        // === CROSSHAIR ===
+        let crosshair_uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("crosshair_uniform"),
+            contents: bytemuck::bytes_of(&CrosshairUniform {
+                center: [center.width as f32, center.height as f32],
+                _pad: [0.0, 0.0],
+            }),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let crosshair_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("crosshair_bgl"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+
+        let crosshair_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("crosshair_bg"),
+            layout: &crosshair_bgl,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: crosshair_uniform.as_entire_binding(),
+            }],
+        });
+
+        let crosshair_shader =
+            device.create_shader_module(wgpu::include_wgsl!("../shaders/crosshair.wgsl"));
+
+        let crosshair_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("crosshair_pipeline"),
+            layout: Some(
+                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("crosshair_pipeline_layout"),
+                    bind_group_layouts: &[&crosshair_bgl],
+                    push_constant_ranges: &[],
+                }),
+            ),
+            vertex: wgpu::VertexState {
+                module: &crosshair_shader,
+                entry_point: Some("vs_main"),
+                buffers: &[], // fullscreen triangle
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &crosshair_shader,
+                entry_point: Some("fs_main"),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            }),
+            primitive: wgpu::PrimitiveState::default(),
+            depth_stencil: None, // overlay = no depth
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        });
+
+        // === FPS ===
         let text_brush =
             BrushBuilder::using_font_bytes(include_bytes!("../assets/EP-Boxi-Bold.otf"))
                 .unwrap()
                 .with_depth_stencil(None)
                 .build(&device, config.width, config.height, config.format);
-
         let fps = 60.0; // dummy value before first calculation
 
         Self {
@@ -341,6 +423,7 @@ impl<'a> State<'a> {
             queue,
             config,
             size,
+            center,
             voxels_pipeline,
             chunk_render_data,
             diffuse_bind_group,
@@ -353,15 +436,20 @@ impl<'a> State<'a> {
             skybox_bind_group,
             fps,
             text_brush,
+            crosshair_pipeline,
+            crosshair_bind_group,
+            crosshair_uniform,
         }
     }
 
-    pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
+    pub fn resize(&mut self, new_size: PhysicalSize<u32>) {
         if new_size.width == 0 || new_size.height == 0 {
             return;
         }
 
         self.size = new_size;
+        self.center = PhysicalSize::new(new_size.width / 2, new_size.height / 2);
+
         self.config.width = new_size.width;
         self.config.height = new_size.height;
 
@@ -372,6 +460,15 @@ impl<'a> State<'a> {
             .resize_view(new_size.width as f32, new_size.height as f32, &self.queue);
 
         self.depth_texture = Texture::create_depth_texture(&self.device, &self.config);
+
+        self.queue.write_buffer(
+            &self.crosshair_uniform,
+            0,
+            bytemuck::bytes_of(&CrosshairUniform {
+                center: [self.center.width as f32, self.center.height as f32],
+                _pad: [0.0, 0.0],
+            }),
+        );
     }
 
     pub fn update_chunks(&mut self, world: &mut World) {
@@ -575,6 +672,17 @@ impl<'a> State<'a> {
             });
 
             state.text_brush.draw(&mut overlay_pass);
+
+            let r: u32 = 16;
+            let PhysicalSize {
+                width: cx,
+                height: cy,
+            } = state.center;
+
+            // overlay_pass.set_scissor_rect(cx - r, cy + r, 2 * r, 2 * r);
+            overlay_pass.set_pipeline(&state.crosshair_pipeline);
+            overlay_pass.set_bind_group(0, &state.crosshair_bind_group, &[]);
+            overlay_pass.draw(0..3, 0..1);
         }
 
         let output = match self.surface.get_current_texture() {
