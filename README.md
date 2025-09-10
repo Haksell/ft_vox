@@ -8,8 +8,6 @@
 - fix grass color (https://minecraft.fandom.com/wiki/Grass_Block, https://minecraft.fandom.com/wiki/Color#Biome_colors) (or simpler atlas)
 - fix water color + animation
 - use cubemap instead of panorama for skybox 
-- threading for chunk generation, so not laggy ?
-- fix water to be transparent block
 - args (seed, fullscreen, fps counter, ...)
 - compute shader for world generation
 - frustum culling during face generation instead of after checking chunks
@@ -61,6 +59,7 @@
 
 - ray tracing/casting/marching/whatever (https://www.youtube.com/watch?v=gXSHtBZFxEI, https://www.youtube.com/watch?v=P2bGF6GPmfc)
 - generative skyboxes
+- transparent water
 - make our own pixel art
 - sun(s) (from `scratch` branch)
 - fix dead pixels
