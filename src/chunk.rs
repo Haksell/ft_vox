@@ -52,6 +52,7 @@ impl Chunk {
         debug_assert!(x < CHUNK_WIDTH);
         debug_assert!(y < CHUNK_WIDTH);
         debug_assert!(z < CHUNK_HEIGHT);
+        todo!();
     }
 
     pub fn bounding_box(&self) -> AABB {

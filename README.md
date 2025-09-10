@@ -2,6 +2,8 @@
 
 ## todo ft_vox
 
+- call `retain` for chunks too
+- put `World` in `State`
 - block deletion
 - mipmap to avoid moire patterns
 - fix grass color (https://minecraft.fandom.com/wiki/Grass_Block, https://minecraft.fandom.com/wiki/Color#Biome_colors) (or simpler atlas)

@@ -8,7 +8,10 @@ use {
         utils::{ceil_div, lerp, sign},
         vertex::Vertex,
     },
-    std::{collections::HashMap, thread},
+    std::{
+        collections::{HashMap, HashSet},
+        thread,
+    },
 };
 
 pub const SURFACE: usize = 64;
@@ -25,12 +28,11 @@ pub struct World {
     cave_noise: PerlinNoise,
 
     chunks: HashMap<ChunkCoords, Chunk>,
+    deleted_blocks: HashMap<ChunkCoords, HashSet<(usize, usize, usize)>>,
 }
 
 impl World {
     pub fn new(seed: u64) -> Self {
-        let chunks = HashMap::new();
-
         // temperature: affects hot vs cold biomes
         let temperature_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0xFF446677))
             .frequency(0.0002)
@@ -75,7 +77,8 @@ impl World {
             erosion_noise,
             weirdness_noise,
             cave_noise,
-            chunks,
+            chunks: HashMap::new(),
+            deleted_blocks: HashMap::new(),
         }
     }
 
@@ -96,7 +99,13 @@ impl World {
 
     pub fn load_chunk(&mut self, chunk_coords: ChunkCoords) {
         if !self.chunks.contains_key(&chunk_coords) {
-            let blocks = self.generate_chunk_blocks(chunk_coords);
+            let mut blocks = self.generate_chunk_blocks(chunk_coords);
+            if let Some(deleted) = self.deleted_blocks.get(&chunk_coords) {
+                println!("{deleted:?}");
+                for &(x, y, z) in deleted {
+                    blocks[x][y][z] = None;
+                }
+            }
             let chunk = Chunk::new(chunk_coords, blocks);
             self.chunks.insert(chunk_coords, chunk);
         }
@@ -656,7 +665,7 @@ impl World {
                 let len = (CHUNK_WIDTH - start_x).min(chunk_size);
 
                 let (head, tail) = remainder.split_at_mut(len);
-                let start_x_this = start_x;
+                let start_x_this = start_x; // ???
 
                 s.spawn(move || {
                     for (dx, plane) in head.iter_mut().enumerate() {
@@ -833,6 +842,11 @@ impl World {
             return;
         };
 
-        chunk.delete_block(block_x, block_y, block_z)
+        chunk.delete_block(block_x, block_y, block_z);
+        self.deleted_blocks
+            .entry((chunk_x, chunk_y))
+            .or_insert_with(HashSet::new)
+            .insert((block_x, block_y, block_z));
+        println!("{:?}", self.deleted_blocks);
     }
 }
