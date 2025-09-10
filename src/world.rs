@@ -44,6 +44,8 @@ impl World {
         let continentalness_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0xFF000055))
             .frequency(0.0002)
             .octaves(8)
+            .persistence(0.2)
+            .lacunarity(1.5)
             .build();
 
         // erosion: affects terrain ruggedness
