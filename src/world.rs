@@ -10,8 +10,6 @@ use {
     std::{collections::HashMap, thread},
 };
 
-pub const RENDER_DISTANCE: usize = 15;
-
 pub const SURFACE: usize = 64;
 pub const SEA: usize = 62;
 

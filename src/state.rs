@@ -5,7 +5,7 @@ use {
         chunk::{ChunkCoords, CHUNK_HEIGHT, CHUNK_WIDTH},
         texture::Texture,
         vertex::Vertex,
-        world::{World, RENDER_DISTANCE},
+        world::World,
     },
     glam::Vec3,
     std::{
@@ -21,6 +21,8 @@ use {
     },
     winit::{dpi::PhysicalSize, event::*, window::Window},
 };
+
+const RENDER_DISTANCE: f32 = 14.5;
 
 struct ChunkRenderData {
     vertex_buffer: wgpu::Buffer,
@@ -168,7 +170,7 @@ impl<'a> State<'a> {
             label: Some("diffuse_bind_group"),
         });
 
-        let camera_distance_xy = (RENDER_DISTANCE + 1) as f32 * SQRT_2 * CHUNK_WIDTH as f32;
+        let camera_distance_xy = (RENDER_DISTANCE + 1.0) * SQRT_2 * CHUNK_WIDTH as f32;
         let camera_distance = (camera_distance_xy.powi(2) + (CHUNK_HEIGHT as f32).powi(2)).sqrt();
         let camera = Camera::new(
             Vec3::new(0.0, 0.0, CHUNK_HEIGHT as f32),
@@ -376,24 +378,22 @@ impl<'a> State<'a> {
 
     pub fn update_chunks(&mut self, world: &mut World) {
         let camera_pos = self.camera.position();
-        let render_distance = RENDER_DISTANCE as i32;
         let camera_chunk = world.get_chunk_index_from_position(camera_pos.x, camera_pos.y);
-        let render_distance_sq = render_distance * render_distance;
+
+        let render_distance = RENDER_DISTANCE.floor() as i32;
+        let render_distance_sq = RENDER_DISTANCE * RENDER_DISTANCE;
 
         let mut chunks_in_range = HashSet::new();
 
         for dy in -render_distance..=render_distance {
             let dy_sq = dy * dy;
-            let max_dx_sq = render_distance_sq - dy_sq;
+            let max_dx_sq = render_distance_sq - dy_sq as f32;
+            let max_dx = max_dx_sq.sqrt() as i32;
 
-            if max_dx_sq >= 0 {
-                let max_dx = (max_dx_sq as f32).sqrt() as i32;
-
-                for dx in -max_dx..=max_dx {
-                    let chunk_coords = (camera_chunk.0 + dx, camera_chunk.1 + dy);
-                    chunks_in_range.insert(chunk_coords);
-                    world.load_chunk(chunk_coords);
-                }
+            for dx in -max_dx..=max_dx {
+                let chunk_coords = (camera_chunk.0 + dx, camera_chunk.1 + dy);
+                chunks_in_range.insert(chunk_coords);
+                world.load_chunk(chunk_coords);
             }
         }
 
