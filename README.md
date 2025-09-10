@@ -9,6 +9,7 @@
 - use cubemap instead of panorama for skybox 
 - threading for chunk generation, so not laggy ?
 - fix water to be transparent block
+- args (seed, fullscreen, ...)
 
 ## todo ft_minecraft
 

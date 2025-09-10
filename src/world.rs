@@ -658,7 +658,24 @@ impl World {
 
                         for (y, column) in plane.iter_mut().enumerate() {
                             let world_y = (chunk_y * CHUNK_WIDTH as i32) + y as i32;
-                            *column = self.generate_column(world_x, world_y);
+                            let height =
+                                self.generate_height_at(world_x as f32, world_y as f32) as usize;
+                            let biome = self.determine_biome(world_x as f32, world_y as f32);
+
+                            for z in 0..CHUNK_HEIGHT {
+                                if z <= height {
+                                    if self.has_cave_at(world_x, world_y, z as i32, height as i32) {
+                                        continue;
+                                    }
+                                    let depth_from_surface = height.saturating_sub(z);
+                                    column[z] = Some(match depth_from_surface {
+                                        0..=5 => biome.get_surface_block(),
+                                        _ => biome.get_deep_block(),
+                                    });
+                                } else if z <= SEA {
+                                    column[z] = Some(BlockType::Water);
+                                }
+                            }
                         }
                     }
                 });
@@ -669,28 +686,6 @@ impl World {
         });
 
         blocks
-    }
-
-    fn generate_column(&self, world_x: i32, world_y: i32) -> [Option<BlockType>; CHUNK_HEIGHT] {
-        let height = self.generate_height_at(world_x as f32, world_y as f32) as usize;
-        let biome = self.determine_biome(world_x as f32, world_y as f32);
-        let mut column = [None; CHUNK_HEIGHT];
-
-        for z in 0..CHUNK_HEIGHT {
-            if z <= height {
-                if self.has_cave_at(world_x, world_y, z as i32, height as i32) {
-                    continue;
-                }
-                let depth_from_surface = height.saturating_sub(z);
-                column[z] = Some(match depth_from_surface {
-                    0..=5 => biome.get_surface_block(),
-                    _ => biome.get_deep_block(),
-                });
-            } else if z <= SEA {
-                column[z] = Some(BlockType::Water);
-            }
-        }
-        column
     }
 
     pub fn generate_chunk_mesh(
