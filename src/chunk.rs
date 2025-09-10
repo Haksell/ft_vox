@@ -253,19 +253,10 @@ impl ChunkNode {
 
     fn any_empty_in_region(&self, region: &ChunkNodePos) -> bool {
         match self {
-            Self::Leaf(val, pos) => {
-                if !intersects(pos, region) {
-                    false
-                } else {
-                    val.is_none()
-                }
-            }
+            Self::Leaf(val, pos) => intersects(pos, region) && val.is_none(),
             Self::Inner(a, b, pos) => {
-                if !intersects(pos, region) {
-                    false
-                } else {
-                    a.any_empty_in_region(region) || b.any_empty_in_region(region)
-                }
+                intersects(pos, region) && a.any_empty_in_region(region)
+                    || b.any_empty_in_region(region)
             }
         }
     }
