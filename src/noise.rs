@@ -45,7 +45,7 @@ impl PerlinNoiseBuilder {
 
     pub fn build(self) -> PerlinNoise {
         let mut permutations = [0u8; 512];
-        let mut temp = (0..256).map(|x| x as u8).collect::<Vec<u8>>();
+        let mut temp = (0i32..256).map(|x| x as u8).collect::<Vec<u8>>();
 
         let mut hash = self.seed;
         for i in (0..256).rev() {
