@@ -8,6 +8,7 @@
 - fix water color + animation
 - more cave openings
 - random rare textures in caves
+- collisions
 - args (seed, fullscreen, display fps, ...)
 
 ## mandatory ft_vox
