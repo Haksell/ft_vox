@@ -195,10 +195,15 @@ impl ChunkNode {
 
                 for face in FACES {
                     if chunk.is_face_visible(pos, face, adjacent) {
-                        let (face_verts, face_indices) = create_face(face, *block_type, &pos);
-
-                        vertices.extend(face_verts);
-                        indices.extend(face_indices.iter().map(|i| *i + index_offset));
+                        vertices.extend(create_face_vertices(face, *block_type, &pos));
+                        indices.extend([
+                            index_offset,
+                            index_offset + 1,
+                            index_offset + 2,
+                            index_offset + 2,
+                            index_offset + 3,
+                            index_offset,
+                        ]);
                         index_offset += 4;
                     }
                 }
@@ -328,12 +333,14 @@ fn uniform(
         .then(|| first)
 }
 
-fn create_face(face: Face, block: BlockType, pos: &ChunkNodePos) -> ([Vertex; 4], [u16; 6]) {
-    let face_positions = face.positions();
-    let (sx, sy, sz) = pos.size();
-    let face_uvs = face.uvs((sx, sy, sz));
+fn create_face_vertices(face: Face, block: BlockType, pos: &ChunkNodePos) -> [Vertex; 4] {
+    let size = pos.size();
+    let (sx, sy, sz) = size;
 
-    let vertices = std::array::from_fn(|i| Vertex {
+    let face_uvs = face.uvs(size);
+    let face_positions = face.positions();
+
+    std::array::from_fn(|i| Vertex {
         position: [
             pos.x0 as f32 + face_positions[i][0] * sx as f32,
             pos.y0 as f32 + face_positions[i][1] * sy as f32,
@@ -345,11 +352,7 @@ fn create_face(face: Face, block: BlockType, pos: &ChunkNodePos) -> ([Vertex; 4]
             Face::Bottom => block.atlas_offset_bottom(),
             Face::Left | Face::Right | Face::Front | Face::Back => block.atlas_offset_side(),
         },
-    });
-
-    let indices = [0, 1, 2, 2, 3, 0];
-
-    (vertices, indices)
+    })
 }
 
 #[inline]

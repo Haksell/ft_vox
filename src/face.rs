@@ -18,6 +18,7 @@ pub const FACES: [Face; 6] = [
 ];
 
 impl Face {
+    #[allow(unused)] // will definitely be used again
     pub fn normal(&self) -> (i32, i32, i32) {
         match self {
             Face::Top => (0, 0, 1),
@@ -71,13 +72,11 @@ impl Face {
     }
 
     pub const fn uvs(&self, (sx, sy, sz): (usize, usize, usize)) -> [[f32; 2]; 4] {
+        let (sx, sy, sz) = (sx as f32, sy as f32, sz as f32);
         match self {
-            Face::Top => [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
-            Face::Bottom => [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
-            Face::Left => [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
-            Face::Right => [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
-            Face::Front => [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
-            Face::Back => [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
+            Face::Top | Face::Bottom => [[0.0, sy], [sx, sy], [sx, 0.0], [0.0, 0.0]],
+            Face::Left | Face::Right => [[0.0, sz], [sy, sz], [sy, 0.0], [0.0, 0.0]],
+            Face::Front | Face::Back => [[0.0, sz], [sx, sz], [sx, 0.0], [0.0, 0.0]],
         }
     }
 }
