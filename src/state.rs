@@ -378,14 +378,22 @@ impl<'a> State<'a> {
         let camera_pos = self.camera.position();
         let render_distance = RENDER_DISTANCE as i32;
         let camera_chunk = world.get_chunk_index_from_position(camera_pos.x, camera_pos.y);
+        let render_distance_sq = render_distance * render_distance;
 
         let mut chunks_in_range = HashSet::new();
 
-        for dx in -render_distance..=render_distance {
-            for dy in -render_distance..=render_distance {
-                let chunk_coords = (camera_chunk.0 + dx, camera_chunk.1 + dy);
-                chunks_in_range.insert(chunk_coords);
-                world.load_chunk(chunk_coords);
+        for dy in -render_distance..=render_distance {
+            let dy_sq = dy * dy;
+            let max_dx_sq = render_distance_sq - dy_sq;
+
+            if max_dx_sq >= 0 {
+                let max_dx = (max_dx_sq as f32).sqrt() as i32;
+
+                for dx in -max_dx..=max_dx {
+                    let chunk_coords = (camera_chunk.0 + dx, camera_chunk.1 + dy);
+                    chunks_in_range.insert(chunk_coords);
+                    world.load_chunk(chunk_coords);
+                }
             }
         }
 

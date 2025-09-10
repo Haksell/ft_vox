@@ -10,7 +10,7 @@ use {
     std::{collections::HashMap, thread},
 };
 
-pub const RENDER_DISTANCE: usize = 15;
+pub const RENDER_DISTANCE: usize = 14;
 
 pub const SURFACE: usize = 64;
 pub const SEA: usize = 62;
@@ -45,12 +45,12 @@ impl World {
         // continentalness: determines land vs ocean
         let continentalness_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0xFF000055))
             .frequency(0.0002)
-            .octaves(16)
+            .octaves(8)
             .build();
 
         // erosion: affects terrain ruggedness
         let erosion_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0x44336699))
-            .frequency(0.002)
+            .frequency(0.0008)
             .octaves(8)
             .build();
 
