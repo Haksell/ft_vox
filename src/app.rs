@@ -138,6 +138,9 @@ impl<'a> ApplicationHandler for Application<'a> {
             WindowEvent::RedrawRequested => {
                 let now = Instant::now();
                 let dt = now - self.last_render;
+                if dt > Duration::from_millis(100) {
+                    log::warn!("frame took {}ms to generate", dt.as_millis());
+                }
                 self.last_render = now;
 
                 let camera_pos = state.camera.position();
