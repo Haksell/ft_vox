@@ -22,7 +22,7 @@ use {
     winit::{dpi::PhysicalSize, window::Window},
 };
 
-const RENDER_DISTANCE: f32 = 19.5;
+const RENDER_DISTANCE: f32 = 22.5;
 
 struct ChunkRenderData {
     vertex_buffer: wgpu::Buffer,
