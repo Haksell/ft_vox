@@ -78,7 +78,7 @@ impl<'a> ApplicationHandler for Application<'a> {
                         state.is_right_clicking = false;
                         state.is_crosshair_active = false;
                         let block = self.world.delete_center_block(&state.camera);
-                        println!("{:?}", block);
+                        log::debug!("Deleted {:?}", block);
                     }
                 }
                 _ => {}
