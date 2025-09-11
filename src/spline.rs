@@ -37,7 +37,6 @@ impl Spline {
             return self.points[0].y;
         }
 
-        // Handle edge cases
         if x <= self.points[0].x {
             return self.points[0].y;
         }
@@ -46,21 +45,16 @@ impl Spline {
             return self.points.last().unwrap().y;
         }
 
-        // Find the two points to interpolate between
         for i in 0..self.points.len() - 1 {
             let p1 = &self.points[i];
             let p2 = &self.points[i + 1];
 
             if x >= p1.x && x <= p2.x {
-                // Calculate interpolation factor
                 let t = (x - p1.x) / (p2.x - p1.x);
-
-                // Linear interpolation
                 return lerp(p1.y, p2.y, t);
             }
         }
 
-        // Fallback (shouldn't reach here)
         self.points.last().unwrap().y
     }
 }

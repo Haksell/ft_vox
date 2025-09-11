@@ -70,6 +70,8 @@ impl BiomeType {
             BiomeType::Ocean => BlockType::Sand,
             BiomeType::IceSpikes => BlockType::Ice,
             BiomeType::Badlands => BlockType::RedSand,
+            BiomeType::StonyPeaks => BlockType::Stone,
+            BiomeType::StonyShore => BlockType::Stone,
             _ => BlockType::Grass,
         }
     }

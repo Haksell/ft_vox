@@ -3,7 +3,7 @@ use {
         biome::BiomeType,
         block::BlockType,
         chunk::{AdjacentChunks, Chunk, ChunkCoords, CHUNK_HEIGHT, CHUNK_WIDTH},
-        noise::{PerlinNoise, PerlinNoiseBuilder},
+        noise::{PerlinNoise, PerlinNoiseInfo},
         spline::{Spline, SplinePoint},
         utils::ceil_div,
         vertex::Vertex,
@@ -30,41 +30,61 @@ impl World {
         let chunks = HashMap::new();
 
         // temperature: affects hot vs cold biomes
-        let temperature_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0xFF446677))
-            .frequency(0.0002)
-            .octaves(4)
-            .build();
+        let temperature_noise = PerlinNoise::new(
+            seed.wrapping_add(0xFF446677),
+            PerlinNoiseInfo {
+                frequency: 0.0002,
+                ..Default::default()
+            },
+        );
 
         // humidity: affects dry vs wet biomes
-        let humidity_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0xAABB33CC))
-            .frequency(0.0026)
-            .octaves(4)
-            .build();
+        let humidity_noise = PerlinNoise::new(
+            seed.wrapping_add(0xAABB33CC),
+            PerlinNoiseInfo {
+                frequency: 0.0026,
+                ..Default::default()
+            },
+        );
 
         // continentalness: determines land vs ocean
-        let continentalness_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0xFF000055))
-            .frequency(0.0002)
-            .octaves(8)
-            .persistence(0.2)
-            .lacunarity(1.5)
-            .build();
+        let continentalness_noise = PerlinNoise::new(
+            seed.wrapping_add(0xFF000055),
+            PerlinNoiseInfo {
+                frequency: 0.0002,
+                octaves: 8,
+                persistence: 0.2,
+                lacunarity: 1.5,
+            },
+        );
 
         // erosion: affects terrain ruggedness
-        let erosion_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0x44336699))
-            .frequency(0.0008)
-            .octaves(8)
-            .build();
+        let erosion_noise = PerlinNoise::new(
+            seed.wrapping_add(0x44336699),
+            PerlinNoiseInfo {
+                frequency: 0.0008,
+                octaves: 8,
+                ..Default::default()
+            },
+        );
 
         // weirdness: creates unusual terrain features
-        let weirdness_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0xFF110077))
-            .frequency(0.0008)
-            .octaves(4)
-            .build();
+        let weirdness_noise = PerlinNoise::new(
+            seed.wrapping_add(0xFF110077),
+            PerlinNoiseInfo {
+                frequency: 0.0008,
+                ..Default::default()
+            },
+        );
 
-        let cave_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0x110099FF))
-            .frequency(0.008)
-            .octaves(6)
-            .build();
+        let cave_noise = PerlinNoise::new(
+            seed.wrapping_add(0x110099FF),
+            PerlinNoiseInfo {
+                frequency: 0.008,
+                octaves: 6,
+                ..Default::default()
+            },
+        );
 
         Self {
             temperature_noise,
@@ -120,11 +140,13 @@ impl World {
         let spline = Spline::new(vec![
             SplinePoint::new(-1.0, -30.0),
             SplinePoint::new(-0.45, -20.0),
-            SplinePoint::new(-0.2, -5.0),
+            SplinePoint::new(-0.2, 0.0),
             SplinePoint::new(-0.1, 5.0),
-            SplinePoint::new(0.05, 30.0),
-            SplinePoint::new(0.3, 60.0),
-            SplinePoint::new(1.0, 120.0),
+            SplinePoint::new(0.05, 5.0),
+            SplinePoint::new(0.15, 10.0),
+            SplinePoint::new(0.3, 15.0),
+            SplinePoint::new(0.5, 30.0),
+            SplinePoint::new(1.0, 60.0),
         ]);
 
         spline.sample(continentalness)
@@ -148,7 +170,8 @@ impl World {
     // Peaks and valleys spline
     fn peaks_valleys_spline(&self, peak_and_valley: f32) -> f32 {
         let spline = Spline::new(vec![
-            SplinePoint::new(-1.0, -40.0),
+            SplinePoint::new(-1.0, -35.0),
+            SplinePoint::new(-0.95, -30.0),
             SplinePoint::new(-0.85, -10.0),
             SplinePoint::new(-0.2, 10.0),
             SplinePoint::new(0.2, 20.0),
@@ -680,8 +703,7 @@ impl World {
                                     }
                                     let depth_from_surface = height.saturating_sub(z);
                                     column[z] = Some(match depth_from_surface {
-                                        0 => biome.get_surface_block(),
-                                        1..=5 => biome.get_subsurface_block(),
+                                        0..5 => biome.get_surface_block(),
                                         _ => biome.get_deep_block(),
                                     });
                                 } else if z <= SEA {

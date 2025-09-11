@@ -3,51 +3,38 @@ use {
     glam::{Vec2, Vec3},
 };
 
-// TODO: remove PerlinNoiseBuilder in favor of PerlinNoise::new
-pub struct PerlinNoiseBuilder {
-    seed: u64,
+pub struct PerlinNoiseInfo {
+    pub frequency: f32,
+    pub octaves: usize,
+    pub persistence: f32,
+    pub lacunarity: f32,
+}
+
+impl Default for PerlinNoiseInfo {
+    fn default() -> Self {
+        Self {
+            frequency: 0.005,
+            octaves: 4,
+            persistence: 0.4,
+            lacunarity: 1.8,
+        }
+    }
+}
+
+pub struct PerlinNoise {
+    permutations: [u8; 512],
     frequency: f32,
     octaves: usize,
     persistence: f32,
     lacunarity: f32,
 }
 
-impl PerlinNoiseBuilder {
-    pub fn new(seed: u64) -> Self {
-        PerlinNoiseBuilder {
-            seed,
-            frequency: 0.005,
-            octaves: 4,
-            persistence: 0.5,
-            lacunarity: 2.0,
-        }
-    }
-
-    pub fn frequency(mut self, frequency: f32) -> Self {
-        self.frequency = frequency.max(0.0001);
-        self
-    }
-
-    pub fn octaves(mut self, octaves: usize) -> Self {
-        self.octaves = octaves.clamp(1, 24);
-        self
-    }
-
-    pub fn persistence(mut self, persistence: f32) -> Self {
-        self.persistence = persistence.clamp(0.0, 1.0);
-        self
-    }
-
-    pub fn lacunarity(mut self, lacunarity: f32) -> Self {
-        self.lacunarity = lacunarity.max(1.0);
-        self
-    }
-
-    pub fn build(self) -> PerlinNoise {
+impl PerlinNoise {
+    pub fn new(seed: u64, info: PerlinNoiseInfo) -> Self {
         let mut permutations = [0u8; 512];
         let mut temp = (0i32..256).map(|x| x as u8).collect::<Vec<u8>>();
 
-        let mut hash = self.seed;
+        let mut hash = seed;
         for i in (0..256).rev() {
             hash ^= hash >> 12;
             hash ^= hash << 25;
@@ -64,23 +51,13 @@ impl PerlinNoiseBuilder {
 
         PerlinNoise {
             permutations,
-            frequency: self.frequency,
-            octaves: self.octaves,
-            persistence: self.persistence,
-            lacunarity: self.lacunarity,
+            frequency: info.frequency,
+            octaves: info.octaves,
+            persistence: info.persistence,
+            lacunarity: info.lacunarity,
         }
     }
-}
 
-pub struct PerlinNoise {
-    permutations: [u8; 512],
-    frequency: f32,
-    octaves: usize,
-    persistence: f32,
-    lacunarity: f32,
-}
-
-impl PerlinNoise {
     pub fn noise2d(&self, x: f32, y: f32) -> f32 {
         let mut value = 0.0;
         let mut amplitude = 1.0;
