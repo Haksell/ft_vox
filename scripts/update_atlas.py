@@ -13,12 +13,7 @@ GRASS_COLOR = (0.6, 0.9, 0.2)
 
 
 def clamp8(v):
-    """Clamp a value to 0..255 and round to nearest int."""
-    if v < 0:
-        return 0
-    if v > 255:
-        return 255
-    return int(round(v))
+    return 0 if v < 0 else 255 if v > 255 else int(round(v))
 
 
 def tile_box(tx, ty):
