@@ -61,32 +61,20 @@ impl BiomeType {
             BiomeType::Taiga => BlockType::Snow,
             BiomeType::Swamp => BlockType::Dirt,
             BiomeType::Beach => BlockType::Sand,
+            BiomeType::River => BlockType::Sand,
+            BiomeType::FrozenRiver => BlockType::Snow,
             BiomeType::SnowyBeach => BlockType::Sand,
             BiomeType::SnowyPlains => BlockType::Snow,
             BiomeType::SnowyTaiga => BlockType::Snow,
             BiomeType::SnowySlopes => BlockType::Snow,
             BiomeType::SunflowerForest => BlockType::Grass,
-            BiomeType::ErodedBadlands => BlockType::RedSand,
             BiomeType::Ocean => BlockType::Sand,
             BiomeType::IceSpikes => BlockType::Ice,
+            BiomeType::ErodedBadlands => BlockType::RedSand,
             BiomeType::Badlands => BlockType::RedSand,
             BiomeType::StonyPeaks => BlockType::Stone,
             BiomeType::StonyShore => BlockType::Stone,
             _ => BlockType::Grass,
-        }
-    }
-
-    pub fn get_subsurface_block(&self) -> BlockType {
-        match self {
-            BiomeType::Desert => BlockType::Sand,
-            BiomeType::Plains => BlockType::Dirt,
-            BiomeType::Forest => BlockType::Dirt,
-            BiomeType::Taiga => BlockType::Dirt,
-            BiomeType::Swamp => BlockType::Dirt,
-            BiomeType::Beach => BlockType::Sand,
-            BiomeType::Ocean => BlockType::Sand,
-            BiomeType::Badlands => BlockType::RedSand,
-            _ => BlockType::Dirt,
         }
     }
 

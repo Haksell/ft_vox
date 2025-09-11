@@ -1,16 +1,11 @@
-use {
-    crate::utils::{fade, lerp},
-    glam::{Vec2, Vec3},
-};
-
-pub struct PerlinNoiseInfo {
+pub struct SimplexNoiseInfo {
     pub frequency: f32,
     pub octaves: usize,
     pub persistence: f32,
     pub lacunarity: f32,
 }
 
-impl Default for PerlinNoiseInfo {
+impl Default for SimplexNoiseInfo {
     fn default() -> Self {
         Self {
             frequency: 0.005,
@@ -21,7 +16,7 @@ impl Default for PerlinNoiseInfo {
     }
 }
 
-pub struct PerlinNoise {
+pub struct SimplexNoise {
     permutations: [u8; 512],
     frequency: f32,
     octaves: usize,
@@ -29,8 +24,16 @@ pub struct PerlinNoise {
     lacunarity: f32,
 }
 
-impl PerlinNoise {
-    pub fn new(seed: u64, info: PerlinNoiseInfo) -> Self {
+impl SimplexNoise {
+    // Constants for 2D simplex noise
+    const F2: f32 = 0.3660254037844387;  // (sqrt(3) - 1) / 2
+    const G2: f32 = 0.21132486540518713; // (3 - sqrt(3)) / 6
+
+    // Constants for 3D simplex noise
+    const F3: f32 = 1.0 / 3.0;
+    const G3: f32 = 1.0 / 6.0;
+
+    pub fn new(seed: u64, info: SimplexNoiseInfo) -> Self {
         let mut permutations = [0u8; 512];
         let mut temp = (0i32..256).map(|x| x as u8).collect::<Vec<u8>>();
 
@@ -49,7 +52,7 @@ impl PerlinNoise {
             permutations[i] = temp[i % 256];
         }
 
-        PerlinNoise {
+        SimplexNoise {
             permutations,
             frequency: info.frequency,
             octaves: info.octaves,
@@ -68,7 +71,7 @@ impl PerlinNoise {
             let sample_x = x * frequency;
             let sample_y = y * frequency;
 
-            let noise_value = self.perlin2d(sample_x, sample_y);
+            let noise_value = self.simplex2d(sample_x, sample_y);
             value += noise_value * amplitude;
             max_value += amplitude;
 
@@ -94,7 +97,7 @@ impl PerlinNoise {
             let sample_y = y * frequency;
             let sample_z = z * frequency;
 
-            let noise_value = self.perlin3d(sample_x, sample_y, sample_z);
+            let noise_value = self.simplex3d(sample_x, sample_y, sample_z);
             value += noise_value * amplitude;
             max_value += amplitude;
 
@@ -109,143 +112,193 @@ impl PerlinNoise {
         value.clamp(-1.0, 1.0)
     }
 
-    fn perlin2d(&self, x: f32, y: f32) -> f32 {
-        let xi = x.floor() as i32;
-        let yi = y.floor() as i32;
+    fn simplex2d(&self, x: f32, y: f32) -> f32 {
+        let s = (x + y) * Self::F2;
+        let i = (x + s).floor();
+        let j = (y + s).floor();
 
-        let xf = x - xi as f32;
-        let yf = y - yi as f32;
+        let t = (i + j) * Self::G2;
+        let x0 = x - (i - t);
+        let y0 = y - (j - t);
 
-        let u = fade(xf);
-        let v = fade(yf);
+        let (i1, j1) = if x0 > y0 { (1, 0) } else { (0, 1) };
 
-        let xi = xi & 255;
-        let yi = yi & 255;
+        let x1 = x0 - i1 as f32 + Self::G2;
+        let y1 = y0 - j1 as f32 + Self::G2;
 
-        let a = self.permutations[xi as usize] as i32 + yi;
-        let aa = self.permutations[(a & 255) as usize] as usize;
-        let ab = self.permutations[((a + 1) & 255) as usize] as usize;
+        let x2 = x0 - 1.0 + 2.0 * Self::G2;
+        let y2 = y0 - 1.0 + 2.0 * Self::G2;
 
-        let b = self.permutations[((xi + 1) & 255) as usize] as i32 + yi;
-        let ba = self.permutations[(b & 255) as usize] as usize;
-        let bb = self.permutations[((b + 1) & 255) as usize] as usize;
+        let ii = (i as i32) & 255;
+        let jj = (j as i32) & 255;
 
-        let value = lerp(
-            lerp(self.grad2d(aa, xf, yf), self.grad2d(ba, xf - 1.0, yf), u),
-            lerp(
-                self.grad2d(ab, xf, yf - 1.0),
-                self.grad2d(bb, xf - 1.0, yf - 1.0),
-                u,
-            ),
-            v,
-        );
+        let gi0 =
+            self.permutations[ii as usize + self.permutations[jj as usize] as usize] as usize % 12;
+        let gi1 = self.permutations
+            [(ii + i1) as usize + self.permutations[(jj + j1) as usize] as usize]
+            as usize
+            % 12;
+        let gi2 = self.permutations
+            [(ii + 1) as usize + self.permutations[(jj + 1) as usize] as usize]
+            as usize
+            % 12;
 
-        value
+        let mut n0 = 0.0;
+        let t0 = 0.5 - x0 * x0 - y0 * y0;
+        if t0 >= 0.0 {
+            let t0_sq = t0 * t0;
+            n0 = t0_sq * t0_sq * self.dot2d(gi0, x0, y0);
+        }
+
+        let mut n1 = 0.0;
+        let t1 = 0.5 - x1 * x1 - y1 * y1;
+        if t1 >= 0.0 {
+            let t1_sq = t1 * t1;
+            n1 = t1_sq * t1_sq * self.dot2d(gi1, x1, y1);
+        }
+
+        let mut n2 = 0.0;
+        let t2 = 0.5 - x2 * x2 - y2 * y2;
+        if t2 >= 0.0 {
+            let t2_sq = t2 * t2;
+            n2 = t2_sq * t2_sq * self.dot2d(gi2, x2, y2);
+        }
+
+        70.0 * (n0 + n1 + n2)
     }
 
-    fn perlin3d(&self, x: f32, y: f32, z: f32) -> f32 {
-        let xi = x.floor() as i32;
-        let yi = y.floor() as i32;
-        let zi = z.floor() as i32;
+    fn simplex3d(&self, x: f32, y: f32, z: f32) -> f32 {
+        let s = (x + y + z) * Self::F3;
+        let i = (x + s).floor();
+        let j = (y + s).floor();
+        let k = (z + s).floor();
 
-        let xf = x - xi as f32;
-        let yf = y - yi as f32;
-        let zf = z - zi as f32;
+        let t = (i + j + k) * Self::G3;
+        let x0 = x - (i - t);
+        let y0 = y - (j - t);
+        let z0 = z - (k - t);
 
-        let u = fade(xf);
-        let v = fade(yf);
-        let w = fade(zf);
+        let (i1, j1, k1, i2, j2, k2) = if x0 >= y0 {
+            if y0 >= z0 {
+                (1, 0, 0, 1, 1, 0)
+            } else if x0 >= z0 {
+                (1, 0, 0, 1, 0, 1)
+            } else {
+                (0, 0, 1, 1, 0, 1)
+            }
+        } else {
+            if y0 < z0 {
+                (0, 0, 1, 0, 1, 1)
+            } else if x0 < z0 {
+                (0, 1, 0, 0, 1, 1)
+            } else {
+                (0, 1, 0, 1, 1, 0)
+            }
+        };
 
-        let xi = xi & 255;
-        let yi = yi & 255;
-        let zi = zi & 255;
+        let x1 = x0 - i1 as f32 + Self::G3;
+        let y1 = y0 - j1 as f32 + Self::G3;
+        let z1 = z0 - k1 as f32 + Self::G3;
 
-        let a = self.permutations[xi as usize] as i32 + yi;
-        let aa = self.permutations[(a & 255) as usize] as i32 + zi;
-        let aaa = self.permutations[(aa & 255) as usize] as usize;
-        let aab = self.permutations[((aa + 1) & 255) as usize] as usize;
+        let x2 = x0 - i2 as f32 + 2.0 * Self::G3;
+        let y2 = y0 - j2 as f32 + 2.0 * Self::G3;
+        let z2 = z0 - k2 as f32 + 2.0 * Self::G3;
 
-        let ab = self.permutations[((a + 1) & 255) as usize] as i32 + zi;
-        let aba = self.permutations[(ab & 255) as usize] as usize;
-        let abb = self.permutations[((ab + 1) & 255) as usize] as usize;
+        let x3 = x0 - 1.0 + 3.0 * Self::G3;
+        let y3 = y0 - 1.0 + 3.0 * Self::G3;
+        let z3 = z0 - 1.0 + 3.0 * Self::G3;
 
-        let b = self.permutations[((xi + 1) & 255) as usize] as i32 + yi;
-        let ba = self.permutations[(b & 255) as usize] as i32 + zi;
-        let baa = self.permutations[(ba & 255) as usize] as usize;
-        let bab = self.permutations[((ba + 1) & 255) as usize] as usize;
+        let ii = (i as i32) & 255;
+        let jj = (j as i32) & 255;
+        let kk = (k as i32) & 255;
 
-        let bb = self.permutations[((b + 1) & 255) as usize] as i32 + zi;
-        let bba = self.permutations[(bb & 255) as usize] as usize;
-        let bbb = self.permutations[((bb + 1) & 255) as usize] as usize;
+        let gi0 = self.permutations[ii as usize
+            + self.permutations[jj as usize + self.permutations[kk as usize] as usize] as usize]
+            as usize
+            % 12;
+        let gi1 = self.permutations[(ii + i1) as usize
+            + self.permutations[(jj + j1) as usize + self.permutations[(kk + k1) as usize] as usize]
+                as usize] as usize
+            % 12;
+        let gi2 = self.permutations[(ii + i2) as usize
+            + self.permutations[(jj + j2) as usize + self.permutations[(kk + k2) as usize] as usize]
+                as usize] as usize
+            % 12;
+        let gi3 = self.permutations[(ii + 1) as usize
+            + self.permutations[(jj + 1) as usize + self.permutations[(kk + 1) as usize] as usize]
+                as usize] as usize
+            % 12;
 
-        let value = lerp(
-            lerp(
-                lerp(
-                    self.grad3d(aaa, xf, yf, zf),
-                    self.grad3d(baa, xf - 1.0, yf, zf),
-                    u,
-                ),
-                lerp(
-                    self.grad3d(aba, xf, yf - 1.0, zf),
-                    self.grad3d(bba, xf - 1.0, yf - 1.0, zf),
-                    u,
-                ),
-                v,
-            ),
-            lerp(
-                lerp(
-                    self.grad3d(aab, xf, yf, zf - 1.0),
-                    self.grad3d(bab, xf - 1.0, yf, zf - 1.0),
-                    u,
-                ),
-                lerp(
-                    self.grad3d(abb, xf, yf - 1.0, zf - 1.0),
-                    self.grad3d(bbb, xf - 1.0, yf - 1.0, zf - 1.0),
-                    u,
-                ),
-                v,
-            ),
-            w,
-        );
+        let mut n0 = 0.0;
+        let t0 = 0.6 - x0 * x0 - y0 * y0 - z0 * z0;
+        if t0 >= 0.0 {
+            let t0_sq = t0 * t0;
+            n0 = t0_sq * t0_sq * self.dot3d(gi0, x0, y0, z0);
+        }
 
-        value
+        let mut n1 = 0.0;
+        let t1 = 0.6 - x1 * x1 - y1 * y1 - z1 * z1;
+        if t1 >= 0.0 {
+            let t1_sq = t1 * t1;
+            n1 = t1_sq * t1_sq * self.dot3d(gi1, x1, y1, z1);
+        }
+
+        let mut n2 = 0.0;
+        let t2 = 0.6 - x2 * x2 - y2 * y2 - z2 * z2;
+        if t2 >= 0.0 {
+            let t2_sq = t2 * t2;
+            n2 = t2_sq * t2_sq * self.dot3d(gi2, x2, y2, z2);
+        }
+
+        let mut n3 = 0.0;
+        let t3 = 0.6 - x3 * x3 - y3 * y3 - z3 * z3;
+        if t3 >= 0.0 {
+            let t3_sq = t3 * t3;
+            n3 = t3_sq * t3_sq * self.dot3d(gi3, x3, y3, z3);
+        }
+
+        32.0 * (n0 + n1 + n2 + n3)
     }
 
     #[rustfmt::skip]
-    const GRADIENT_2D: [Vec2; 8] = [
-        Vec2::new( 1.0,  1.0),
-        Vec2::new(-1.0,  1.0),
-        Vec2::new( 1.0, -1.0),
-        Vec2::new(-1.0, -1.0),
-        Vec2::new( 1.0,  0.0),
-        Vec2::new(-1.0,  0.0),
-        Vec2::new( 0.0,  1.0),
-        Vec2::new( 0.0, -1.0),
+    const GRADIENT_2D: [(f32, f32); 12] = [
+        ( 1.0,  1.0),
+        (-1.0,  1.0),
+        ( 1.0, -1.0),
+        (-1.0, -1.0),
+        ( 1.0,  0.0),
+        (-1.0,  0.0),
+        ( 1.0,  0.0),
+        (-1.0,  0.0),
+        ( 0.0,  1.0),
+        ( 0.0, -1.0),
+        ( 0.0,  1.0),
+        ( 0.0, -1.0),
     ];
 
     #[rustfmt::skip]
-    const GRADIENT_3D: [Vec3; 12] = [
-        Vec3::new( 1.0,  1.0,  0.0),
-        Vec3::new(-1.0,  1.0,  0.0),
-        Vec3::new( 1.0, -1.0,  0.0),
-        Vec3::new(-1.0, -1.0,  0.0),
-        Vec3::new( 1.0,  0.0,  1.0),
-        Vec3::new(-1.0,  0.0,  1.0),
-        Vec3::new( 1.0,  0.0, -1.0),
-        Vec3::new(-1.0,  0.0, -1.0),
-        Vec3::new( 0.0,  1.0,  1.0),
-        Vec3::new( 0.0, -1.0,  1.0),
-        Vec3::new( 0.0,  1.0, -1.0),
-        Vec3::new( 0.0, -1.0, -1.0),
+    const GRADIENT_3D: [(f32, f32, f32); 12] = [
+        ( 1.0,  1.0,  0.0),
+        (-1.0,  1.0,  0.0),
+        ( 1.0, -1.0,  0.0),
+        (-1.0, -1.0,  0.0),
+        ( 1.0,  0.0,  1.0),
+        (-1.0,  0.0,  1.0),
+        ( 1.0,  0.0, -1.0),
+        (-1.0,  0.0, -1.0),
+        ( 0.0,  1.0,  1.0),
+        ( 0.0, -1.0,  1.0),
+        ( 0.0,  1.0, -1.0),
+        ( 0.0, -1.0, -1.0),
     ];
 
-    fn grad2d(&self, hash: usize, x: f32, y: f32) -> f32 {
-        let gradient = Self::GRADIENT_2D[hash % 8];
-        gradient.dot(Vec2::new(x, y))
+    fn dot2d(&self, gi: usize, x: f32, y: f32) -> f32 {
+        let grad = Self::GRADIENT_2D[gi];
+        grad.0 * x + grad.1 * y
     }
 
-    fn grad3d(&self, hash: usize, x: f32, y: f32, z: f32) -> f32 {
-        let gradient = Self::GRADIENT_3D[hash % 12];
-        gradient.dot(Vec3::new(x, y, z))
+    fn dot3d(&self, gi: usize, x: f32, y: f32, z: f32) -> f32 {
+        let grad = Self::GRADIENT_3D[gi];
+        grad.0 * x + grad.1 * y + grad.2 * z
     }
 }
