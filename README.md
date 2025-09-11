@@ -57,6 +57,7 @@
 
 ## todo ft_minecraft
 
+- use `XxxCoords` types everywhere
 - block about to be deleted should look a bit darker
 - only delete block if raycast at start and end of click touch the same block 
 - frustum culling during face generation instead of after checking chunks

@@ -2,7 +2,8 @@ use {
     crate::{
         aabb::AABB,
         camera::{Camera, CameraController, CameraUniform},
-        chunk::{ChunkCoords, CHUNK_HEIGHT, CHUNK_WIDTH},
+        chunk::{CHUNK_HEIGHT, CHUNK_WIDTH},
+        coords::ChunkCoords,
         texture::Texture,
         vertex::Vertex,
         world::{World, MAX_DELETE_DISTANCE},

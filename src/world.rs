@@ -3,7 +3,8 @@ use {
         biome::BiomeType,
         block::BlockType,
         camera::Camera,
-        chunk::{AdjacentChunks, Chunk, ChunkCoords, CHUNK_HEIGHT, CHUNK_WIDTH},
+        chunk::{AdjacentChunks, Chunk, CHUNK_HEIGHT, CHUNK_WIDTH},
+        coords::{split_coords, BlockCoords, ChunkCoords, WorldCoords},
         noise::{PerlinNoise, PerlinNoiseBuilder},
         utils::{ceil_div, lerp, sign},
         vertex::Vertex,
@@ -28,9 +29,8 @@ pub struct World {
     cave_noise: PerlinNoise,
 
     chunks: HashMap<ChunkCoords, Chunk>,
-    deleted_blocks: HashMap<ChunkCoords, HashSet<(usize, usize, usize)>>,
+    deleted_blocks: HashMap<ChunkCoords, HashSet<BlockCoords>>,
 }
-
 impl World {
     pub fn new(seed: u64) -> Self {
         // temperature: affects hot vs cold biomes
@@ -727,17 +727,17 @@ impl World {
         chunk.generate_mesh(&adjacent)
     }
 
-    pub fn delete_center_block(&mut self, camera: &Camera) -> Option<BlockType> {
-        let ((x, y, z), block) = self.find_center_block(camera, MAX_DELETE_DISTANCE)?;
-        self.delete_block(x, y, z);
-        Some(block)
+    pub fn delete_center_block(&mut self, camera: &Camera) -> Option<(WorldCoords, BlockType)> {
+        let (world_coords, block) = self.find_center_block(camera, MAX_DELETE_DISTANCE)?;
+        self.delete_block(world_coords);
+        Some((world_coords, block))
     }
 
     pub fn find_center_block(
         &self,
         camera: &Camera,
         max_distance: f32,
-    ) -> Option<((i32, i32, i32), BlockType)> {
+    ) -> Option<(WorldCoords, BlockType)> {
         let dir = camera.direction();
         let start = camera.position();
 
@@ -745,7 +745,7 @@ impl World {
         let mut iy = start.y.floor() as i32;
         let mut iz = start.z.floor() as i32;
 
-        if self.get_block(ix, iy, iz).is_some() {
+        if self.get_block((ix, iy, iz)).is_some() {
             return None;
         }
 
@@ -808,7 +808,7 @@ impl World {
                 return None;
             }
 
-            if let Some(block) = self.get_block(ix, iy, iz) {
+            if let Some(block) = self.get_block((ix, iy, iz)) {
                 return Some(((ix, iz, iz), block));
             }
         }
@@ -816,37 +816,26 @@ impl World {
         None
     }
 
-    fn get_block(&self, x: i32, y: i32, z: i32) -> Option<BlockType> {
-        let block_z = (z >= 0 && z < CHUNK_HEIGHT as i32).then(|| z as usize)?;
-
-        let chunk_x = x.div_euclid(CHUNK_WIDTH as i32);
-        let block_x = x.rem_euclid(CHUNK_WIDTH as i32) as usize;
-        let chunk_y = y.div_euclid(CHUNK_WIDTH as i32);
-        let block_y = y.rem_euclid(CHUNK_WIDTH as i32) as usize;
-
-        let chunk = self.get_chunk_if_loaded((chunk_x, chunk_y))?;
-        chunk.get_block(block_x, block_y, block_z)
+    fn get_block(&self, world_coords: WorldCoords) -> Option<BlockType> {
+        let (chunk_coords, block_coords) = split_coords(world_coords)?;
+        let chunk = self.get_chunk_if_loaded(chunk_coords)?;
+        chunk.get_block(block_coords)
     }
 
-    fn delete_block(&mut self, x: i32, y: i32, z: i32) {
-        let Some(block_z) = (z >= 0 && z < CHUNK_HEIGHT as i32).then(|| z as usize) else {
+    fn delete_block(&mut self, world_coords: WorldCoords) {
+        let Some((chunk_coords, block_coords)) = split_coords(world_coords) else {
             return;
         };
 
-        let chunk_x = x.div_euclid(CHUNK_WIDTH as i32);
-        let block_x = x.rem_euclid(CHUNK_WIDTH as i32) as usize;
-        let chunk_y = y.div_euclid(CHUNK_WIDTH as i32);
-        let block_y = y.rem_euclid(CHUNK_WIDTH as i32) as usize;
-
-        let Some(chunk) = self.get_mut_chunk_if_loaded((chunk_x, chunk_y)) else {
+        let Some(chunk) = self.get_mut_chunk_if_loaded(chunk_coords) else {
             return;
         };
 
-        chunk.delete_block(block_x, block_y, block_z);
+        chunk.delete_block(block_coords);
         self.deleted_blocks
-            .entry((chunk_x, chunk_y))
+            .entry(chunk_coords)
             .or_insert_with(HashSet::new)
-            .insert((block_x, block_y, block_z));
+            .insert(block_coords);
         println!("{:?}", self.deleted_blocks);
     }
 }

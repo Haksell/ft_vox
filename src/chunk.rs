@@ -2,6 +2,7 @@ use {
     crate::{
         aabb::AABB,
         block::BlockType,
+        coords::{BlockCoords, ChunkCoords},
         face::{Face, FACES},
         vertex::Vertex,
     },
@@ -12,8 +13,6 @@ pub const CHUNK_WIDTH: usize = 16;
 pub const CHUNK_HEIGHT: usize = 256;
 
 type Blocks = [[[Option<BlockType>; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH];
-
-pub type ChunkCoords = (i32, i32);
 
 pub struct AdjacentChunks<'a> {
     pub north: Option<&'a Chunk>,
@@ -41,7 +40,7 @@ impl Chunk {
         Self { coords, root }
     }
 
-    pub fn get_block(&self, x: usize, y: usize, z: usize) -> Option<BlockType> {
+    pub fn get_block(&self, (x, y, z): BlockCoords) -> Option<BlockType> {
         debug_assert!(x < CHUNK_WIDTH);
         debug_assert!(y < CHUNK_WIDTH);
         debug_assert!(z < CHUNK_HEIGHT);
@@ -55,7 +54,7 @@ impl Chunk {
     }
 
     // TODO: optimize
-    pub fn delete_block(&mut self, x: usize, y: usize, z: usize) {
+    pub fn delete_block(&mut self, (x, y, z): BlockCoords) {
         debug_assert!(x < CHUNK_WIDTH);
         debug_assert!(y < CHUNK_WIDTH);
         debug_assert!(z < CHUNK_HEIGHT);

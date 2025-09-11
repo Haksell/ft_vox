@@ -1,5 +1,5 @@
 use {
-    crate::{chunk::ChunkCoords, state::State, world::World},
+    crate::{coords::ChunkCoords, state::State, world::World},
     std::{
         sync::Arc,
         time::{Duration, Instant},
