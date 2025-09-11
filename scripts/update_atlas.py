@@ -63,9 +63,6 @@ def replace_with_masked_mult(img, src_xy, dst_xy, mul, alpha_threshold=0):
 
 
 def resize_rgba_box(img: Image.Image, size):
-    """
-    Resize an RGBA image with BOX filter using premultiplied alpha.
-    """
     if img.mode != "RGBA":
         img = img.convert("RGBA")
 
@@ -80,7 +77,6 @@ def resize_rgba_box(img: Image.Image, size):
             dtype=np.float32,
         )
 
-    # Resize premultiplied RGB and alpha
     target_w, target_h = size
     r = resample_f(rgb_p[..., 0], (target_w, target_h))
     g = resample_f(rgb_p[..., 1], (target_w, target_h))
@@ -98,7 +94,6 @@ def resize_rgba_box(img: Image.Image, size):
 
 
 def main():
-    # Load and sanity-check base atlas
     img = Image.open(INPUT_PATH).convert("RGBA")
     w, h = img.size
     expected_w, expected_h = GRID_W * TILE_SIZE, GRID_H * TILE_SIZE
@@ -107,7 +102,6 @@ def main():
             f"Atlas size {w}x{h} does not match expected {expected_w}x{expected_h}."
         )
 
-    # Content fixes (unchanged)
     multiply_tile(img, 31, 2, GRASS_COLOR)
     replace_with_masked_mult(
         img, src_xy=(31, 0), dst_xy=(30, 15), mul=GRASS_COLOR, alpha_threshold=0
@@ -115,8 +109,6 @@ def main():
     for x, y in [(6, 4), (6, 5), (7, 4), (7, 5)]:
         multiply_tile(img, x, y, WATER_COLOR)
 
-    # Prepare 5x5 anisotropic grid layout
-    # Columns vary X: 16,8,4,2,1; Rows vary Y: 16,8,4,2,1
     col_widths = [GRID_W * sx for sx in SIZES]
     row_heights = [GRID_H * sy for sy in SIZES]
     x_offsets = [0]
@@ -128,7 +120,6 @@ def main():
 
     composite = Image.new("RGBA", (2 * w, 2 * h), (0, 0, 0, 0))
 
-    # Build each cell: a full atlas reassembled from anisotropically-resized tiles
     for row_idx, sy in enumerate(SIZES):  # Y sizes: 16..1
         for col_idx, sx in enumerate(SIZES):  # X sizes: 16..1
             cell_w, cell_h = GRID_W * sx, GRID_H * sy
@@ -142,9 +133,7 @@ def main():
                             (TILE_SIZE, TILE_SIZE), Image.NEAREST
                         )
 
-                    # Anisotropic downscale for this tile
                     tile_resized = resize_rgba_box(base_tile, (sx, sy))
-
                     cell_img.paste(tile_resized, (tx * sx, ty * sy))
 
             composite.paste(cell_img, (x_offsets[col_idx], y_offsets[row_idx]))
