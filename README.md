@@ -4,7 +4,6 @@
 
 - block deletion
 - mipmap to avoid moire patterns
-- fix grass color (https://minecraft.fandom.com/wiki/Grass_Block, https://minecraft.fandom.com/wiki/Color#Biome_colors) (or simpler atlas)
 - fix water color + animation
 - more cave openings
 - random rare textures in caves

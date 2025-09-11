@@ -15,14 +15,14 @@ pub enum BlockType {
 impl BlockType {
     pub fn atlas_offset_top(&self) -> [u32; 2] {
         match self {
-            BlockType::Grass => [1, 16],
+            BlockType::Grass => [31, 2],
             BlockType::Snow => [19, 24],
             BlockType::Stone => [30, 29],
             BlockType::Sand => [6, 27],
             BlockType::Dirt => [25, 2],
             BlockType::Ice => [29, 14],
             BlockType::Water => [7, 9],
-            BlockType::Gravel => [31, 2],
+            BlockType::Gravel => [31, 3],
             BlockType::RedSand => [27, 25],
         }
     }
@@ -36,7 +36,7 @@ impl BlockType {
             BlockType::Dirt => [25, 2],
             BlockType::Ice => [29, 14],
             BlockType::Water => [7, 9],
-            BlockType::Gravel => [31, 2],
+            BlockType::Gravel => [31, 3],
             BlockType::RedSand => [27, 25],
         }
     }
@@ -50,7 +50,7 @@ impl BlockType {
             BlockType::Dirt => [25, 2],
             BlockType::Ice => [29, 14],
             BlockType::Water => [7, 9],
-            BlockType::Gravel => [31, 2],
+            BlockType::Gravel => [31, 3],
             BlockType::RedSand => [27, 25],
         }
     }

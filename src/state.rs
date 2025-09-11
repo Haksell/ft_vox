@@ -149,8 +149,8 @@ impl<'a> State<'a> {
         let diffuse_texture = Texture::from_bytes(
             &device,
             &queue,
-            include_bytes!("../assets/atlas.png"),
-            "../assets/atlas.png",
+            include_bytes!("../assets/atlas_generated.png"),
+            "../assets/atlas_generated.png",
         )
         .unwrap();
         let depth_texture = Texture::create_depth_texture(&device, &config);
