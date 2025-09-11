@@ -34,10 +34,15 @@ var t_diffuse: texture_2d<f32>;
 @group(0) @binding(1)
 var s_diffuse: sampler;
 
-const ATLAS_SHAPE: vec2<f32> = vec2(64.0, 32.0);
+const ATLAS_SHAPE: vec2<f32> = vec2(64.0, 64.0);
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    let uv = (fract(in.tex_coords) + vec2<f32>(in.atlas_offset)) / ATLAS_SHAPE;
-    return textureSample(t_diffuse, s_diffuse, uv);
+    var uv = (fract(in.tex_coords) + vec2<f32>(in.atlas_offset)) / ATLAS_SHAPE;
+    let t16 = textureSample(t_diffuse, s_diffuse, vec2(uv.x, uv.y));
+    let t8 = textureSample(t_diffuse, s_diffuse, vec2(uv.x / 2.0, uv.y / 2.0 + 0.5));
+    let t4 = textureSample(t_diffuse, s_diffuse, vec2(uv.x / 4.0, uv.y / 4.0 + 0.75));
+    let t2 = textureSample(t_diffuse, s_diffuse, vec2(uv.x / 8.0, uv.y / 8.0 + 0.875));
+    let t1 = textureSample(t_diffuse, s_diffuse, vec2(uv.x / 16.0, uv.y / 16.0 + 0.9375));
+    return t16;
 }

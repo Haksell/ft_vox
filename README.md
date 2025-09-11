@@ -65,7 +65,7 @@
 - generative skyboxes
 - transparent water
 - make our own pixel art
-- sun(s) (from `scratch` branch)
+- sun(s) (from `scratch` branch) (text shadow depends on it)
 - fix dead pixels
 - anisotropic filtering
 - port to wasm
