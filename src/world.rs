@@ -29,8 +29,6 @@ pub struct World {
     continentalness_noise: SimplexNoise,
     erosion_noise: SimplexNoise,
     weirdness_noise: SimplexNoise,
-    density_noise: SimplexNoise,
-    cave_noise: SimplexNoise,
 
     chunks: HashMap<ChunkCoords, Chunk>,
 }
@@ -43,7 +41,7 @@ impl World {
         let temperature_noise = SimplexNoise::new(
             seed.wrapping_add(0xFF446677),
             SimplexNoiseInfo {
-                frequency: 0.000093,
+                frequency: 0.000336,
                 octaves: 2,
                 ..Default::default()
             },
@@ -88,24 +86,7 @@ impl World {
             SimplexNoiseInfo {
                 frequency: 0.00196,
                 octaves: 6,
-                ..Default::default()
-            },
-        );
-
-        let density_noise = SimplexNoise::new(
-            seed.wrapping_add(0x44558811),
-            SimplexNoiseInfo {
-                frequency: 0.0074312,
-                octaves: 6,
-                ..Default::default()
-            },
-        );
-
-        let cave_noise = SimplexNoise::new(
-            seed.wrapping_add(0x44557766),
-            SimplexNoiseInfo {
-                frequency: 0.0074312,
-                octaves: 6,
+                persistence: 0.66,
                 ..Default::default()
             },
         );
@@ -116,8 +97,6 @@ impl World {
             continentalness_noise,
             erosion_noise,
             weirdness_noise,
-            density_noise,
-            cave_noise,
             chunks,
         }
     }
@@ -142,11 +121,9 @@ impl World {
     }
 
     fn generate_height_at(&self, values: &NoiseValues) -> f32 {
-        let peak_and_valley = 1.0 - (3.0 * values.weirdness.abs() - 2.0).abs();
-
         let continentalness_offset = self.continentalness_spline(values.continentalness);
-        let pv_offset = self.peaks_valleys_spline(peak_and_valley);
-        let erosion_factor = if values.continentalness >= 0.2 {
+        let pv_offset = self.peaks_valleys_spline(values.pv);
+        let erosion_factor = if values.continentalness >= -0.2 {
             self.erosion_factor(values.erosion)
         } else {
             1.0
@@ -663,21 +640,8 @@ impl World {
     }
 
     fn has_cave_at(&self, world_x: i32, world_y: i32, world_z: i32, surface_height: i32) -> bool {
+        // TODO: cave system
         false
-
-        // TODO: spaghetti caves
-
-        // let noise = self
-            // .cave_noise
-            // .noise2d(world_x as f32, world_y as f32);
-
-        // let normalized_z = ((world_z - 8) as f32 / (surface_height) as f32).clamp(0.0, 1.0);
-        // let probability = 4.0 * normalized_z * (1.0 - normalized_z);
-
-        // let spaghetti = noise.abs() < 0.02 * probability;
-        // let cheese = noise * probability > 0.2;
-
-        // cheese || spaghetti
     }
 
     fn get_noise_values(&self, world_x: i32, world_y: i32) -> NoiseValues {
