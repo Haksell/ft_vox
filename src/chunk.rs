@@ -32,7 +32,7 @@ impl Chunk {
             &blocks,
             ChunkNodePos::new(0, CHUNK_WIDTH, 0, CHUNK_WIDTH, 0, CHUNK_HEIGHT),
         );
-        log::info!(
+        log::debug!(
             "Chunk {:?} : {}/{} leaves",
             coords,
             root.count_leaves(),
