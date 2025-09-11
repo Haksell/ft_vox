@@ -2,7 +2,7 @@
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {
     pub position: [f32; 3],
-    pub normal: [f32; 3],
+    pub opp_position: [f32; 3],
     pub tex_coords: [f32; 2],
     pub atlas_offset: [u32; 2],
 }

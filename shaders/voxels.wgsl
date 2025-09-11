@@ -9,7 +9,7 @@ var<uniform> camera: CameraUniform;
 
 struct VertexInput {
     @location(0) position: vec3<f32>,
-    @location(1) normal: vec3<f32>,
+    @location(1) opp_position: vec3<f32>,
     @location(2) tex_coords: vec2<f32>,
     @location(3) atlas_offset: vec2<u32>,
 }
@@ -18,15 +18,20 @@ struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) tex_coords: vec2<f32>,
     @location(1) atlas_offset: vec2<u32>,
-    @location(2) dist: f32,
+    @location(2) square_size: vec2<f32>,
+    @location(3) dist: f32,
 }
 
 @vertex
 fn vs_main(model: VertexInput) -> VertexOutput {
+    let clip_position = camera.view_proj * vec4<f32>(model.position, 1.0);
+    let opp_clip_position = camera.view_proj * vec4<f32>(model.opp_position, 1.0);
+
     var out: VertexOutput;
     out.tex_coords = model.tex_coords;
     out.atlas_offset = model.atlas_offset;
-    out.clip_position = camera.view_proj * vec4<f32>(model.position, 1.0);
+    out.clip_position = clip_position;
+    out.square_size = abs(clip_position.xy / clip_position.z - opp_clip_position.xy / clip_position.z);
     out.dist = distance(model.position.xyz, camera.pos);
     return out;
 }
@@ -38,48 +43,59 @@ var s_diffuse: sampler;
 
 const ATLAS_SHAPE: vec2<f32> = vec2(128.0, 64.0);
 
-fn t16(uv: vec2<f32>) -> vec2<f32> {
-    return vec2(uv.x, uv.y);
+fn a16(x: f32) -> f32 {
+    return x;
 }
 
-fn t8(uv: vec2<f32>) -> vec2<f32> {
-    return vec2(uv.x / 2.0 + 0.5, uv.y / 2.0 + 0.5);
+fn a8(x: f32) -> f32 {
+    return x / 2.0 + 0.5;
 }
 
-fn t4(uv: vec2<f32>) -> vec2<f32> {
-    return vec2(uv.x / 4.0 + 0.75, uv.y / 4.0 + 0.75);
+fn a4(x: f32) -> f32 {
+    return x / 4.0 + 0.75;
 }
 
-fn t2(uv: vec2<f32>) -> vec2<f32> {
-    return vec2(uv.x / 8.0 + 0.875, uv.y / 8.0 + 0.875);
+fn a2(x: f32) -> f32 {
+    return x / 8.0 + 0.875;
 }
 
-fn t1(uv: vec2<f32>) -> vec2<f32> {
-    return vec2(uv.x / 16.0 + 0.9375, uv.y / 16.0 + 0.9375);
+fn a1(x: f32) -> f32 {
+    return x / 16.0 + 0.9375;
 }
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+    // return vec4(in.square_size.x, 0.0, in.square_size.y, 1.0);
     var uv = (fract(in.tex_coords) + vec2<f32>(in.atlas_offset)) / ATLAS_SHAPE;
 
-    let d = max(in.dist, 1e-5);
-    var lod = max(log2(d / 16.0), 0.0);
+    var lod_x = max(3.0 - log2(in.square_size.x) / 2.0, 0.0);
+    var lod_y = max(3.0 - log2(in.square_size.y) / 2.0, 0.0);
 
-    var a: vec2<f32>;
-    var b: vec2<f32>;
+    var x1: f32;
+    var x2: f32;
+    switch u32(lod_x) {
+        case 0u: { x1 = a16(uv.x); x2 = a16(uv.x); }
+        case 1u: { x1 = a16(uv.x); x2 = a8(uv.x);  }
+        case 2u: { x1 = a8(uv.x);  x2 = a4(uv.x);  }
+        case 3u: { x1 = a4(uv.x);  x2 = a2(uv.x);  }
+        case 4u: { x1 = a2(uv.x);  x2 = a1(uv.x);  }
+        default: { x1 = a1(uv.x);  x2 = a1(uv.x);  }
+    }
 
-    switch u32(lod) {
-        case 0u: { a = t16(uv); b = t16(uv); }
-        case 1u: { a = t16(uv); b = t8(uv); }
-        case 2u: { a = t8(uv);  b = t4(uv); }
-        case 3u: { a = t4(uv);  b = t2(uv); }
-        case 4u: { a = t2(uv);  b = t1(uv); }
-        default: { a = t1(uv);  b = t1(uv); }
+    var y1: f32;
+    var y2: f32;
+    switch u32(lod_y) {
+        case 0u: { y1 = a16(uv.y); y2 = a16(uv.y); }
+        case 1u: { y1 = a16(uv.y); y2 = a8(uv.y);  }
+        case 2u: { y1 = a8(uv.y);  y2 = a4(uv.y);  }
+        case 3u: { y1 = a4(uv.y);  y2 = a2(uv.y);  }
+        case 4u: { y1 = a2(uv.y);  y2 = a1(uv.y);  }
+        default: { y1 = a1(uv.y);  y2 = a1(uv.y);  }
     }
 
     return mix(
-        textureSample(t_diffuse, s_diffuse, a),
-        textureSample(t_diffuse, s_diffuse, b),
-        fract(lod),
+        textureSample(t_diffuse, s_diffuse, vec2(x1, y1)),
+        textureSample(t_diffuse, s_diffuse, vec2(x2, y2)),
+        vec4(fract(lod_x), fract(lod_y), 0.5, 0.5),
     );
 }
