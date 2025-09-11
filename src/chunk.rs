@@ -48,11 +48,23 @@ impl Chunk {
         self.root.get_at(x, y, z, 0, 0, 0)
     }
 
+    fn get_blocks(&self) -> Blocks {
+        let mut blocks = [[[None; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH];
+        self.root.fill_blocks(&mut blocks);
+        blocks
+    }
+
+    // TODO: optimize
     pub fn delete_block(&mut self, x: usize, y: usize, z: usize) {
         debug_assert!(x < CHUNK_WIDTH);
         debug_assert!(y < CHUNK_WIDTH);
         debug_assert!(z < CHUNK_HEIGHT);
-        todo!();
+        let mut blocks = self.get_blocks();
+        blocks[x][y][z] = None;
+        self.root = ChunkNode::from_region(
+            &blocks,
+            ChunkNodePos::new(0, CHUNK_WIDTH, 0, CHUNK_WIDTH, 0, CHUNK_HEIGHT),
+        );
     }
 
     pub fn bounding_box(&self) -> AABB {
@@ -324,6 +336,24 @@ impl ChunkNode {
                     }
                 }
             },
+        }
+    }
+
+    fn fill_blocks(&self, blocks: &mut Blocks) {
+        match self {
+            ChunkNode::Leaf(block, pos) => {
+                for x in pos.x0..pos.x1 {
+                    for y in pos.y0..pos.y1 {
+                        for z in pos.z0..pos.z1 {
+                            blocks[x][y][z] = *block;
+                        }
+                    }
+                }
+            }
+            ChunkNode::Inner(a, b, _, _) => {
+                a.fill_blocks(blocks);
+                b.fill_blocks(blocks);
+            }
         }
     }
 }
