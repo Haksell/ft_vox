@@ -38,45 +38,48 @@ var s_diffuse: sampler;
 
 const ATLAS_SHAPE: vec2<f32> = vec2(128.0, 64.0);
 
-fn t16(uv: vec2<f32>) -> vec4<f32> {
-    return textureSample(t_diffuse, s_diffuse, vec2(uv.x, uv.y));
+fn t16(uv: vec2<f32>) -> vec2<f32> {
+    return vec2(uv.x, uv.y);
 }
 
-fn t8(uv: vec2<f32>) -> vec4<f32> {
-    return textureSample(t_diffuse, s_diffuse, vec2(uv.x / 2.0 + 0.5, uv.y / 2.0 + 0.5));
+fn t8(uv: vec2<f32>) -> vec2<f32> {
+    return vec2(uv.x / 2.0 + 0.5, uv.y / 2.0 + 0.5);
 }
 
-fn t4(uv: vec2<f32>) -> vec4<f32> {
-    return textureSample(t_diffuse, s_diffuse, vec2(uv.x / 4.0 + 0.75, uv.y / 4.0 + 0.75));
+fn t4(uv: vec2<f32>) -> vec2<f32> {
+    return vec2(uv.x / 4.0 + 0.75, uv.y / 4.0 + 0.75);
 }
 
-fn t2(uv: vec2<f32>) -> vec4<f32> {
-    return textureSample(t_diffuse, s_diffuse, vec2(uv.x / 8.0 + 0.875, uv.y / 8.0 + 0.875));
+fn t2(uv: vec2<f32>) -> vec2<f32> {
+    return vec2(uv.x / 8.0 + 0.875, uv.y / 8.0 + 0.875);
 }
 
-fn t1(uv: vec2<f32>) -> vec4<f32> {
-    return textureSample(t_diffuse, s_diffuse, vec2(uv.x / 16.0 + 0.9375, uv.y / 16.0 + 0.9375));
+fn t1(uv: vec2<f32>) -> vec2<f32> {
+    return vec2(uv.x / 16.0 + 0.9375, uv.y / 16.0 + 0.9375);
 }
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     var uv = (fract(in.tex_coords) + vec2<f32>(in.atlas_offset)) / ATLAS_SHAPE;
 
-    let d = max(in.dist * 0.5, 1e-5);
-    var lod = clamp(log2(d / 32.0), 0.0, 4.0);
-    let level_lo = u32(clamp(floor(lod), 0.0, 3.0));
-    let frac_lod = fract(lod);
+    let d = max(in.dist, 1e-5);
+    var lod = max(log2(d / 16.0), 0.0);
 
-    var a: vec4<f32>;
-    var b: vec4<f32>;
+    var a: vec2<f32>;
+    var b: vec2<f32>;
 
-    switch level_lo {
-        case 0u: { a = t16(uv); b = t8(uv); }
-        case 1u: { a = t8(uv);  b = t4(uv); }
-        case 2u: { a = t4(uv);  b = t2(uv); }
-        case 3u: { a = t2(uv);  b = t1(uv); }
+    switch u32(lod) {
+        case 0u: { a = t16(uv); b = t16(uv); }
+        case 1u: { a = t16(uv); b = t8(uv); }
+        case 2u: { a = t8(uv);  b = t4(uv); }
+        case 3u: { a = t4(uv);  b = t2(uv); }
+        case 4u: { a = t2(uv);  b = t1(uv); }
         default: { a = t1(uv);  b = t1(uv); }
     }
 
-    return mix(a, b, frac_lod);
+    return mix(
+        textureSample(t_diffuse, s_diffuse, a),
+        textureSample(t_diffuse, s_diffuse, b),
+        fract(lod),
+    );
 }
