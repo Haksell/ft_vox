@@ -1,5 +1,5 @@
 use {
-    crate::{chunk::CHUNK_HEIGHT, frustum::Frustum},
+    crate::{chunk::CHUNK_HEIGHT, frustum::Frustum, Args},
     glam::{Mat4, Vec3, Vec4},
     std::f32::consts::{FRAC_PI_2, FRAC_PI_4},
     winit::{event::ElementState, keyboard::KeyCode},
@@ -16,7 +16,6 @@ pub struct CameraUniform {
     pos: [f32; 3],
     _pad0: f32,
 }
-
 impl CameraUniform {
     pub fn new(camera: &Camera) -> Self {
         let view = camera.look_at();
@@ -47,7 +46,6 @@ pub struct Camera {
     far: f32,
     projection: Mat4,
 }
-
 impl Camera {
     pub fn new(eye: Vec3, up: Vec3, aspect: f32, fov_x: f32, near: f32, far: f32) -> Self {
         let fov_y = 2.0 * (fov_x / 2.0).tan().atan2(aspect);
@@ -125,12 +123,11 @@ pub struct CameraController {
     is_down_pressed: bool,
     mouse_delta: (f32, f32),
 }
-
 impl CameraController {
-    pub fn new() -> Self {
+    pub fn new(args: &Args) -> Self {
         Self {
-            normal_speed: 50.0,   // TODO: 1.0
-            boosted_speed: 200.0, // TODO: 20.0
+            normal_speed: args.normal_speed,
+            boosted_speed: args.boosted_speed,
             sensitivity: 0.004,
             is_boosted: false,
             is_forward_pressed: false,
@@ -195,17 +192,21 @@ impl CameraController {
         movement += up * (self.is_up_pressed as i32) as f32;
         movement -= up * (self.is_down_pressed as i32) as f32;
 
-        let speed = if self.is_boosted {
-            self.boosted_speed
-        } else {
-            self.normal_speed
-        };
-        movement = movement.normalize_or_zero() * speed * dt;
+        movement = movement.normalize_or_zero() * self.speed() * dt;
 
         camera.eye += movement;
         camera.eye.z = camera.eye.z.clamp(
             -CAMERA_MAX_OUT_OF_BOUNDS,
             CHUNK_HEIGHT as f32 + CAMERA_MAX_OUT_OF_BOUNDS,
         );
+    }
+
+    #[inline]
+    fn speed(&self) -> f32 {
+        if self.is_boosted {
+            self.boosted_speed
+        } else {
+            self.normal_speed
+        }
     }
 }

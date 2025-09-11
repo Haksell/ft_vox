@@ -6,6 +6,7 @@ use {
         texture::Texture,
         vertex::Vertex,
         world::World,
+        Args,
     },
     glam::Vec3,
     std::{
@@ -73,7 +74,7 @@ pub struct State<'a> {
 }
 
 impl<'a> State<'a> {
-    pub async fn new(window: Arc<Window>) -> State<'a> {
+    pub async fn new(window: Arc<Window>, args: &Args) -> State<'a> {
         let size = window.inner_size();
         let center = PhysicalSize::new(size.width / 2, size.height / 2);
 
@@ -236,7 +237,7 @@ impl<'a> State<'a> {
             }],
         });
 
-        let camera_controller = CameraController::new();
+        let camera_controller = CameraController::new(args);
 
         // === VOXELS ===
         let voxels_shader =

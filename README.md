@@ -3,9 +3,9 @@
 ## todo ft_vox
 
 - block deletion
+- """volcanos"""
 - more cave openings
 - random rare textures in caves
-- args (seed, fullscreen, display fps, fast boost, ...)
 
 ## mandatory ft_vox
 
@@ -46,11 +46,13 @@
 - [x] The render should always be SMOOTH
 - [x] Any crash (uncaught exception, segfault, abort ...) will disqualify you
 - [x] Your program must be able to run for hours without eating the whole memory or slowing down. Manage your RAM as well as VRAM very carefully.
-- [ ] Full screen mode by default
-- [ ] Camera speeds should be 1.0 and 20.0
+- [x] Full screen mode by default
+- [x] Camera speeds should be 1.0 and 20.0
 
 ## todo ft_minecraft
 
+- true gpu sampler mipmaps
+- anisotropic filtering
 - collisions
 - animations (water, lava, ...)
 - transparency (water, ...)
@@ -66,6 +68,4 @@
 - make our own pixel art
 - sun(s) (from `scratch` branch) (text shadow depends on it)
 - fix dead pixels
-- true gpu sampler mipmaps
-- anisotropic filtering
 - port to wasm
