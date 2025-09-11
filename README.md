@@ -6,7 +6,7 @@
 - mipmap to avoid moire patterns
 - more cave openings
 - random rare textures in caves
-- args (seed, fullscreen, display fps, ...)
+- args (seed, fullscreen, display fps, fast boost, ...)
 
 ## mandatory ft_vox
 

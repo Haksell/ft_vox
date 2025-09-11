@@ -12,7 +12,8 @@ GRID_W, GRID_H = 64, 32
 GRASS_COLOR = (0.6, 0.9, 0.2)
 WATER_COLOR = (0, 0.5, 0.9)
 
-LEVELS = 5  # 16, 8, 4, 2, 1
+LEVELS = 5
+SIZES = [TILE_SIZE >> i for i in range(LEVELS)]
 
 
 def clamp8(v):
@@ -63,29 +64,28 @@ def replace_with_masked_mult(img, src_xy, dst_xy, mul, alpha_threshold=0):
 
 def resize_rgba_box(img: Image.Image, size):
     """
-    Resize an RGBA image with BOX filter.
-    Uses premultiplied alpha if NumPy is available (recommended).
+    Resize an RGBA image with BOX filter using premultiplied alpha.
     """
     if img.mode != "RGBA":
         img = img.convert("RGBA")
 
-    # Premultiplied-alpha path
     arr = np.asarray(img, dtype=np.float32) / 255.0  # HxWx4
     rgb = arr[..., :3]
     a = arr[..., 3:4]
     rgb_p = rgb * a
 
-    # Resize each channel as 'F' (float) with BOX
-    def resample_f(ch):
+    def resample_f(ch, size):
         return np.asarray(
             Image.fromarray(ch, mode="F").resize(size, Image.Resampling.BOX),
             dtype=np.float32,
         )
 
-    r = resample_f(rgb_p[..., 0])
-    g = resample_f(rgb_p[..., 1])
-    b = resample_f(rgb_p[..., 2])
-    A = resample_f(a[..., 0])
+    # Resize premultiplied RGB and alpha
+    target_w, target_h = size
+    r = resample_f(rgb_p[..., 0], (target_w, target_h))
+    g = resample_f(rgb_p[..., 1], (target_w, target_h))
+    b = resample_f(rgb_p[..., 2], (target_w, target_h))
+    A = resample_f(a[..., 0], (target_w, target_h))
 
     eps = 1e-8
     r = np.where(A > eps, r / (A + eps), 0.0)
@@ -97,24 +97,8 @@ def resize_rgba_box(img: Image.Image, size):
     return Image.fromarray(out, mode="RGBA")
 
 
-def build_tile_mips(tile_rgba: Image.Image, levels=LEVELS):
-    """Return list [16x16, 8x8, 4x4, 2x2, 1x1] for a single tile."""
-    mips = []
-    cur = tile_rgba
-    for i in range(levels):
-        w = max(1, TILE_SIZE >> i)
-        size = (w, w)
-        if i == 0:
-            # Ensure base is exactly TILE_SIZE
-            cur = cur.resize(size, Image.NEAREST) if cur.size != size else cur
-        else:
-            cur = resize_rgba_box(cur, size)
-        mips.append(cur)
-    return mips
-
-
 def main():
-    # load
+    # Load and sanity-check base atlas
     img = Image.open(INPUT_PATH).convert("RGBA")
     w, h = img.size
     expected_w, expected_h = GRID_W * TILE_SIZE, GRID_H * TILE_SIZE
@@ -123,44 +107,52 @@ def main():
             f"Atlas size {w}x{h} does not match expected {expected_w}x{expected_h}."
         )
 
-    # fix grass top
+    # Content fixes (unchanged)
     multiply_tile(img, 31, 2, GRASS_COLOR)
-
-    # fix grass side
     replace_with_masked_mult(
         img, src_xy=(31, 0), dst_xy=(30, 15), mul=GRASS_COLOR, alpha_threshold=0
     )
-
-    # fix water
     for x, y in [(6, 4), (6, 5), (7, 4), (7, 5)]:
         multiply_tile(img, x, y, WATER_COLOR)
 
-    # save
-    level_sizes = [
-        (GRID_W * max(1, TILE_SIZE >> level), GRID_H * max(1, TILE_SIZE >> level))
-        for level in range(LEVELS)
-    ]
-    level_imgs = [Image.new("RGBA", size, (0, 0, 0, 0)) for size in level_sizes]
+    # Prepare 5x5 anisotropic grid layout
+    # Columns vary X: 16,8,4,2,1; Rows vary Y: 16,8,4,2,1
+    col_widths = [GRID_W * sx for sx in SIZES]
+    row_heights = [GRID_H * sy for sy in SIZES]
+    x_offsets = [0]
+    for i in range(1, len(col_widths)):
+        x_offsets.append(x_offsets[-1] + col_widths[i - 1])
+    y_offsets = [0]
+    for i in range(1, len(row_heights)):
+        y_offsets.append(y_offsets[-1] + row_heights[i - 1])
 
-    for ty in range(GRID_H):
-        for tx in range(GRID_W):
-            base_tile = img.crop(tile_box(tx, ty)).convert("RGBA")
-            mips = build_tile_mips(base_tile, LEVELS)
-            for level, tile in enumerate(mips):
-                s = max(1, TILE_SIZE >> level)
-                level_imgs[level].paste(tile, (tx * s, ty * s))
+    composite = Image.new("RGBA", (2 * w, 2 * h), (0, 0, 0, 0))
 
-    composite_w = level_imgs[0].width  # 1024
-    composite = Image.new("RGBA", (composite_w, 2 * h), (0, 0, 0, 0))
+    # Build each cell: a full atlas reassembled from anisotropically-resized tiles
+    for row_idx, sy in enumerate(SIZES):  # Y sizes: 16..1
+        for col_idx, sx in enumerate(SIZES):  # X sizes: 16..1
+            cell_w, cell_h = GRID_W * sx, GRID_H * sy
+            cell_img = Image.new("RGBA", (cell_w, cell_h), (0, 0, 0, 0))
 
-    y = 0
-    for im in level_imgs:
-        composite.paste(im, (0, y))
-        y += im.height
+            for ty in range(GRID_H):
+                for tx in range(GRID_W):
+                    base_tile = img.crop(tile_box(tx, ty)).convert("RGBA")
+                    if base_tile.size != (TILE_SIZE, TILE_SIZE):
+                        base_tile = base_tile.resize(
+                            (TILE_SIZE, TILE_SIZE), Image.NEAREST
+                        )
+
+                    # Anisotropic downscale for this tile
+                    tile_resized = resize_rgba_box(base_tile, (sx, sy))
+
+                    cell_img.paste(tile_resized, (tx * sx, ty * sy))
+
+            composite.paste(cell_img, (x_offsets[col_idx], y_offsets[row_idx]))
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     composite.save(OUTPUT_PATH)
-    print(f"Saved stacked composite to: {OUTPUT_PATH}")
+    print(f"Saved 5x5 anisotropic atlas grid to: {OUTPUT_PATH}")
+    print("Layout rows/cols are [16, 8, 4, 2, 1] in pixels per tile.")
 
 
 if __name__ == "__main__":

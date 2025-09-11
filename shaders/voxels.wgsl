@@ -35,31 +35,31 @@ var t_diffuse: texture_2d<f32>;
 @group(0) @binding(1)
 var s_diffuse: sampler;
 
-const ATLAS_SHAPE: vec2<f32> = vec2(64.0, 64.0);
+const ATLAS_SHAPE: vec2<f32> = vec2(128.0, 64.0);
 
 fn t16(uv: vec2<f32>) -> vec4<f32> {
     return textureSample(t_diffuse, s_diffuse, vec2(uv.x, uv.y));
 }
 
 fn t8(uv: vec2<f32>) -> vec4<f32> {
-    return textureSample(t_diffuse, s_diffuse, vec2(uv.x / 2.0, uv.y / 2.0 + 0.5));
+    return textureSample(t_diffuse, s_diffuse, vec2(uv.x / 2.0 + 0.5, uv.y / 2.0 + 0.5));
 }
 
 fn t4(uv: vec2<f32>) -> vec4<f32> {
-    return textureSample(t_diffuse, s_diffuse, vec2(uv.x / 4.0, uv.y / 4.0 + 0.75));
+    return textureSample(t_diffuse, s_diffuse, vec2(uv.x / 4.0 + 0.75, uv.y / 4.0 + 0.75));
 }
 
 fn t2(uv: vec2<f32>) -> vec4<f32> {
-    return textureSample(t_diffuse, s_diffuse, vec2(uv.x / 8.0, uv.y / 8.0 + 0.875));
+    return textureSample(t_diffuse, s_diffuse, vec2(uv.x / 8.0 + 0.875, uv.y / 8.0 + 0.875));
 }
 
 fn t1(uv: vec2<f32>) -> vec4<f32> {
-    return textureSample(t_diffuse, s_diffuse, vec2(uv.x / 16.0, uv.y / 16.0 + 0.9375));
+    return textureSample(t_diffuse, s_diffuse, vec2(uv.x / 16.0 + 0.9375, uv.y / 16.0 + 0.9375));
 }
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    let uv = (fract(in.tex_coords) + vec2<f32>(in.atlas_offset)) / ATLAS_SHAPE;
+    var uv = (fract(in.tex_coords) + vec2<f32>(in.atlas_offset)) / ATLAS_SHAPE;
 
     let d = max(in.dist * 0.5, 1e-5);
     var lod = clamp(log2(d / 32.0), 0.0, 4.0);
