@@ -7,6 +7,7 @@ mod chunk;
 mod face;
 mod frustum;
 mod noise;
+mod spline;
 mod state;
 mod texture;
 mod utils;

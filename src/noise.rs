@@ -142,7 +142,10 @@ impl PerlinNoise {
         let u = fade(xf);
         let v = fade(yf);
 
-        let a = self.permutations[(xi & 255) as usize] as i32 + yi;
+        let xi = xi & 255;
+        let yi = yi & 255;
+
+        let a = self.permutations[xi as usize] as i32 + yi;
         let aa = self.permutations[(a & 255) as usize] as usize;
         let ab = self.permutations[((a + 1) & 255) as usize] as usize;
 
@@ -176,7 +179,11 @@ impl PerlinNoise {
         let v = fade(yf);
         let w = fade(zf);
 
-        let a = self.permutations[(xi & 255) as usize] as i32 + yi;
+        let xi = xi & 255;
+        let yi = yi & 255;
+        let zi = zi & 255;
+
+        let a = self.permutations[xi as usize] as i32 + yi;
         let aa = self.permutations[(a & 255) as usize] as i32 + zi;
         let aaa = self.permutations[(aa & 255) as usize] as usize;
         let aab = self.permutations[((aa + 1) & 255) as usize] as usize;
@@ -228,23 +235,15 @@ impl PerlinNoise {
     }
 
     #[rustfmt::skip]
-    const GRADIENT_2D: [Vec2; 16] = [
-        Vec2::new( 1.0,         0.0),
-        Vec2::new(-1.0,         0.0),
-        Vec2::new( 0.0,         1.0),
-        Vec2::new( 0.0,        -1.0),
-        Vec2::new( 0.70710677,  0.70710677),
-        Vec2::new(-0.70710677,  0.70710677),
-        Vec2::new( 0.70710677, -0.70710677),
-        Vec2::new(-0.70710677, -0.70710677),
-        Vec2::new( 0.96592583,  0.25881905),
-        Vec2::new(-0.96592583,  0.25881905),
-        Vec2::new( 0.96592583, -0.25881905),
-        Vec2::new(-0.96592583, -0.25881905),
-        Vec2::new( 0.25881905,  0.96592583),
-        Vec2::new(-0.25881905,  0.96592583),
-        Vec2::new( 0.25881905, -0.96592583),
-        Vec2::new(-0.25881905, -0.96592583),
+    const GRADIENT_2D: [Vec2; 8] = [
+        Vec2::new( 1.0,  1.0),
+        Vec2::new(-1.0,  1.0),
+        Vec2::new( 1.0, -1.0),
+        Vec2::new(-1.0, -1.0),
+        Vec2::new( 1.0,  0.0),
+        Vec2::new(-1.0,  0.0),
+        Vec2::new( 0.0,  1.0),
+        Vec2::new( 0.0, -1.0),
     ];
 
     #[rustfmt::skip]
@@ -264,14 +263,12 @@ impl PerlinNoise {
     ];
 
     fn grad2d(&self, hash: usize, x: f32, y: f32) -> f32 {
-        let gradient = Self::GRADIENT_2D[hash & 15];
-        let position = Vec2::new(x as f32, y as f32);
-        gradient.dot(position) as f32
+        let gradient = Self::GRADIENT_2D[hash % 8];
+        gradient.dot(Vec2::new(x, y))
     }
 
     fn grad3d(&self, hash: usize, x: f32, y: f32, z: f32) -> f32 {
         let gradient = Self::GRADIENT_3D[hash % 12];
-        let position = Vec3::new(x as f32, y as f32, z as f32);
-        gradient.dot(position) as f32
+        gradient.dot(Vec3::new(x, y, z))
     }
 }

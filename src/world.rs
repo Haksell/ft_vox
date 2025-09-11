@@ -4,7 +4,8 @@ use {
         block::BlockType,
         chunk::{AdjacentChunks, Chunk, ChunkCoords, CHUNK_HEIGHT, CHUNK_WIDTH},
         noise::{PerlinNoise, PerlinNoiseBuilder},
-        utils::{ceil_div, lerp},
+        spline::{Spline, SplinePoint},
+        utils::ceil_div,
         vertex::Vertex,
     },
     std::{collections::HashMap, thread},
@@ -116,37 +117,46 @@ impl World {
 
     // Continentalness spline: higher continentalness = higher terrain
     fn continentalness_spline(&self, continentalness: f32) -> f32 {
-        match continentalness {
-            x if x < -0.45 => lerp(-30.0, -20.0, (x + 1.0) / ((-0.45) - (-1.0))),
-            x if x < -0.2 => lerp(-20.0, -5.0, (x - (-0.45)) / ((-0.2) - (-0.45))),
-            x if x < -0.1 => lerp(-5.0, 5.0, (x - (-0.2)) / ((-0.1) - (-0.2))),
-            x if x < 0.05 => lerp(5.0, 30.0, (x - (-0.1)) / (0.05 - (-0.1))),
-            x if x < 0.3 => lerp(30.0, 60.0, (x - 0.05) / (0.3 - 0.05)),
-            x => lerp(60.0, 120.0, (x - 0.3) / (1.0 - 0.3)),
-        }
+        let spline = Spline::new(vec![
+            SplinePoint::new(-1.0, -30.0),
+            SplinePoint::new(-0.45, -20.0),
+            SplinePoint::new(-0.2, -5.0),
+            SplinePoint::new(-0.1, 5.0),
+            SplinePoint::new(0.05, 30.0),
+            SplinePoint::new(0.3, 60.0),
+            SplinePoint::new(1.0, 120.0),
+        ]);
+
+        spline.sample(continentalness)
     }
 
     // Erosion spline: higher erosion = lower, flatter terrain
     fn erosion_factor(&self, erosion: f32) -> f32 {
-        match erosion {
-            x if x < -0.8 => 1.0,
-            x if x < -0.38 => lerp(1.0, 0.9, (x - (-0.8)) / ((-0.38) - (-0.8))),
-            x if x < -0.22 => lerp(0.9, 0.7, (x - (-0.38)) / ((-0.22) - (-0.38))),
-            x if x < 0.05 => lerp(0.7, 0.5, (x - (-0.22)) / (0.05 - (-0.22))),
-            x if x < 0.45 => lerp(0.5, 0.4, (x - 0.05) / (0.45 - 0.05)),
-            x => lerp(0.4, 0.3, (x - 0.45) / (1.0 - 0.45)),
-        }
+        let spline = Spline::new(vec![
+            SplinePoint::new(-1.0, 1.0),
+            SplinePoint::new(-0.8, 1.0),
+            SplinePoint::new(-0.38, 0.9),
+            SplinePoint::new(-0.22, 0.7),
+            SplinePoint::new(0.05, 0.5),
+            SplinePoint::new(0.45, 0.4),
+            SplinePoint::new(1.0, 0.3),
+        ]);
+
+        spline.sample(erosion)
     }
 
     // Peaks and valleys spline
     fn peaks_valleys_spline(&self, peak_and_valley: f32) -> f32 {
-        match peak_and_valley {
-            x if x < -0.85 => lerp(-40.0, -10.0, (x + 1.0) / ((-0.85) - (-1.0))),
-            x if x < -0.2 => lerp(-10.0, 10.0, (x - (-0.85)) / ((-0.2) - (-0.85))),
-            x if x < 0.2 => lerp(10.0, 20.0, (x - (-0.2)) / (0.2 - (-0.2))),
-            x if x < 0.7 => lerp(20.0, 40.0, (x - 0.2) / (0.7 - 0.2)),
-            x => lerp(40.0, 60.0, (x - 0.7) / (1.0 - 0.7)),
-        }
+        let spline = Spline::new(vec![
+            SplinePoint::new(-1.0, -40.0),
+            SplinePoint::new(-0.85, -10.0),
+            SplinePoint::new(-0.2, 10.0),
+            SplinePoint::new(0.2, 20.0),
+            SplinePoint::new(0.7, 40.0),
+            SplinePoint::new(1.0, 60.0),
+        ]);
+
+        spline.sample(peak_and_valley)
     }
 
     pub fn determine_biome(&self, world_x: f32, world_y: f32) -> BiomeType {
@@ -622,9 +632,10 @@ impl World {
         let normalized_z = ((world_z - 8) as f32 / (surface_height) as f32).clamp(0.0, 1.0);
         let probability = 4.0 * normalized_z * (1.0 - normalized_z);
 
-        let spaghetti = noise.abs() < 0.02 * probability;
+        // let spaghetti = noise.abs() < 0.02 * probability;
         let cheese = noise * probability > 0.2;
 
+        // cheese || spaghetti
         cheese
     }
 
