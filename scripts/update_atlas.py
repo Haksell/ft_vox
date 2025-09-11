@@ -140,8 +140,7 @@ def main():
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     composite.save(OUTPUT_PATH)
-    print(f"Saved 5x5 anisotropic atlas grid to: {OUTPUT_PATH}")
-    print("Layout rows/cols are [16, 8, 4, 2, 1] in pixels per tile.")
+    print(f'Saved 5x5 anisotropic atlas to "{OUTPUT_PATH}"')
 
 
 if __name__ == "__main__":
