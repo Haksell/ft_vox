@@ -52,7 +52,10 @@
 
 ## todo ft_minecraft
 
+- collisions
 - animations (water, lava, ...)
+- transparency (water, ...)
+- launch animation (camera drops to block at (0, 0) with proper gravity)
 - block about to be deleted should look a bit darker
 - only delete block if raycast at start and end of click touch the same block 
 - frustum culling during face generation instead of after checking chunks
