@@ -110,6 +110,17 @@ impl<'a> ApplicationHandler for Application<'a> {
                     None => window.set_fullscreen(Some(Fullscreen::Borderless(Some(monitor)))),
                 }
             }
+            WindowEvent::KeyboardInput {
+                event:
+                    KeyEvent {
+                        state: ElementState::Pressed,
+                        physical_key: PhysicalKey::Code(KeyCode::KeyF),
+                        ..
+                    },
+                ..
+            } => {
+                state.toggle_show_fps();
+            }
             WindowEvent::CloseRequested
             | WindowEvent::KeyboardInput {
                 event:

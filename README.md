@@ -2,7 +2,6 @@
 
 ## todo ft_vox
 
-- key to toggle fps
 - block deletion
 - more cave openings
 - random rare textures in caves
@@ -44,9 +43,9 @@
 - [x] You can use a library to load 3D objects and pictures (image)
 - [x] You can use a windowing library (winit)
 - [x] You can use a mathematics library for your calculations (glam)
-- [ ] The render should always be SMOOTH
-- [ ] Any crash (uncaught exception, segfault, abort ...) will disqualify you
-- [ ] Your program must be able to run for hours without eating the whole memory or slowing down. Manage your RAM as well as VRAM very carefully.
+- [x] The render should always be SMOOTH
+- [x] Any crash (uncaught exception, segfault, abort ...) will disqualify you
+- [x] Your program must be able to run for hours without eating the whole memory or slowing down. Manage your RAM as well as VRAM very carefully.
 - [ ] Full screen mode by default
 - [ ] Camera speeds should be 1.0 and 20.0
 

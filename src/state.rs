@@ -48,6 +48,7 @@ pub struct State<'a> {
     pub size: PhysicalSize<u32>,
     pub center: PhysicalSize<u32>,
     pub fps: f32,
+    pub show_fps: bool,
     pub is_right_clicking: bool,
 
     chunk_render_data: HashMap<ChunkCoords, ChunkRenderData>,
@@ -445,6 +446,7 @@ impl<'a> State<'a> {
             skybox_pipeline,
             skybox_bind_group,
             fps: 60.0, // dummy value before first calculation
+            show_fps: false,
             text_brush,
             is_right_clicking: false,
             crosshair_pipeline,
@@ -657,15 +659,6 @@ impl<'a> State<'a> {
             encoder: &mut wgpu::CommandEncoder,
             texture_view: &wgpu::TextureView,
         ) {
-            let fps_text = format!("FPS:{:.0}", state.fps);
-            let core = make_text(&fps_text, 12.0, [1.0, 0.1, 0.1]);
-            let shadow = make_text(&fps_text, 14.0, [0.0; 3]);
-
-            let _ = state
-                .text_brush
-                .queue(&state.device, &state.queue, [shadow, core])
-                .inspect_err(|brush_error| log::warn!("Brush error: {:?}", brush_error));
-
             let mut overlay_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("overlay_pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -682,7 +675,16 @@ impl<'a> State<'a> {
                 timestamp_writes: None,
             });
 
-            state.text_brush.draw(&mut overlay_pass);
+            if state.show_fps {
+                let fps_text = format!("FPS:{:.0}", state.fps);
+                let core = make_text(&fps_text, 12.0, [1.0, 0.1, 0.1]);
+                let shadow = make_text(&fps_text, 14.0, [0.0; 3]);
+                let _ = state
+                    .text_brush
+                    .queue(&state.device, &state.queue, [shadow, core])
+                    .inspect_err(|brush_error| log::warn!("Brush error: {:?}", brush_error));
+                state.text_brush.draw(&mut overlay_pass);
+            }
 
             let arm_length: u32 = 8; // needs to stay bigger than the arm length defined in the shader
             overlay_pass.set_scissor_rect(
@@ -722,5 +724,9 @@ impl<'a> State<'a> {
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
         Ok(())
+    }
+
+    pub fn toggle_show_fps(&mut self) {
+        self.show_fps = !self.show_fps;
     }
 }
