@@ -10,6 +10,7 @@ TILE_SIZE = 16
 GRID_W, GRID_H = 64, 32
 
 GRASS_COLOR = (0.6, 0.9, 0.2)
+WATER_COLOR = (0, 0.5, 0.9)
 
 
 def clamp8(v):
@@ -71,7 +72,7 @@ def replace_with_masked_mult(
 
 
 def main():
-    # Load and sanity-check dimensions
+    # load
     img = Image.open(INPUT_PATH).convert("RGBA")
     w, h = img.size
     expected_w, expected_h = GRID_W * TILE_SIZE, GRID_H * TILE_SIZE
@@ -80,15 +81,19 @@ def main():
             f"Atlas size {w}x{h} does not match expected {expected_w}x{expected_h}."
         )
 
-    # 1) Multiply tile (31, 2)
+    # fix grass top
     multiply_tile(img, 31, 2, GRASS_COLOR)
 
-    # 2) In tile (30, 15), replace where tile (31, 0) is non-transparent, using multiplied source
+    # fix grass side
     replace_with_masked_mult(
         img, src_xy=(31, 0), dst_xy=(30, 15), mul=GRASS_COLOR, alpha_threshold=0
     )
 
-    # 3) Save
+    # fix water
+    for x, y in [(6, 4), (6, 5), (7, 4), (7, 5)]:
+        multiply_tile(img, x, y, WATER_COLOR)
+
+    # save
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     img.save(OUTPUT_PATH)
 

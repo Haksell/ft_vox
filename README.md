@@ -4,7 +4,6 @@
 
 - block deletion
 - mipmap to avoid moire patterns
-- fix water color + animation
 - more cave openings
 - random rare textures in caves
 - args (seed, fullscreen, display fps, ...)
@@ -53,6 +52,7 @@
 
 ## todo ft_minecraft
 
+- animations (water, lava, ...)
 - block about to be deleted should look a bit darker
 - only delete block if raycast at start and end of click touch the same block 
 - frustum culling during face generation instead of after checking chunks
