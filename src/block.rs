@@ -11,6 +11,7 @@ pub enum BlockType {
     Water,
     Gravel,
     RedSand,
+    Magma,
 }
 
 impl BlockType {
@@ -25,6 +26,7 @@ impl BlockType {
             BlockType::Water => [6, 4],
             BlockType::Gravel => [31, 3],
             BlockType::RedSand => [27, 25],
+            BlockType::Magma => [24, 26],
         }
     }
 
@@ -39,6 +41,7 @@ impl BlockType {
             BlockType::Water => [6, 4],
             BlockType::Gravel => [31, 3],
             BlockType::RedSand => [27, 25],
+            BlockType::Magma => [24, 26],
         }
     }
 
@@ -53,6 +56,7 @@ impl BlockType {
             BlockType::Water => [6, 4],
             BlockType::Gravel => [31, 3],
             BlockType::RedSand => [27, 25],
+            BlockType::Magma => [24, 26],
         }
     }
 }

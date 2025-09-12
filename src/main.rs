@@ -32,6 +32,8 @@ struct Args {
     normal_speed: f32,
     #[arg(long, default_value_t = 20.0)]
     boosted_speed: f32,
+    #[arg(long = "no-vertical", action = clap::ArgAction::SetFalse)]
+    vertical_enabled: bool,
 }
 
 async fn run(args: Args) {

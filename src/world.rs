@@ -745,7 +745,7 @@ impl World {
 
                             for z in 0..CHUNK_HEIGHT {
                                 column[z] = if z <= MAGMA_CORE {
-                                    Some(BlockType::RedSand) // TODO: Magma
+                                    Some(BlockType::Magma)
                                 } else if !biome.is_ocean()
                                     && cave_low < z as f32
                                     && (z as f32) < cave_high
@@ -754,8 +754,8 @@ impl World {
                                 } else if z <= height {
                                     let depth_from_surface = height.saturating_sub(z);
                                     Some(match depth_from_surface {
-                                        0..5 => biome.get_surface_block(),
-                                        _ => biome.get_deep_block(),
+                                        0..5 => biome.get_surface_block(), // TODO: 5 -> random
+                                        _ => biome.get_deep_block((world_x, world_y, z as i32)),
                                     })
                                 } else if z <= SEA {
                                     Some(BlockType::Water)

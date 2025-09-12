@@ -128,6 +128,7 @@ pub struct CameraController {
     normal_speed: f32,
     boosted_speed: f32,
     sensitivity: f32,
+    vertical_enabled: bool,
     is_boosted: bool,
     is_forward_pressed: bool,
     is_backward_pressed: bool,
@@ -143,6 +144,7 @@ impl CameraController {
             normal_speed: args.normal_speed,
             boosted_speed: args.boosted_speed,
             sensitivity: 0.004,
+            vertical_enabled: args.vertical_enabled,
             is_boosted: false,
             is_forward_pressed: false,
             is_backward_pressed: false,
@@ -178,10 +180,10 @@ impl CameraController {
             KeyCode::KeyD | KeyCode::ArrowRight => {
                 self.is_right_pressed = is_pressed;
             }
-            KeyCode::Space => {
+            KeyCode::Space if self.vertical_enabled => {
                 self.is_up_pressed = is_pressed;
             }
-            KeyCode::ShiftLeft | KeyCode::ControlLeft => {
+            KeyCode::ShiftLeft | KeyCode::ControlLeft if self.vertical_enabled => {
                 self.is_down_pressed = is_pressed;
             }
             _ => {}
