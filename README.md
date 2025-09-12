@@ -2,8 +2,7 @@
 
 ## todo ft_vox
 
-- more cave openings
-- random rare textures in caves
+- alternative to stone in layer above magma
 
 ## mandatory ft_vox
 
@@ -13,7 +12,7 @@
 - [x] Except for the empty cubes, they will all be opaque but will have their own textures.
 - [x] There should be hills.
 - [x] There should be mountains.
-- [ ] There should be caves.
+- [x] There should be caves.
 - [x] There should be lakes.
 - [x] This generation has to be determinist, which means the same seed will spawn the exact same map.
 - [x] Each visited piece of terrain must be saved in the memory up to some limit you will set yourself and after which you can start deleting cubes from the memory.
@@ -46,7 +45,7 @@
 - [x] Your program must be able to run for hours without eating the whole memory or slowing down. Manage your RAM as well as VRAM very carefully.
 - [x] Full screen mode by default
 - [x] Camera speeds should be 1.0 and 20.0
-- [ ] Ctrl+F TODO
+- [x] Ctrl+F TODO
 - [ ] Delete ft_vox README sections
 
 ## todo ft_minecraft

@@ -206,7 +206,7 @@ impl<'a> ApplicationHandler for Application<'a> {
                     state.update_chunks(&mut self.world);
                 }
 
-                // reset cursor to center (TODO: only when not fullscreen)
+                // reset cursor to center
                 let size = window.inner_size();
                 let center = PhysicalPosition::new(size.width / 2, size.height / 2);
                 window.set_cursor_position(center).unwrap();
