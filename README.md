@@ -2,10 +2,10 @@
 
 ## todo ft_vox
 
-- block deletion
-- """volcanos"""
 - more cave openings
 - random rare textures in caves
+- """volcanos"""
+- mostly sand under water
 
 ## mandatory ft_vox
 
@@ -33,7 +33,7 @@
 - [x] Have a render distance always higher than 14 chunks and always have a smooth display.
 - [x] A FPS counter is displayed.
 - [x] Render is smooth and doesn't freeze, at x20 speed.
-- [ ] Being able to delete blocks with the mouse.
+- [x] Being able to delete blocks with the mouse.
 - [x] Having a lot of different biomes.
 
 ## push check ft_vox
@@ -51,6 +51,7 @@
 
 ## todo ft_minecraft
 
+- use `XxxCoords` types everywhere
 - true gpu sampler mipmaps
 - anisotropic filtering
 - collisions

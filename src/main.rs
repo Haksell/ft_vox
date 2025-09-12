@@ -4,6 +4,7 @@ mod biome;
 mod block;
 mod camera;
 mod chunk;
+mod coords;
 mod face;
 mod frustum;
 mod noise;

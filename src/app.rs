@@ -1,5 +1,11 @@
 use {
-    crate::{chunk::ChunkCoords, state::State, world::World, Args},
+    crate::{
+        chunk::CHUNK_WIDTH,
+        coords::{split_coords, ChunkCoords},
+        state::State,
+        world::World,
+        Args,
+    },
     std::{
         sync::Arc,
         time::{Duration, Instant},
@@ -71,6 +77,7 @@ impl<'a> ApplicationHandler for Application<'a> {
         match event {
             DeviceEvent::MouseMotion { delta: (dx, dy) } => {
                 camera_controller.process_mouse_motion(dx as f32, dy as f32);
+                state.update_crosshair(&self.world);
             }
             DeviceEvent::Button {
                 button,
@@ -78,9 +85,34 @@ impl<'a> ApplicationHandler for Application<'a> {
             } => match button {
                 1 => camera_controller.process_boost(button_state.is_pressed()),
                 3 => {
-                    state.is_right_clicking = button_state.is_pressed();
-                    if !state.is_right_clicking {
-                        println!("click");
+                    if button_state.is_pressed() {
+                        state.is_right_clicking = true;
+                        state.update_crosshair(&self.world);
+                    } else {
+                        state.is_right_clicking = false;
+                        state.is_crosshair_active = false;
+                        if let Some((world_coords, block)) =
+                            self.world.delete_center_block(&state.camera)
+                        {
+                            log::debug!("Deleted {:?}", block);
+
+                            let (chunk_coords, (bx, by, _)) = split_coords(world_coords).unwrap();
+                            let (cx, cy) = chunk_coords;
+
+                            state.chunks_to_rerender.insert(chunk_coords);
+
+                            // rerender neighbors if on the edge
+                            if bx == 0 {
+                                state.chunks_to_rerender.insert((cx - 1, cy));
+                            } else if bx == CHUNK_WIDTH - 1 {
+                                state.chunks_to_rerender.insert((cx + 1, cy));
+                            }
+                            if by == 0 {
+                                state.chunks_to_rerender.insert((cx, cy - 1));
+                            } else if by == CHUNK_WIDTH - 1 {
+                                state.chunks_to_rerender.insert((cx, cy + 1));
+                            }
+                        }
                     }
                 }
                 _ => {}
@@ -147,9 +179,12 @@ impl<'a> ApplicationHandler for Application<'a> {
                         ..
                     },
                 ..
-            } => state
-                .camera_controller
-                .process_keyboard(element_state, keycode),
+            } => {
+                state
+                    .camera_controller
+                    .process_keyboard(element_state, keycode);
+                state.update_crosshair(&self.world);
+            }
             WindowEvent::Resized(physical_size) => {
                 log::info!("physical_size: {physical_size:?}");
                 state.resize(physical_size);
@@ -167,12 +202,13 @@ impl<'a> ApplicationHandler for Application<'a> {
                     .world
                     .get_chunk_index_from_position(camera_pos.x, camera_pos.y);
 
+                state.update(dt);
+
+                state.rerender_chunks(&mut self.world);
                 if self.last_chunk != Some(camera_chunk) {
                     self.last_chunk = Some(camera_chunk);
                     state.update_chunks(&mut self.world);
                 }
-
-                state.update(dt);
 
                 // reset cursor to center (TODO: only when not fullscreen)
                 let size = window.inner_size();

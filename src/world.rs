@@ -2,18 +2,24 @@ use {
     crate::{
         biome::BiomeType,
         block::BlockType,
-        chunk::{AdjacentChunks, CHUNK_HEIGHT, CHUNK_WIDTH, Chunk, ChunkCoords},
+        camera::Camera,
+        chunk::{AdjacentChunks, Chunk, CHUNK_HEIGHT, CHUNK_WIDTH},
+        coords::{split_coords, BlockCoords, ChunkCoords, WorldCoords},
         noise::{SimplexNoise, SimplexNoiseInfo},
         spline::{Spline, SplinePoint},
-        utils::ceil_div,
+        utils::{ceil_div, sign},
         vertex::Vertex,
     },
-    std::{collections::HashMap, thread},
+    std::{
+        collections::{HashMap, HashSet},
+        thread,
+    },
 };
 
 pub const SURFACE: usize = 64;
 pub const SEA: usize = 62;
 
+pub const MAX_DELETE_DISTANCE: f32 = 48.0;
 pub struct NoiseValues {
     temperature: f32,
     humidity: f32,
@@ -31,12 +37,10 @@ pub struct World {
     weirdness_noise: SimplexNoise,
 
     chunks: HashMap<ChunkCoords, Chunk>,
+    deleted_blocks: HashMap<ChunkCoords, HashSet<BlockCoords>>,
 }
-
 impl World {
     pub fn new(seed: u64) -> Self {
-        let chunks = HashMap::new();
-
         // temperature: affects hot vs cold biomes
         let temperature_noise = SimplexNoise::new(
             seed.wrapping_add(0xFF446677),
@@ -97,7 +101,8 @@ impl World {
             continentalness_noise,
             erosion_noise,
             weirdness_noise,
-            chunks,
+            chunks: HashMap::new(),
+            deleted_blocks: HashMap::new(),
         }
     }
 
@@ -112,12 +117,26 @@ impl World {
         self.chunks.get(&chunk_coords)
     }
 
+    pub fn get_mut_chunk_if_loaded(&mut self, chunk_coords: ChunkCoords) -> Option<&mut Chunk> {
+        self.chunks.get_mut(&chunk_coords)
+    }
+
     pub fn load_chunk(&mut self, chunk_coords: ChunkCoords) {
         if !self.chunks.contains_key(&chunk_coords) {
-            let blocks = self.generate_chunk_blocks(chunk_coords);
+            let mut blocks = self.generate_chunk_blocks(chunk_coords);
+            if let Some(deleted) = self.deleted_blocks.get(&chunk_coords) {
+                for &(x, y, z) in deleted {
+                    blocks[x][y][z] = None;
+                }
+            }
             let chunk = Chunk::new(chunk_coords, blocks);
             self.chunks.insert(chunk_coords, chunk);
         }
+    }
+
+    pub fn retain_chunks(&mut self, chunks_to_keep: &HashSet<(i32, i32)>) {
+        self.chunks
+            .retain(|&coords, _| chunks_to_keep.contains(&coords));
     }
 
     fn generate_height_at(&self, values: &NoiseValues) -> f32 {
@@ -687,7 +706,7 @@ impl World {
                 let len = (CHUNK_WIDTH - start_x).min(chunk_size);
 
                 let (head, tail) = remainder.split_at_mut(len);
-                let start_x_this = start_x;
+                let start_x_this = start_x; // ???
 
                 s.spawn(move || {
                     for (dx, plane) in head.iter_mut().enumerate() {
@@ -731,7 +750,6 @@ impl World {
         &mut self,
         (chunk_x, chunk_y): ChunkCoords,
     ) -> (Vec<Vertex>, Vec<u16>) {
-        // Load the target chunk and its 4 cardinal neighbors
         self.load_chunk((chunk_x, chunk_y));
         self.load_chunk((chunk_x, chunk_y + 1));
         self.load_chunk((chunk_x, chunk_y - 1));
@@ -748,5 +766,118 @@ impl World {
         };
 
         chunk.generate_mesh(&adjacent)
+    }
+
+    pub fn delete_center_block(&mut self, camera: &Camera) -> Option<(WorldCoords, BlockType)> {
+        let (world_coords, block) = self.find_center_block(camera, MAX_DELETE_DISTANCE)?;
+        self.delete_block(world_coords);
+        Some((world_coords, block))
+    }
+
+    // TODO: update DDA to use the tree structure of Chunk
+    pub fn find_center_block(
+        &self,
+        camera: &Camera,
+        max_distance: f32,
+    ) -> Option<(WorldCoords, BlockType)> {
+        let dir = camera.direction();
+        let start = camera.position();
+
+        let mut ix = start.x.floor() as i32;
+        let mut iy = start.y.floor() as i32;
+        let mut iz = start.z.floor() as i32;
+
+        if self.get_block((ix, iy, iz)).is_some() {
+            return None;
+        }
+
+        let step_x = sign(dir.x);
+        let step_y = sign(dir.y);
+        let step_z = sign(dir.z);
+
+        let next_boundary = |i: i32, d: f32| -> f32 { (i + (d > 0.0) as i32) as f32 };
+
+        let init_t_max = |i: i32, s: f32, d: f32| -> f32 {
+            if step_x != 0 {
+                (next_boundary(i, d) - s) / d
+            } else {
+                f32::INFINITY
+            }
+        };
+
+        let mut t_max_x = init_t_max(ix, start.x, dir.x);
+        let mut t_max_y = init_t_max(iy, start.y, dir.y);
+        let mut t_max_z = init_t_max(iz, start.z, dir.z);
+
+        let init_t_delta = |step: i32, d: f32| -> f32 {
+            if step != 0 {
+                (1.0 / d).abs()
+            } else {
+                f32::INFINITY
+            }
+        };
+
+        let t_delta_x = init_t_delta(step_x, dir.x);
+        let t_delta_y = init_t_delta(step_y, dir.y);
+        let t_delta_z = init_t_delta(step_z, dir.z);
+
+        let mut t = 0.0;
+
+        while t <= max_distance {
+            if t_max_x < t_max_y {
+                if t_max_x < t_max_z {
+                    ix += step_x;
+                    t = t_max_x;
+                    t_max_x += t_delta_x;
+                } else {
+                    iz += step_z;
+                    t = t_max_z;
+                    t_max_z += t_delta_z;
+                }
+            } else {
+                if t_max_y < t_max_z {
+                    iy += step_y;
+                    t = t_max_y;
+                    t_max_y += t_delta_y;
+                } else {
+                    iz += step_z;
+                    t = t_max_z;
+                    t_max_z += t_delta_z;
+                }
+            }
+
+            if iz < 0 || iz >= CHUNK_HEIGHT as i32 {
+                return None;
+            }
+
+            let world_coords = (ix, iy, iz);
+            if let Some(block) = self.get_block(world_coords) {
+                return Some((world_coords, block));
+            }
+        }
+
+        None
+    }
+
+    fn get_block(&self, world_coords: WorldCoords) -> Option<BlockType> {
+        let (chunk_coords, block_coords) = split_coords(world_coords)?;
+        let chunk = self.get_chunk_if_loaded(chunk_coords)?;
+        chunk.get_block(block_coords)
+    }
+
+    fn delete_block(&mut self, world_coords: WorldCoords) {
+        let Some((chunk_coords, block_coords)) = split_coords(world_coords) else {
+            return;
+        };
+
+        let Some(chunk) = self.get_mut_chunk_if_loaded(chunk_coords) else {
+            return;
+        };
+
+        chunk.delete_block(block_coords);
+        self.deleted_blocks
+            .entry(chunk_coords)
+            .or_insert_with(HashSet::new)
+            .insert(block_coords);
     }
 }
