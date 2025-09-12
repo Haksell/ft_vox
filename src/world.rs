@@ -7,7 +7,7 @@ use {
         coords::{camera_to_world_coords, split_coords, BlockCoords, ChunkCoords, WorldCoords},
         noise::{SimplexNoise, SimplexNoiseInfo},
         spline::{Spline, SplinePoint},
-        utils::{ceil_div, sign},
+        utils::{ceil_div, lerp, sign},
         vertex::Vertex,
     },
     glam::Vec3,
@@ -19,6 +19,7 @@ use {
 
 pub const SURFACE: usize = 64;
 pub const SEA: usize = 62;
+pub const MAGMA_CORE: usize = 31;
 
 pub const MAX_DELETE_DISTANCE: f32 = 48.0;
 
@@ -37,7 +38,9 @@ pub struct World {
     continentalness_noise: SimplexNoise,
     erosion_noise: SimplexNoise,
     weirdness_noise: SimplexNoise,
-    cave_noise: SimplexNoise,
+
+    cave_low_noise: SimplexNoise,
+    cave_high_noise: SimplexNoise,
 
     chunks: HashMap<ChunkCoords, Chunk>,
     deleted_blocks: HashMap<ChunkCoords, HashSet<BlockCoords>>,
@@ -98,14 +101,25 @@ impl World {
             },
         );
 
-        // cave: creates caves
-        let cave_noise = SimplexNoise::new(
-            seed.wrapping_add(0x44336611),
+        // cave lower bound
+        let cave_low_noise = SimplexNoise::new(
+            seed.wrapping_add(0x1F326321),
             SimplexNoiseInfo {
-                frequency: 0.0196,
-                octaves: 4,
-                persistence: 0.666,
-                ..Default::default()
+                frequency: 0.007,
+                octaves: 6,
+                persistence: 0.6,
+                lacunarity: 2.0,
+            },
+        );
+
+        // cave upper bound
+        let cave_high_noise = SimplexNoise::new(
+            seed.wrapping_add(0x15444555),
+            SimplexNoiseInfo {
+                frequency: 0.007,
+                octaves: 6,
+                persistence: 0.6,
+                lacunarity: 2.0,
             },
         );
 
@@ -115,9 +129,10 @@ impl World {
             continentalness_noise,
             erosion_noise,
             weirdness_noise,
+            cave_low_noise,
+            cave_high_noise,
             chunks: HashMap::new(),
             deleted_blocks: HashMap::new(),
-            cave_noise,
         }
     }
 
@@ -664,11 +679,6 @@ impl World {
         }
     }
 
-    fn has_cave_at(&self, world_x: i32, world_y: i32, world_z: i32) -> bool {
-        // TODO: cave system
-        false
-    }
-
     fn get_noise_values(&self, world_x: i32, world_y: i32) -> NoiseValues {
         let continentalness = self
             .continentalness_noise
@@ -724,12 +734,24 @@ impl World {
                             let height = self.generate_height_at(&noise_values) as usize;
                             let biome = self.determine_biome(&noise_values);
 
-                            for z in 0..CHUNK_HEIGHT {
-                                if z <= height {
-                                    if self.has_cave_at(world_x, world_y, z as i32) {
-                                        // TODO
-                                    }
+                            // DON'T CHANGE UNTIL FT_VOX PUSH
+                            let cave_low =
+                                self.cave_low_noise.noise2d(world_x as f32, world_y as f32) * 20.0
+                                    + 110.0
+                                    - height as f32 * 0.6;
+                            let cave_high =
+                                self.cave_high_noise.noise2d(world_x as f32, world_y as f32) * 25.0
+                                    + lerp(56.0, height as f32, 0.3);
 
+                            for z in 0..CHUNK_HEIGHT {
+                                if z <= MAGMA_CORE {
+                                    column[z] = Some(BlockType::RedSand); // TODO: Magma
+                                } else if !biome.is_ocean()
+                                    && cave_low < z as f32
+                                    && (z as f32) < cave_high
+                                {
+                                    column[z] = None;
+                                } else if z <= height {
                                     let depth_from_surface = height.saturating_sub(z);
                                     column[z] = Some(match depth_from_surface {
                                         0..5 => biome.get_surface_block(),

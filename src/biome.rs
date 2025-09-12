@@ -51,7 +51,6 @@ pub enum BiomeType {
     CherryGrove,
     SavannaPlateau,
 }
-
 impl BiomeType {
     pub fn get_surface_block(&self) -> BlockType {
         match self {
@@ -86,5 +85,18 @@ impl BiomeType {
 
     pub fn get_deep_block(&self) -> BlockType {
         BlockType::Stone
+    }
+
+    pub fn is_ocean(&self) -> bool {
+        matches!(
+            self,
+            Self::FrozenOcean
+                | Self::ColdOcean
+                | Self::Ocean
+                | Self::DeepFrozenOcean
+                | Self::DeepColdOcean
+                | Self::DeepOcean
+                | Self::WarmOcean
+        )
     }
 }
