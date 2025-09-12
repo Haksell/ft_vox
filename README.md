@@ -2,9 +2,6 @@
 
 ## todo ft_vox
 
-- call `retain` for chunks too
-- put `World` in `State`
-- block deletion
 - mipmap to avoid moire patterns
 - fix grass color (https://minecraft.fandom.com/wiki/Grass_Block, https://minecraft.fandom.com/wiki/Color#Biome_colors) (or simpler atlas)
 - fix water color + animation
@@ -12,6 +9,7 @@
 - random rare textures in caves
 - collisions
 - args (seed, fullscreen, display fps, ...)
+- mostly sand under water
 
 ## mandatory ft_vox
 
@@ -39,7 +37,7 @@
 - [x] Have a render distance always higher than 14 chunks and always have a smooth display.
 - [x] A FPS counter is displayed.
 - [ ] Render is smooth and doesn't freeze, at x20 speed.
-- [ ] Being able to delete blocks with the mouse.
+- [x] Being able to delete blocks with the mouse.
 - [ ] Having a lot of different biomes.
 
 ## push check ft_vox

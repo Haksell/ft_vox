@@ -1,5 +1,10 @@
 use {
-    crate::{coords::ChunkCoords, state::State, world::World},
+    crate::{
+        chunk::CHUNK_WIDTH,
+        coords::{split_coords, ChunkCoords},
+        state::State,
+        world::World,
+    },
     std::{
         sync::Arc,
         time::{Duration, Instant},
@@ -77,8 +82,28 @@ impl<'a> ApplicationHandler for Application<'a> {
                     } else {
                         state.is_right_clicking = false;
                         state.is_crosshair_active = false;
-                        let block = self.world.delete_center_block(&state.camera);
-                        log::debug!("Deleted {:?}", block);
+                        if let Some((world_coords, block)) =
+                            self.world.delete_center_block(&state.camera)
+                        {
+                            log::debug!("Deleted {:?}", block);
+
+                            let (chunk_coords, (bx, by, _)) = split_coords(world_coords).unwrap();
+                            let (cx, cy) = chunk_coords;
+
+                            state.chunks_to_rerender.insert(chunk_coords);
+
+                            // rerender neighbors if on the edge
+                            if bx == 0 {
+                                state.chunks_to_rerender.insert((cx - 1, cy));
+                            } else if bx == CHUNK_WIDTH - 1 {
+                                state.chunks_to_rerender.insert((cx + 1, cy));
+                            }
+                            if by == 0 {
+                                state.chunks_to_rerender.insert((cx, cy - 1));
+                            } else if by == CHUNK_WIDTH - 1 {
+                                state.chunks_to_rerender.insert((cx, cy + 1));
+                            }
+                        }
                     }
                 }
                 _ => {}
@@ -157,12 +182,13 @@ impl<'a> ApplicationHandler for Application<'a> {
                     .world
                     .get_chunk_index_from_position(camera_pos.x, camera_pos.y);
 
+                state.update(dt);
+
+                state.rerender_chunks(&mut self.world);
                 if self.last_chunk != Some(camera_chunk) {
                     self.last_chunk = Some(camera_chunk);
                     state.update_chunks(&mut self.world);
                 }
-
-                state.update(dt);
 
                 // reset cursor to center (TODO: only when not fullscreen)
                 let size = window.inner_size();

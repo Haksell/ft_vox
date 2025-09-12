@@ -101,7 +101,6 @@ impl World {
         if !self.chunks.contains_key(&chunk_coords) {
             let mut blocks = self.generate_chunk_blocks(chunk_coords);
             if let Some(deleted) = self.deleted_blocks.get(&chunk_coords) {
-                println!("{deleted:?}");
                 for &(x, y, z) in deleted {
                     blocks[x][y][z] = None;
                 }
@@ -109,6 +108,11 @@ impl World {
             let chunk = Chunk::new(chunk_coords, blocks);
             self.chunks.insert(chunk_coords, chunk);
         }
+    }
+
+    pub fn retain_chunks(&mut self, chunks_to_keep: &HashSet<(i32, i32)>) {
+        self.chunks
+            .retain(|&coords, _| chunks_to_keep.contains(&coords));
     }
 
     fn generate_height_at(&self, world_x: f32, world_y: f32) -> f32 {
@@ -733,6 +737,7 @@ impl World {
         Some((world_coords, block))
     }
 
+    // TODO: update DDA to use the tree structure of Chunk
     pub fn find_center_block(
         &self,
         camera: &Camera,
@@ -808,8 +813,9 @@ impl World {
                 return None;
             }
 
-            if let Some(block) = self.get_block((ix, iy, iz)) {
-                return Some(((ix, iz, iz), block));
+            let world_coords = (ix, iy, iz);
+            if let Some(block) = self.get_block(world_coords) {
+                return Some((world_coords, block));
             }
         }
 
@@ -836,6 +842,5 @@ impl World {
             .entry(chunk_coords)
             .or_insert_with(HashSet::new)
             .insert(block_coords);
-        println!("{:?}", self.deleted_blocks);
     }
 }

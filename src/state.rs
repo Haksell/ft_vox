@@ -53,6 +53,7 @@ pub struct State<'a> {
     pub is_crosshair_active: bool,
 
     chunk_render_data: HashMap<ChunkCoords, ChunkRenderData>,
+    pub chunks_to_rerender: HashSet<ChunkCoords>,
 
     pub camera: Camera,
     pub camera_controller: CameraController,
@@ -438,6 +439,7 @@ impl<'a> State<'a> {
             center,
             voxels_pipeline,
             chunk_render_data: HashMap::new(),
+            chunks_to_rerender: HashSet::new(),
             diffuse_bind_group,
             depth_texture,
             camera,
@@ -499,11 +501,18 @@ impl<'a> State<'a> {
 
         self.chunk_render_data
             .retain(|&coords, _| chunks_in_range.contains(&coords));
+        world.retain_chunks(&chunks_in_range);
 
         for &chunk_coords in &chunks_in_range {
             if !self.chunk_render_data.contains_key(&chunk_coords) {
                 self.generate_chunk_mesh(world, chunk_coords);
             }
+        }
+    }
+
+    pub fn rerender_chunks(&mut self, world: &mut World) {
+        for chunk_coords in std::mem::take(&mut self.chunks_to_rerender) {
+            self.generate_chunk_mesh(world, chunk_coords);
         }
     }
 
