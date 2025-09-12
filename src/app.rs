@@ -218,7 +218,15 @@ impl<'a> ApplicationHandler for Application<'a> {
                         if elapsed >= Duration::from_secs(1) {
                             let secs = elapsed.as_secs_f64();
                             state.fps = self.frames_since_log as f32 / secs as f32;
-                            log::info!("FPS: {:.1} | CHUNK: {:?}", state.fps, camera_chunk);
+                            log::info!(
+                                "FPS: {:.1} | CHUNK: {:?} | BIOME: {:?}",
+                                state.fps,
+                                camera_chunk,
+                                self.world.determine_biome(&self.world.get_noise_values(
+                                    state.camera.position().x as i32,
+                                    state.camera.position().y as i32
+                                ))
+                            );
                             self.frames_since_log = 0;
                             self.last_fps_log = Instant::now();
                         }

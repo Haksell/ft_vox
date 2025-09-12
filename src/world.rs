@@ -679,7 +679,7 @@ impl World {
         }
     }
 
-    fn get_noise_values(&self, world_x: i32, world_y: i32) -> NoiseValues {
+    pub fn get_noise_values(&self, world_x: i32, world_y: i32) -> NoiseValues {
         let continentalness = self
             .continentalness_noise
             .noise2d(world_x as f32, world_y as f32);
@@ -701,12 +701,12 @@ impl World {
         }
     }
 
-    fn get_ore(world_coords: WorldCoords) -> BlockType {
-        match prf_i32x3_mod(world_coords, 100) {
+    fn get_ore(world_coords: WorldCoords, base_stone: BlockType) -> BlockType {
+        match prf_i32x3_mod(world_coords, 500) {
             0 => BlockType::RedStone,
             1 => BlockType::GoldOre,
             2 => BlockType::EmeraldOre,
-            _ => BlockType::Stone,
+            _ => base_stone,
         }
     }
 
@@ -753,6 +753,12 @@ impl World {
                                     + lerp(56.0, height as f32, 0.3);
 
                             for z in 0..CHUNK_HEIGHT {
+                                let base_stone = if z < 48 {
+                                    BlockType::Basalt
+                                } else {
+                                    BlockType::Stone
+                                }; // TODO: noise
+
                                 column[z] = if z <= MAGMA_CORE {
                                     Some(BlockType::Magma)
                                 } else if !biome.is_ocean()
@@ -764,12 +770,12 @@ impl World {
                                     Some(if height.saturating_sub(z) < 5 {
                                         biome.get_surface_block()
                                     } else if cave_low < cave_high
-                                        && ((z as f32 - cave_low).abs() < 3.0
-                                            || (z as f32 - cave_high).abs() < 3.0)
+                                        && ((z as f32 - cave_low).abs() < 2.0
+                                            || (z as f32 - cave_high).abs() < 2.0)
                                     {
-                                        Self::get_ore((world_x, world_y, z as i32))
+                                        Self::get_ore((world_x, world_y, z as i32), base_stone)
                                     } else {
-                                        BlockType::Stone
+                                        base_stone
                                     })
                                 } else if z <= SEA {
                                     Some(BlockType::Water)

@@ -79,6 +79,7 @@ impl BiomeType {
             BiomeType::Badlands => BlockType::RedSand,
             BiomeType::StonyPeaks => BlockType::Stone,
             BiomeType::StonyShore => BlockType::Stone,
+            BiomeType::Mangrove => BlockType::WarpedNylium,
             _ => BlockType::Grass,
         }
     }

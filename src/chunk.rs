@@ -280,7 +280,6 @@ impl ChunkNode {
         }
     }
 
-    #[allow(unused)] // useful for debugging
     fn count_leaves(&self) -> u32 {
         match self {
             Self::Leaf(..) => 1,

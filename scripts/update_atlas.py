@@ -11,6 +11,7 @@ GRID_W, GRID_H = 64, 32
 
 GRASS_COLOR = (0.6, 0.9, 0.2)
 WATER_COLOR = (0, 0.5, 0.9)
+SANDSTONE_COLOR = (0.9, 1.1, 1.1)
 
 LEVELS = 5
 SIZES = [TILE_SIZE >> i for i in range(LEVELS)]
@@ -108,6 +109,8 @@ def main():
     )
     for x, y in [(6, 4), (6, 5), (7, 4), (7, 5)]:
         multiply_tile(img, x, y, WATER_COLOR)
+    for x in [27, 28, 29]:
+        multiply_tile(img, x, 25, SANDSTONE_COLOR)
 
     col_widths = [GRID_W * sx for sx in SIZES]
     row_heights = [GRID_H * sy for sy in SIZES]
