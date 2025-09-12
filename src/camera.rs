@@ -6,7 +6,7 @@ use {
         Args,
     },
     glam::{Mat4, Vec3, Vec4},
-    std::f32::consts::{FRAC_PI_2, FRAC_PI_4, SQRT_2},
+    std::f32::consts::{FRAC_PI_2, SQRT_2},
     winit::{event::ElementState, keyboard::KeyCode},
 };
 
@@ -70,7 +70,7 @@ impl Camera {
             up,
             aspect,
             yaw: 0.0,
-            pitch: -FRAC_PI_4,
+            pitch: -0.2,
             fov_y,
             near,
             far,
