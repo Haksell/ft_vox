@@ -24,6 +24,7 @@ use {
 };
 
 pub const RENDER_DISTANCE: f32 = 22.5;
+pub const MEMORY_DISTANCE: f32 = 50.0;
 
 struct ChunkRenderData {
     vertex_buffer: wgpu::Buffer,
@@ -500,7 +501,6 @@ impl<'a> State<'a> {
 
         self.chunk_render_data
             .retain(|&coords, _| chunks_in_range.contains(&coords));
-        world.retain_chunks(&chunks_in_range);
 
         for &chunk_coords in &chunks_in_range {
             if !self.chunk_render_data.contains_key(&chunk_coords) {

@@ -205,6 +205,7 @@ impl<'a> ApplicationHandler for Application<'a> {
                     self.last_chunk = Some(camera_chunk);
                     state.update_chunks(&mut self.world);
                 }
+                self.world.discard_far_chunks(camera_chunk);
 
                 // reset cursor to center
                 let size = window.inner_size();

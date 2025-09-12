@@ -7,6 +7,7 @@ use {
         coords::{camera_to_world_coords, split_coords, BlockCoords, ChunkCoords, WorldCoords},
         noise::{SimplexNoise, SimplexNoiseInfo},
         spline::{Spline, SplinePoint},
+        state::MEMORY_DISTANCE,
         utils::{ceil_div, lerp, prf_i32x3_mod, sign},
         vertex::Vertex,
     },
@@ -157,9 +158,12 @@ impl World {
         }
     }
 
-    pub fn retain_chunks(&mut self, chunks_to_keep: &HashSet<(i32, i32)>) {
-        self.chunks
-            .retain(|&coords, _| chunks_to_keep.contains(&coords));
+    pub fn discard_far_chunks(&mut self, (current_x, current_y): ChunkCoords) {
+        self.chunks.retain(|&(coord_x, coord_y), _| {
+            let dx = coord_x - current_x;
+            let dy = coord_y - current_y;
+            (dx * dx + dy * dy) as f32 <= MEMORY_DISTANCE * MEMORY_DISTANCE
+        });
     }
 
     fn generate_height_at(&self, values: &NoiseValues) -> f32 {
@@ -771,8 +775,8 @@ impl World {
                                     Some(if height.saturating_sub(z) < 5 {
                                         biome.get_surface_block()
                                     } else if cave_low < cave_high
-                                        && ((z as f32 - cave_low).abs() < 2.0
-                                            || (z as f32 - cave_high).abs() < 2.0)
+                                        && ((z as f32 - cave_low).abs() < 3.0
+                                            || (z as f32 - cave_high).abs() < 3.0)
                                     {
                                         Self::get_ore((world_x, world_y, z as i32), base_stone)
                                     } else {
