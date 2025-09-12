@@ -4,6 +4,7 @@ use {
         coords::{split_coords, ChunkCoords},
         state::State,
         world::World,
+        Args,
     },
     std::{
         sync::Arc,
@@ -20,9 +21,10 @@ use {
 };
 
 pub struct Application<'a> {
+    args: Args,
     window_attributes: WindowAttributes,
-    state: Option<State<'a>>,
     window: Option<Arc<Window>>,
+    state: Option<State<'a>>,
     world: World,
     last_chunk: Option<ChunkCoords>,
     last_render: Instant,
@@ -31,19 +33,26 @@ pub struct Application<'a> {
 }
 
 impl<'a> Application<'a> {
-    pub fn new() -> Self {
+    pub fn new(args: Args) -> Self {
+        let mut window_attributes = Window::default_attributes()
+            .with_title("ft_vox")
+            .with_resizable(true)
+            .with_inner_size(PhysicalSize::new(1280.0, 720.0));
+        if args.fullscreen {
+            window_attributes =
+                window_attributes.with_fullscreen(Some(Fullscreen::Borderless(None)));
+        }
+
         Self {
-            window_attributes: Window::default_attributes()
-                .with_title("ft_vox")
-                .with_resizable(true)
-                .with_inner_size(PhysicalSize::new(1280.0, 720.0)),
-            state: None,
+            window_attributes,
             window: None,
-            world: World::new(42),
+            state: None,
+            world: World::new(args.seed),
             last_chunk: None,
             last_render: Instant::now(),
             last_fps_log: Instant::now(),
             frames_since_log: 0,
+            args,
         }
     }
 }
@@ -56,7 +65,7 @@ impl<'a> ApplicationHandler for Application<'a> {
                 .unwrap(),
         );
         window.set_cursor_visible(false);
-        let state = pollster::block_on(State::new(window.clone()));
+        let state = pollster::block_on(State::new(window.clone(), &self.args));
 
         self.window = Some(window);
         self.state = Some(state);
@@ -140,6 +149,17 @@ impl<'a> ApplicationHandler for Application<'a> {
                     Some(_) => window.set_fullscreen(None),
                     None => window.set_fullscreen(Some(Fullscreen::Borderless(Some(monitor)))),
                 }
+            }
+            WindowEvent::KeyboardInput {
+                event:
+                    KeyEvent {
+                        state: ElementState::Pressed,
+                        physical_key: PhysicalKey::Code(KeyCode::KeyF),
+                        ..
+                    },
+                ..
+            } => {
+                state.toggle_show_fps();
             }
             WindowEvent::CloseRequested
             | WindowEvent::KeyboardInput {

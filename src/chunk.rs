@@ -441,6 +441,7 @@ fn create_face_vertices(face: Face, block: BlockType, pos: &ChunkNodePos) -> [Ve
             pos.y0 as f32 + face_positions[i][1] * sy as f32,
             pos.z0 as f32 + face_positions[i][2] * sz as f32,
         ],
+        normal: face.normal(),
         tex_coords: face_uvs[i],
         atlas_offset: match face {
             Face::Top => block.atlas_offset_top(),

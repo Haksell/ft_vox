@@ -5,8 +5,9 @@ use {
         camera::Camera,
         chunk::{AdjacentChunks, Chunk, CHUNK_HEIGHT, CHUNK_WIDTH},
         coords::{split_coords, BlockCoords, ChunkCoords, WorldCoords},
-        noise::{PerlinNoise, PerlinNoiseBuilder},
-        utils::{ceil_div, lerp, sign},
+        noise::{SimplexNoise, SimplexNoiseInfo},
+        spline::{Spline, SplinePoint},
+        utils::{ceil_div, sign},
         vertex::Vertex,
     },
     std::{
@@ -19,14 +20,21 @@ pub const SURFACE: usize = 64;
 pub const SEA: usize = 62;
 
 pub const MAX_DELETE_DISTANCE: f32 = 48.0;
+pub struct NoiseValues {
+    temperature: f32,
+    humidity: f32,
+    continentalness: f32,
+    erosion: f32,
+    weirdness: f32,
+    pv: f32,
+}
 
 pub struct World {
-    temperature_noise: PerlinNoise,
-    humidity_noise: PerlinNoise,
-    continentalness_noise: PerlinNoise,
-    erosion_noise: PerlinNoise,
-    weirdness_noise: PerlinNoise,
-    cave_noise: PerlinNoise,
+    temperature_noise: SimplexNoise,
+    humidity_noise: SimplexNoise,
+    continentalness_noise: SimplexNoise,
+    erosion_noise: SimplexNoise,
+    weirdness_noise: SimplexNoise,
 
     chunks: HashMap<ChunkCoords, Chunk>,
     deleted_blocks: HashMap<ChunkCoords, HashSet<BlockCoords>>,
@@ -34,41 +42,58 @@ pub struct World {
 impl World {
     pub fn new(seed: u64) -> Self {
         // temperature: affects hot vs cold biomes
-        let temperature_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0xFF446677))
-            .frequency(0.0002)
-            .octaves(4)
-            .build();
+        let temperature_noise = SimplexNoise::new(
+            seed.wrapping_add(0xFF446677),
+            SimplexNoiseInfo {
+                frequency: 0.000336,
+                octaves: 2,
+                ..Default::default()
+            },
+        );
 
         // humidity: affects dry vs wet biomes
-        let humidity_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0xAABB33CC))
-            .frequency(0.0026)
-            .octaves(4)
-            .build();
+        let humidity_noise = SimplexNoise::new(
+            seed.wrapping_add(0xAABB33CC),
+            SimplexNoiseInfo {
+                frequency: 0.000246,
+                octaves: 2,
+                persistence: 0.6,
+                ..Default::default()
+            },
+        );
 
         // continentalness: determines land vs ocean
-        let continentalness_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0xFF000055))
-            .frequency(0.0002)
-            .octaves(8)
-            .persistence(0.2)
-            .lacunarity(1.5)
-            .build();
+        let continentalness_noise = SimplexNoise::new(
+            seed.wrapping_add(0xFF000055),
+            SimplexNoiseInfo {
+                frequency: 0.000974,
+                octaves: 6,
+                persistence: 0.8,
+                lacunarity: 1.2,
+            },
+        );
 
         // erosion: affects terrain ruggedness
-        let erosion_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0x44336699))
-            .frequency(0.0008)
-            .octaves(8)
-            .build();
+        let erosion_noise = SimplexNoise::new(
+            seed.wrapping_add(0x44336699),
+            SimplexNoiseInfo {
+                frequency: 0.00998,
+                octaves: 6,
+                persistence: 0.42,
+                ..Default::default()
+            },
+        );
 
         // weirdness: creates unusual terrain features
-        let weirdness_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0xFF110077))
-            .frequency(0.0008)
-            .octaves(4)
-            .build();
-
-        let cave_noise = PerlinNoiseBuilder::new(seed.wrapping_add(0x110099FF))
-            .frequency(0.008)
-            .octaves(6)
-            .build();
+        let weirdness_noise = SimplexNoise::new(
+            seed.wrapping_add(0xFF110077),
+            SimplexNoiseInfo {
+                frequency: 0.00196,
+                octaves: 6,
+                persistence: 0.66,
+                ..Default::default()
+            },
+        );
 
         Self {
             temperature_noise,
@@ -76,7 +101,6 @@ impl World {
             continentalness_noise,
             erosion_noise,
             weirdness_noise,
-            cave_noise,
             chunks: HashMap::new(),
             deleted_blocks: HashMap::new(),
         }
@@ -115,70 +139,72 @@ impl World {
             .retain(|&coords, _| chunks_to_keep.contains(&coords));
     }
 
-    fn generate_height_at(&self, world_x: f32, world_y: f32) -> f32 {
-        let continentalness = self.continentalness_noise.noise2d(world_x, world_y);
-        let erosion = self.erosion_noise.noise2d(world_x, world_y);
-        let weirdness = self.weirdness_noise.noise2d(world_x, world_y);
-        let peak_and_valley = 1.0 - (3.0 * weirdness.abs() - 2.0).abs();
-
-        let continentalness_offset = self.continentalness_spline(continentalness);
-        let pv_offset = self.peaks_valleys_spline(peak_and_valley);
-        let erosion_factor = if continentalness >= -0.2 {
-            self.erosion_factor(erosion)
+    fn generate_height_at(&self, values: &NoiseValues) -> f32 {
+        let continentalness_offset = self.continentalness_spline(values.continentalness);
+        let pv_offset = self.peaks_valleys_spline(values.pv);
+        let erosion_factor = if values.continentalness >= -0.2 {
+            self.erosion_factor(values.erosion)
         } else {
             1.0
         };
 
-        let height_offset = continentalness_offset * erosion_factor + pv_offset;
+        let height_offset = continentalness_offset + pv_offset * erosion_factor;
 
         SURFACE as f32 + height_offset
     }
 
     // Continentalness spline: higher continentalness = higher terrain
     fn continentalness_spline(&self, continentalness: f32) -> f32 {
-        match continentalness {
-            x if x < -0.45 => lerp(-30.0, -20.0, (x + 1.0) / ((-0.45) - (-1.0))),
-            x if x < -0.2 => lerp(-20.0, -5.0, (x - (-0.45)) / ((-0.2) - (-0.45))),
-            x if x < -0.1 => lerp(-5.0, 5.0, (x - (-0.2)) / ((-0.1) - (-0.2))),
-            x if x < 0.05 => lerp(5.0, 30.0, (x - (-0.1)) / (0.05 - (-0.1))),
-            x if x < 0.3 => lerp(30.0, 60.0, (x - 0.05) / (0.3 - 0.05)),
-            x => lerp(60.0, 120.0, (x - 0.3) / (1.0 - 0.3)),
-        }
+        let spline = Spline::new(vec![
+            SplinePoint::new(-1.0, -40.0),
+            SplinePoint::new(-0.45, -20.0),
+            SplinePoint::new(-0.2, -2.0),
+            SplinePoint::new(-0.1, -1.0),
+            SplinePoint::new(0.15, 2.0),
+            SplinePoint::new(0.3, 8.0),
+            SplinePoint::new(0.5, 10.0),
+            SplinePoint::new(0.7, 18.0),
+            SplinePoint::new(0.8, 20.0),
+            SplinePoint::new(1.0, 30.0),
+        ]);
+
+        spline.sample(continentalness)
     }
 
     // Erosion spline: higher erosion = lower, flatter terrain
     fn erosion_factor(&self, erosion: f32) -> f32 {
-        match erosion {
-            x if x < -0.8 => 1.0,
-            x if x < -0.38 => lerp(1.0, 0.9, (x - (-0.8)) / ((-0.38) - (-0.8))),
-            x if x < -0.22 => lerp(0.9, 0.7, (x - (-0.38)) / ((-0.22) - (-0.38))),
-            x if x < 0.05 => lerp(0.7, 0.5, (x - (-0.22)) / (0.05 - (-0.22))),
-            x if x < 0.45 => lerp(0.5, 0.4, (x - 0.05) / (0.45 - 0.05)),
-            x => lerp(0.4, 0.3, (x - 0.45) / (1.0 - 0.45)),
-        }
+        let spline = Spline::new(vec![
+            SplinePoint::new(-1.0, 1.0),
+            SplinePoint::new(-0.8, 0.9),
+            SplinePoint::new(-0.38, 0.8),
+            SplinePoint::new(-0.22, 0.6),
+            SplinePoint::new(0.05, 0.5),
+            SplinePoint::new(0.45, 0.4),
+            SplinePoint::new(0.9, 0.2),
+            SplinePoint::new(1.0, 0.1),
+        ]);
+
+        spline.sample(erosion)
     }
 
     // Peaks and valleys spline
     fn peaks_valleys_spline(&self, peak_and_valley: f32) -> f32 {
-        match peak_and_valley {
-            x if x < -0.85 => lerp(-40.0, -10.0, (x + 1.0) / ((-0.85) - (-1.0))),
-            x if x < -0.2 => lerp(-10.0, 10.0, (x - (-0.85)) / ((-0.2) - (-0.85))),
-            x if x < 0.2 => lerp(10.0, 20.0, (x - (-0.2)) / (0.2 - (-0.2))),
-            x if x < 0.7 => lerp(20.0, 40.0, (x - 0.2) / (0.7 - 0.2)),
-            x => lerp(40.0, 60.0, (x - 0.7) / (1.0 - 0.7)),
-        }
+        let spline = Spline::new(vec![
+            SplinePoint::new(-1.0, -30.0),
+            SplinePoint::new(-0.9, 0.0),
+            SplinePoint::new(-0.2, 2.0),
+            SplinePoint::new(0.2, 10.0),
+            SplinePoint::new(0.6, 30.0),
+            SplinePoint::new(0.9, 60.0),
+            SplinePoint::new(1.0, 60.0),
+        ]);
+
+        spline.sample(peak_and_valley)
     }
 
-    pub fn determine_biome(&self, world_x: f32, world_y: f32) -> BiomeType {
-        let temperature = self.temperature_noise.noise2d(world_x, world_y);
-        let humidity = self.humidity_noise.noise2d(world_x, world_y);
-        let continentalness = self.continentalness_noise.noise2d(world_x, world_y);
-        let erosion = self.erosion_noise.noise2d(world_x, world_y);
-        let weirdness = self.weirdness_noise.noise2d(world_x, world_y);
-        let peak_and_valley = 1.0 - (3.0 * weirdness.abs() - 2.0).abs();
-
+    pub fn determine_biome(&self, values: &NoiseValues) -> BiomeType {
         #[rustfmt::skip]
-        let temperature_level = match temperature {
+        let temperature_level = match values.temperature {
             x if x >= -1.0  && x < -0.45 => 0,
             x if x >= -0.45 && x < -0.15 => 1,
             x if x >= -0.15 && x <  0.2  => 2,
@@ -188,7 +214,7 @@ impl World {
         };
 
         #[rustfmt::skip]
-        let humidity_level = match humidity {
+        let humidity_level = match values.humidity {
             x if x >= -1.0  && x < -0.35 => 0,
             x if x >= -0.35 && x < -0.1  => 1,
             x if x >= -0.1  && x <  0.1  => 2,
@@ -198,7 +224,7 @@ impl World {
         };
 
         #[rustfmt::skip]
-        let continentalness_level = match continentalness {
+        let continentalness_level = match values.continentalness {
             x if x >= -1.0  && x < -0.45 => 0,
             x if x >= -0.45 && x < -0.2  => 1,
             x if x >= -0.2  && x < -0.1  => 2,
@@ -209,7 +235,7 @@ impl World {
         };
 
         #[rustfmt::skip]
-        let erosion_level = match erosion {
+        let erosion_level = match values.erosion {
             x if x >= -1.0  && x < -0.8  => 0,
             x if x >= -0.8  && x < -0.38 => 1,
             x if x >= -0.38 && x < -0.22 => 2,
@@ -221,7 +247,7 @@ impl World {
         };
 
         #[rustfmt::skip]
-        let pv_level = match peak_and_valley {
+        let pv_level = match values.pv {
             x if x >= -1.0  && x < -0.85 => 0,
             x if x >= -0.85 && x < -0.2  => 1,
             x if x >= -0.2  && x <  0.2  => 2,
@@ -230,7 +256,7 @@ impl World {
             _ => 6,
         };
 
-        let weirdness_level = (weirdness >= 0.0) as i32;
+        let weirdness_level = (values.weirdness >= 0.0) as i32;
 
         match (
             continentalness_level,
@@ -633,19 +659,30 @@ impl World {
     }
 
     fn has_cave_at(&self, world_x: i32, world_y: i32, world_z: i32, surface_height: i32) -> bool {
-        // TODO: spaghetti caves
+        // TODO: cave system
+        false
+    }
 
-        let noise = self
-            .cave_noise
-            .noise3d(world_x as f32, world_y as f32, world_z as f32);
+    fn get_noise_values(&self, world_x: i32, world_y: i32) -> NoiseValues {
+        let continentalness = self
+            .continentalness_noise
+            .noise2d(world_x as f32, world_y as f32);
+        let erosion = self.erosion_noise.noise2d(world_x as f32, world_y as f32);
+        let weirdness = self.weirdness_noise.noise2d(world_x as f32, world_y as f32);
+        let temperature = self
+            .temperature_noise
+            .noise2d(world_x as f32, world_y as f32);
+        let humidity = self.humidity_noise.noise2d(world_x as f32, world_y as f32);
+        let pv = 1.0 - (3.0 * weirdness.abs() - 2.0).abs();
 
-        let normalized_z = ((world_z - 8) as f32 / (surface_height) as f32).clamp(0.0, 1.0);
-        let probability = 4.0 * normalized_z * (1.0 - normalized_z);
-
-        let _spaghetti = noise.abs() < 0.02 * probability;
-        let cheese = noise * probability > 0.2;
-
-        cheese
+        NoiseValues {
+            temperature,
+            humidity,
+            continentalness,
+            erosion,
+            weirdness,
+            pv,
+        }
     }
 
     fn generate_chunk_blocks(
@@ -678,19 +715,19 @@ impl World {
 
                         for (y, column) in plane.iter_mut().enumerate() {
                             let world_y = (chunk_y * CHUNK_WIDTH as i32) + y as i32;
-                            let height =
-                                self.generate_height_at(world_x as f32, world_y as f32) as usize;
-                            let biome = self.determine_biome(world_x as f32, world_y as f32);
+                            let noise_values = self.get_noise_values(world_x, world_y);
+                            let height = self.generate_height_at(&noise_values) as usize;
+                            let biome = self.determine_biome(&noise_values);
 
                             for z in 0..CHUNK_HEIGHT {
                                 if z <= height {
                                     if self.has_cave_at(world_x, world_y, z as i32, height as i32) {
                                         continue;
                                     }
+
                                     let depth_from_surface = height.saturating_sub(z);
                                     column[z] = Some(match depth_from_surface {
-                                        0 => biome.get_surface_block(),
-                                        1..=5 => biome.get_subsurface_block(),
+                                        0..5 => biome.get_surface_block(),
                                         _ => biome.get_deep_block(),
                                     });
                                 } else if z <= SEA {

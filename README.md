@@ -2,13 +2,9 @@
 
 ## todo ft_vox
 
-- mipmap to avoid moire patterns
-- fix grass color (https://minecraft.fandom.com/wiki/Grass_Block, https://minecraft.fandom.com/wiki/Color#Biome_colors) (or simpler atlas)
-- fix water color + animation
 - more cave openings
 - random rare textures in caves
-- collisions
-- args (seed, fullscreen, display fps, ...)
+- """volcanos"""
 - mostly sand under water
 
 ## mandatory ft_vox
@@ -17,10 +13,10 @@
 - [x] You must be able to create a very large procedural world. For this project, user should be able to visit at least 16384\*256\*16384 cubes (256 is the height).
 - [x] Some cubes may be empty, others can have different types, like grass, ground, sand, etc...
 - [x] Except for the empty cubes, they will all be opaque but will have their own textures.
-- [ ] There should be hills.
-- [ ] There should be mountains.
+- [x] There should be hills.
+- [x] There should be mountains.
 - [ ] There should be caves.
-- [ ] There should be lakes.
+- [x] There should be lakes.
 - [x] This generation has to be determinist, which means the same seed will spawn the exact same map.
 - [x] Each visited piece of terrain must be saved in the memory up to some limit you will set yourself and after which you can start deleting cubes from the memory.
 - [x] In the open, minimal distance render will be 10 chunks
@@ -36,9 +32,9 @@
 
 - [x] Have a render distance always higher than 14 chunks and always have a smooth display.
 - [x] A FPS counter is displayed.
-- [ ] Render is smooth and doesn't freeze, at x20 speed.
+- [x] Render is smooth and doesn't freeze, at x20 speed.
 - [x] Being able to delete blocks with the mouse.
-- [ ] Having a lot of different biomes.
+- [x] Having a lot of different biomes.
 
 ## push check ft_vox
 
@@ -47,15 +43,21 @@
 - [x] You can use a library to load 3D objects and pictures (image)
 - [x] You can use a windowing library (winit)
 - [x] You can use a mathematics library for your calculations (glam)
-- [ ] The render should always be SMOOTH
-- [ ] Any crash (uncaught exception, segfault, abort ...) will disqualify you
-- [ ] Your program must be able to run for hours without eating the whole memory or slowing down. Manage your RAM as well as VRAM very carefully.
-- [ ] Full screen mode by default
-- [ ] Camera speeds should be 1.0 and 20.0
+- [x] The render should always be SMOOTH
+- [x] Any crash (uncaught exception, segfault, abort ...) will disqualify you
+- [x] Your program must be able to run for hours without eating the whole memory or slowing down. Manage your RAM as well as VRAM very carefully.
+- [x] Full screen mode by default
+- [x] Camera speeds should be 1.0 and 20.0
 
 ## todo ft_minecraft
 
 - use `XxxCoords` types everywhere
+- true gpu sampler mipmaps
+- anisotropic filtering
+- collisions
+- animations (water, lava, ...)
+- transparency (water, ...)
+- launch animation (camera drops to block at (0, 0) with proper gravity)
 - block about to be deleted should look a bit darker
 - only delete block if raycast at start and end of click touch the same block 
 - frustum culling during face generation instead of after checking chunks
@@ -65,7 +67,6 @@
 - generative skyboxes
 - transparent water
 - make our own pixel art
-- sun(s) (from `scratch` branch)
+- sun(s) (from `scratch` branch) (text shadow depends on it)
 - fix dead pixels
-- anisotropic filtering
 - port to wasm
