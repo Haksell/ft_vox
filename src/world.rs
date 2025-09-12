@@ -744,22 +744,24 @@ impl World {
                                     + lerp(56.0, height as f32, 0.3);
 
                             for z in 0..CHUNK_HEIGHT {
-                                if z <= MAGMA_CORE {
-                                    column[z] = Some(BlockType::RedSand); // TODO: Magma
+                                column[z] = if z <= MAGMA_CORE {
+                                    Some(BlockType::RedSand) // TODO: Magma
                                 } else if !biome.is_ocean()
                                     && cave_low < z as f32
                                     && (z as f32) < cave_high
                                 {
-                                    column[z] = None;
+                                    None
                                 } else if z <= height {
                                     let depth_from_surface = height.saturating_sub(z);
-                                    column[z] = Some(match depth_from_surface {
+                                    Some(match depth_from_surface {
                                         0..5 => biome.get_surface_block(),
                                         _ => biome.get_deep_block(),
-                                    });
+                                    })
                                 } else if z <= SEA {
-                                    column[z] = Some(BlockType::Water);
-                                }
+                                    Some(BlockType::Water)
+                                } else {
+                                    None
+                                };
                             }
                         }
                     }
