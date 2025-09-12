@@ -3,7 +3,7 @@ use {
         aabb::AABB,
         camera::{camera_far, Camera, CameraController, CameraUniform, CAMERA_NEAR},
         chunk::{CHUNK_HEIGHT, CHUNK_WIDTH},
-        coords::{camera_to_chunk_coords, ChunkCoords},
+        coords::{camera_to_chunk_coords, chunk_distance, ChunkCoords},
         texture::Texture,
         vertex::Vertex,
         world::{World, MAX_DELETE_DISTANCE},
@@ -516,8 +516,9 @@ impl<'a> State<'a> {
     }
 
     pub fn generate_chunk_mesh(&mut self, world: &mut World, chunk_coords: ChunkCoords) {
+        let camera_chunk = camera_to_chunk_coords(self.camera.position());
         let (chunk_x, chunk_y) = chunk_coords;
-        let (mut vertices, indices) = world.generate_chunk_mesh(chunk_coords);
+        let (mut vertices, indices) = world.generate_chunk_mesh(chunk_coords, camera_chunk);
         if vertices.is_empty() || indices.is_empty() {
             return;
         }
@@ -651,8 +652,11 @@ impl<'a> State<'a> {
             voxels_pass.set_bind_group(1, &state.camera_bind_group, &[]);
 
             let frustum = state.camera.get_frustum();
-            for render_data in state.chunk_render_data.values() {
-                if frustum.intersects_aabb(&render_data.aabb) {
+            let camera_coords = camera_to_chunk_coords(state.camera.position());
+            for (chunk_coords, render_data) in &state.chunk_render_data {
+                if chunk_distance(camera_coords, *chunk_coords) < RENDER_DISTANCE
+                    && frustum.intersects_aabb(&render_data.aabb)
+                {
                     voxels_pass.set_vertex_buffer(0, render_data.vertex_buffer.slice(..));
                     voxels_pass.set_index_buffer(
                         render_data.index_buffer.slice(..),

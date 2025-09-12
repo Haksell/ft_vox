@@ -31,3 +31,11 @@ pub fn camera_to_chunk_coords(camera_coords: Vec3) -> ChunkCoords {
     let chunk_y = (camera_coords.y / CHUNK_WIDTH as f32).floor() as i32;
     (chunk_x, chunk_y)
 }
+
+pub fn chunk_distance_squared((cx1, cy1): ChunkCoords, (cx2, cy2): ChunkCoords) -> i32 {
+    (cx1 - cx2).pow(2) + (cy1 - cy2).pow(2)
+}
+
+pub fn chunk_distance(cc1: ChunkCoords, cc2: ChunkCoords) -> f32 {
+    (chunk_distance_squared(cc1, cc2) as f32).sqrt()
+}

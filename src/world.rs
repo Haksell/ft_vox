@@ -4,10 +4,13 @@ use {
         block::BlockType,
         camera::Camera,
         chunk::{AdjacentChunks, Chunk, CHUNK_HEIGHT, CHUNK_WIDTH},
-        coords::{camera_to_world_coords, split_coords, BlockCoords, ChunkCoords, WorldCoords},
+        coords::{
+            camera_to_world_coords, chunk_distance, chunk_distance_squared, split_coords,
+            BlockCoords, ChunkCoords, WorldCoords,
+        },
         noise::{SimplexNoise, SimplexNoiseInfo},
         spline::{Spline, SplinePoint},
-        state::MEMORY_DISTANCE,
+        state::{MEMORY_DISTANCE, RENDER_DISTANCE},
         utils::{ceil_div, lerp, prf_i32x3_mod, sign},
         vertex::Vertex,
     },
@@ -145,7 +148,7 @@ impl World {
         self.chunks.get_mut(&chunk_coords)
     }
 
-    pub fn load_chunk(&mut self, chunk_coords: ChunkCoords) {
+    pub fn load_chunk(&mut self, chunk_coords: ChunkCoords) -> &Chunk {
         if !self.chunks.contains_key(&chunk_coords) {
             let mut blocks = self.generate_chunk_blocks(chunk_coords);
             if let Some(deleted) = self.deleted_blocks.get(&chunk_coords) {
@@ -156,13 +159,13 @@ impl World {
             let chunk = Chunk::new(chunk_coords, blocks);
             self.chunks.insert(chunk_coords, chunk);
         }
+
+        self.chunks.get(&chunk_coords).unwrap()
     }
 
-    pub fn discard_far_chunks(&mut self, (current_x, current_y): ChunkCoords) {
-        self.chunks.retain(|&(coord_x, coord_y), _| {
-            let dx = coord_x - current_x;
-            let dy = coord_y - current_y;
-            dx * dx + dy * dy <= MEMORY_DISTANCE * MEMORY_DISTANCE
+    pub fn discard_far_chunks(&mut self, current_chunk: ChunkCoords) {
+        self.chunks.retain(|&other_chunk, _| {
+            chunk_distance_squared(current_chunk, other_chunk) <= MEMORY_DISTANCE * MEMORY_DISTANCE
         });
     }
 
@@ -803,6 +806,7 @@ impl World {
     pub fn generate_chunk_mesh(
         &mut self,
         (chunk_x, chunk_y): ChunkCoords,
+        camera_coords: ChunkCoords,
     ) -> (Vec<Vertex>, Vec<u16>) {
         self.load_chunk((chunk_x, chunk_y));
         self.load_chunk((chunk_x, chunk_y + 1));
@@ -813,10 +817,14 @@ impl World {
         let chunk = self.get_chunk_if_loaded((chunk_x, chunk_y)).unwrap();
 
         let adjacent = AdjacentChunks {
-            north: self.get_chunk_if_loaded((chunk_x, chunk_y + 1)),
-            south: self.get_chunk_if_loaded((chunk_x, chunk_y - 1)),
-            east: self.get_chunk_if_loaded((chunk_x + 1, chunk_y)),
-            west: self.get_chunk_if_loaded((chunk_x - 1, chunk_y)),
+            north: (chunk_distance(camera_coords, (chunk_x, chunk_y + 1)) < RENDER_DISTANCE)
+                .then(|| self.get_chunk_if_loaded((chunk_x, chunk_y + 1)).unwrap()),
+            south: (chunk_distance(camera_coords, (chunk_x, chunk_y - 1)) < RENDER_DISTANCE)
+                .then(|| self.get_chunk_if_loaded((chunk_x, chunk_y - 1)).unwrap()),
+            east: (chunk_distance(camera_coords, (chunk_x + 1, chunk_y)) < RENDER_DISTANCE)
+                .then(|| self.get_chunk_if_loaded((chunk_x + 1, chunk_y)).unwrap()),
+            west: (chunk_distance(camera_coords, (chunk_x - 1, chunk_y)) < RENDER_DISTANCE)
+                .then(|| self.get_chunk_if_loaded((chunk_x - 1, chunk_y)).unwrap()),
         };
 
         chunk.generate_mesh(&adjacent)
