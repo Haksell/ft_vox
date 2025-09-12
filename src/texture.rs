@@ -63,11 +63,11 @@ impl Texture {
         label: &str,
     ) -> Result<Self, String> {
         let rgba = img.to_rgba8();
-        let dimensions = img.dimensions();
+        let (width, height) = img.dimensions();
 
         let size = wgpu::Extent3d {
-            width: dimensions.0,
-            height: dimensions.1,
+            width,
+            height,
             depth_or_array_layers: 1,
         };
         let texture = device.create_texture(&wgpu::TextureDescriptor {
@@ -91,8 +91,8 @@ impl Texture {
             &rgba,
             wgpu::TexelCopyBufferLayout {
                 offset: 0,
-                bytes_per_row: Some(4 * dimensions.0),
-                rows_per_image: Some(dimensions.1),
+                bytes_per_row: Some(4 * width),
+                rows_per_image: Some(height),
             },
             size,
         );

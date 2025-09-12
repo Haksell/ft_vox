@@ -1,9 +1,9 @@
 use {
     crate::{
         aabb::AABB,
-        camera::{Camera, CameraController, CameraUniform},
+        camera::{camera_far, Camera, CameraController, CameraUniform, CAMERA_NEAR},
         chunk::{CHUNK_HEIGHT, CHUNK_WIDTH},
-        coords::ChunkCoords,
+        coords::{camera_to_chunk_coords, ChunkCoords},
         texture::Texture,
         vertex::Vertex,
         world::{World, MAX_DELETE_DISTANCE},
@@ -12,7 +12,6 @@ use {
     glam::Vec3,
     std::{
         collections::{HashMap, HashSet},
-        f32::consts::SQRT_2,
         sync::Arc,
         time::Duration,
     },
@@ -24,7 +23,7 @@ use {
     winit::{dpi::PhysicalSize, window::Window},
 };
 
-const RENDER_DISTANCE: f32 = 22.5;
+pub const RENDER_DISTANCE: f32 = 22.5;
 
 struct ChunkRenderData {
     vertex_buffer: wgpu::Buffer,
@@ -199,15 +198,13 @@ impl<'a> State<'a> {
         });
 
         // === CAMERA ===
-        let camera_distance_xy = (RENDER_DISTANCE + 1.0) * SQRT_2 * CHUNK_WIDTH as f32;
-        let camera_distance = (camera_distance_xy.powi(2) + (CHUNK_HEIGHT as f32).powi(2)).sqrt();
         let camera = Camera::new(
             Vec3::new(0.0, 0.0, CHUNK_HEIGHT as f32),
             Vec3::new(0.0, 0.0, 1.0),
             config.width as f32 / config.height as f32,
             (80.0_f32).to_radians(),
-            0.1,
-            camera_distance,
+            CAMERA_NEAR,
+            camera_far(),
         );
 
         let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -482,8 +479,7 @@ impl<'a> State<'a> {
     }
 
     pub fn update_chunks(&mut self, world: &mut World) {
-        let camera_pos = self.camera.position();
-        let camera_chunk = world.get_chunk_index_from_position(camera_pos.x, camera_pos.y);
+        let (chunk_x, chunk_y) = camera_to_chunk_coords(self.camera.position());
 
         let render_distance = RENDER_DISTANCE.floor() as i32;
         let render_distance_sq = RENDER_DISTANCE * RENDER_DISTANCE;
@@ -496,7 +492,7 @@ impl<'a> State<'a> {
             let max_dx = max_dx_sq.sqrt() as i32;
 
             for dx in -max_dx..=max_dx {
-                let chunk_coords = (camera_chunk.0 + dx, camera_chunk.1 + dy);
+                let chunk_coords = (chunk_x + dx, chunk_y + dy);
                 chunks_in_range.insert(chunk_coords);
                 world.load_chunk(chunk_coords);
             }
@@ -586,7 +582,11 @@ impl<'a> State<'a> {
     pub fn update_crosshair(&mut self, world: &World) {
         self.is_crosshair_active = self.is_right_clicking
             && world
-                .find_center_block(&self.camera, MAX_DELETE_DISTANCE)
+                .find_block_in_dir(
+                    self.camera.position(),
+                    self.camera.direction(),
+                    MAX_DELETE_DISTANCE,
+                )
                 .is_some();
     }
 

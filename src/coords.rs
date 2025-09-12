@@ -1,4 +1,7 @@
-use crate::chunk::{CHUNK_HEIGHT, CHUNK_WIDTH};
+use {
+    crate::chunk::{CHUNK_HEIGHT, CHUNK_WIDTH},
+    glam::Vec3,
+};
 
 pub type WorldCoords = (i32, i32, i32);
 pub type ChunkCoords = (i32, i32);
@@ -13,4 +16,18 @@ pub fn split_coords((x, y, z): WorldCoords) -> Option<(ChunkCoords, BlockCoords)
     let block_y = y.rem_euclid(CHUNK_WIDTH as i32) as usize;
 
     Some(((chunk_x, chunk_y), (block_x, block_y, block_z)))
+}
+
+pub fn camera_to_world_coords(camera_coords: Vec3) -> WorldCoords {
+    (
+        camera_coords.x.floor() as i32,
+        camera_coords.y.floor() as i32,
+        camera_coords.z.floor() as i32,
+    )
+}
+
+pub fn camera_to_chunk_coords(camera_coords: Vec3) -> ChunkCoords {
+    let chunk_x = (camera_coords.x / CHUNK_WIDTH as f32).floor() as i32;
+    let chunk_y = (camera_coords.y / CHUNK_WIDTH as f32).floor() as i32;
+    (chunk_x, chunk_y)
 }

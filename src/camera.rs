@@ -1,12 +1,26 @@
 use {
-    crate::{chunk::CHUNK_HEIGHT, frustum::Frustum, Args},
+    crate::{
+        chunk::{CHUNK_HEIGHT, CHUNK_WIDTH},
+        frustum::Frustum,
+        state::RENDER_DISTANCE,
+        Args,
+    },
     glam::{Mat4, Vec3, Vec4},
-    std::f32::consts::{FRAC_PI_2, FRAC_PI_4},
+    std::f32::consts::{FRAC_PI_2, FRAC_PI_4, SQRT_2},
     winit::{event::ElementState, keyboard::KeyCode},
 };
 
 const CAMERA_MAX_OUT_OF_BOUNDS: f32 = 16.0;
+
 const MAX_PITCH: f32 = FRAC_PI_2 * 0.99; // avoids gimbal lock
+
+pub const CAMERA_NEAR: f32 = 0.1;
+
+// not const because of f32::sqrt :(
+pub fn camera_far() -> f32 {
+    let camera_far_xy = (RENDER_DISTANCE + 1.0) * SQRT_2 * CHUNK_WIDTH as f32;
+    (camera_far_xy.powi(2) + (CHUNK_HEIGHT as f32).powi(2)).sqrt()
+}
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -175,26 +189,29 @@ impl CameraController {
     }
 
     pub fn update(&mut self, camera: &mut Camera, dt: f32) {
+        // === ROTATION ===
         let (dx, dy) = self.mouse_delta;
         camera.yaw += dx * self.sensitivity;
         camera.pitch = (camera.pitch - dy * self.sensitivity).clamp(-MAX_PITCH, MAX_PITCH);
         self.mouse_delta = (0.0, 0.0);
 
+        // === MOVEMENT ===
         let forward = camera.direction();
         let right = forward.cross(camera.up);
-        let up = camera.up;
 
         let mut movement = Vec3::ZERO;
         movement += forward * (self.is_forward_pressed as i32) as f32;
         movement -= forward * (self.is_backward_pressed as i32) as f32;
         movement += right * (self.is_right_pressed as i32) as f32;
         movement -= right * (self.is_left_pressed as i32) as f32;
-        movement += up * (self.is_up_pressed as i32) as f32;
-        movement -= up * (self.is_down_pressed as i32) as f32;
+        movement += camera.up * (self.is_up_pressed as i32) as f32;
+        movement -= camera.up * (self.is_down_pressed as i32) as f32;
 
-        movement = movement.normalize_or_zero() * self.speed() * dt;
+        if movement == Vec3::ZERO {
+            return;
+        }
 
-        camera.eye += movement;
+        camera.eye += movement.normalize() * self.speed() * dt;
         camera.eye.z = camera.eye.z.clamp(
             -CAMERA_MAX_OUT_OF_BOUNDS,
             CHUNK_HEIGHT as f32 + CAMERA_MAX_OUT_OF_BOUNDS,

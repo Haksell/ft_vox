@@ -1,7 +1,7 @@
 use {
     crate::{
         chunk::CHUNK_WIDTH,
-        coords::{split_coords, ChunkCoords},
+        coords::{camera_to_chunk_coords, split_coords, ChunkCoords},
         state::State,
         world::World,
         Args,
@@ -196,14 +196,11 @@ impl<'a> ApplicationHandler for Application<'a> {
                 }
                 self.last_render = now;
 
-                let camera_pos = state.camera.position();
-                let camera_chunk = self
-                    .world
-                    .get_chunk_index_from_position(camera_pos.x, camera_pos.y);
-
                 state.update(dt);
 
                 state.rerender_chunks(&mut self.world);
+
+                let camera_chunk = camera_to_chunk_coords(state.camera.position());
                 if self.last_chunk != Some(camera_chunk) {
                     self.last_chunk = Some(camera_chunk);
                     state.update_chunks(&mut self.world);

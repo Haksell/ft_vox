@@ -4,12 +4,13 @@ use {
         block::BlockType,
         camera::Camera,
         chunk::{AdjacentChunks, Chunk, CHUNK_HEIGHT, CHUNK_WIDTH},
-        coords::{split_coords, BlockCoords, ChunkCoords, WorldCoords},
+        coords::{camera_to_world_coords, split_coords, BlockCoords, ChunkCoords, WorldCoords},
         noise::{SimplexNoise, SimplexNoiseInfo},
         spline::{Spline, SplinePoint},
         utils::{ceil_div, sign},
         vertex::Vertex,
     },
+    glam::Vec3,
     std::{
         collections::{HashMap, HashSet},
         thread,
@@ -20,6 +21,7 @@ pub const SURFACE: usize = 64;
 pub const SEA: usize = 62;
 
 pub const MAX_DELETE_DISTANCE: f32 = 48.0;
+
 pub struct NoiseValues {
     temperature: f32,
     humidity: f32,
@@ -104,13 +106,6 @@ impl World {
             chunks: HashMap::new(),
             deleted_blocks: HashMap::new(),
         }
-    }
-
-    pub fn get_chunk_index_from_position(&self, world_x: f32, world_y: f32) -> ChunkCoords {
-        let chunk_x = (world_x / CHUNK_WIDTH as f32).floor() as i32;
-        let chunk_y = (world_y / CHUNK_WIDTH as f32).floor() as i32;
-
-        (chunk_x, chunk_y)
     }
 
     pub fn get_chunk_if_loaded(&self, chunk_coords: ChunkCoords) -> Option<&Chunk> {
@@ -769,23 +764,22 @@ impl World {
     }
 
     pub fn delete_center_block(&mut self, camera: &Camera) -> Option<(WorldCoords, BlockType)> {
-        let (world_coords, block) = self.find_center_block(camera, MAX_DELETE_DISTANCE)?;
+        let (_, world_coords, block) =
+            self.find_block_in_dir(camera.position(), camera.direction(), MAX_DELETE_DISTANCE)?;
         self.delete_block(world_coords);
         Some((world_coords, block))
     }
 
     // TODO: update DDA to use the tree structure of Chunk
-    pub fn find_center_block(
+    pub fn find_block_in_dir(
         &self,
-        camera: &Camera,
+        pos: Vec3,
+        dir: Vec3,
         max_distance: f32,
-    ) -> Option<(WorldCoords, BlockType)> {
-        let dir = camera.direction();
-        let start = camera.position();
+    ) -> Option<(f32, WorldCoords, BlockType)> {
+        let start = pos;
 
-        let mut ix = start.x.floor() as i32;
-        let mut iy = start.y.floor() as i32;
-        let mut iz = start.z.floor() as i32;
+        let (mut ix, mut iy, mut iz) = camera_to_world_coords(start);
 
         if self.get_block((ix, iy, iz)).is_some() {
             return None;
@@ -852,14 +846,14 @@ impl World {
 
             let world_coords = (ix, iy, iz);
             if let Some(block) = self.get_block(world_coords) {
-                return Some((world_coords, block));
+                return Some((t, world_coords, block));
             }
         }
 
         None
     }
 
-    fn get_block(&self, world_coords: WorldCoords) -> Option<BlockType> {
+    pub fn get_block(&self, world_coords: WorldCoords) -> Option<BlockType> {
         let (chunk_coords, block_coords) = split_coords(world_coords)?;
         let chunk = self.get_chunk_if_loaded(chunk_coords)?;
         chunk.get_block(block_coords)
