@@ -35,6 +35,7 @@ pub struct World {
     continentalness_noise: SimplexNoise,
     erosion_noise: SimplexNoise,
     weirdness_noise: SimplexNoise,
+    cave_noise: SimplexNoise,
 
     chunks: HashMap<ChunkCoords, Chunk>,
     deleted_blocks: HashMap<ChunkCoords, HashSet<BlockCoords>>,
@@ -95,6 +96,17 @@ impl World {
             },
         );
 
+        // cave: creates caves
+        let cave_noise = SimplexNoise::new(
+            seed.wrapping_add(0x44336611),
+            SimplexNoiseInfo {
+                frequency: 0.0196,
+                octaves: 4,
+                persistence: 0.666,
+                ..Default::default()
+            },
+        );
+
         Self {
             temperature_noise,
             humidity_noise,
@@ -103,6 +115,7 @@ impl World {
             weirdness_noise,
             chunks: HashMap::new(),
             deleted_blocks: HashMap::new(),
+            cave_noise,
         }
     }
 
@@ -142,15 +155,13 @@ impl World {
     fn generate_height_at(&self, values: &NoiseValues) -> f32 {
         let continentalness_offset = self.continentalness_spline(values.continentalness);
         let pv_offset = self.peaks_valleys_spline(values.pv);
-        let erosion_factor = if values.continentalness >= -0.2 {
-            self.erosion_factor(values.erosion)
+        let erosion_factor = self.erosion_factor(values.erosion);
+
+        if values.continentalness < -0.2 {
+            SURFACE as f32 + continentalness_offset
         } else {
-            1.0
-        };
-
-        let height_offset = continentalness_offset + pv_offset * erosion_factor;
-
-        SURFACE as f32 + height_offset
+            SURFACE as f32 + continentalness_offset + pv_offset * erosion_factor
+        }
     }
 
     // Continentalness spline: higher continentalness = higher terrain
@@ -658,7 +669,7 @@ impl World {
         }
     }
 
-    fn has_cave_at(&self, world_x: i32, world_y: i32, world_z: i32, surface_height: i32) -> bool {
+    fn has_cave_at(&self, world_x: i32, world_y: i32, world_z: i32) -> bool {
         // TODO: cave system
         false
     }
@@ -721,8 +732,8 @@ impl World {
 
                             for z in 0..CHUNK_HEIGHT {
                                 if z <= height {
-                                    if self.has_cave_at(world_x, world_y, z as i32, height as i32) {
-                                        continue;
+                                    if self.has_cave_at(world_x, world_y, z as i32) {
+                                        column[0] = Some(BlockType::Stone);
                                     }
 
                                     let depth_from_surface = height.saturating_sub(z);
