@@ -96,10 +96,9 @@ impl<'a> ApplicationHandler for Application<'a> {
                         {
                             log::debug!("Deleted {:?}", block);
 
-                            let (chunk_coords, (bx, by, _)) = split_coords(world_coords).unwrap();
-                            let (cx, cy) = chunk_coords;
+                            let ((cx, cy), (bx, by, _)) = split_coords(world_coords).unwrap();
 
-                            state.chunks_to_rerender.insert(chunk_coords);
+                            state.chunks_to_rerender.insert((cx, cy));
 
                             // rerender neighbors if on the edge
                             if bx == 0 {

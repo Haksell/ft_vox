@@ -18,7 +18,7 @@ mod world;
 use {
     crate::app::Application,
     clap::{arg, command, Parser},
-    winit::event_loop::EventLoop,
+    winit::event_loop::{ControlFlow, EventLoop},
 };
 
 #[derive(Parser, Debug)]
@@ -37,7 +37,12 @@ struct Args {
 async fn run(args: Args) {
     env_logger::init();
     log::info!("Running {} with {:?}", env!("CARGO_CRATE_NAME"), args);
+
     let event_loop = EventLoop::new().unwrap();
+    // ControlFlow::Poll is ideal for games and similar applications.
+    // https://docs.rs/winit/latest/winit/#event-handling
+    event_loop.set_control_flow(ControlFlow::Poll);
+
     let mut app = Application::new(args);
     event_loop.run_app(&mut app).expect("Failed to run app");
 }
