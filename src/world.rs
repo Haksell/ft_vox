@@ -702,7 +702,7 @@ impl World {
     }
 
     fn get_ore(world_coords: WorldCoords, base_stone: BlockType) -> BlockType {
-        match prf_i32x3_mod(world_coords, 500) {
+        match prf_i32x3_mod(world_coords, 200) {
             0 => BlockType::RedStone,
             1 => BlockType::GoldOre,
             2 => BlockType::EmeraldOre,
@@ -749,16 +749,10 @@ impl World {
                                     + 110.0
                                     - height as f32 * 0.6;
                             let cave_high =
-                                self.cave_high_noise.noise2d(world_x as f32, world_y as f32) * 25.0
+                                self.cave_high_noise.noise2d(world_x as f32, world_y as f32) * 23.0
                                     + lerp(56.0, height as f32, 0.3);
 
                             for z in 0..CHUNK_HEIGHT {
-                                let base_stone = if z < 48 {
-                                    BlockType::Basalt
-                                } else {
-                                    BlockType::Stone
-                                }; // TODO: noise
-
                                 column[z] = if z <= MAGMA_CORE {
                                     Some(BlockType::Magma)
                                 } else if !biome.is_ocean()
@@ -766,7 +760,14 @@ impl World {
                                     && (z as f32) < cave_high
                                 {
                                     None
+                                } else if z <= 39 {
+                                    Some(BlockType::Basalt)
                                 } else if z <= height {
+                                    let base_stone = if z <= 47 {
+                                        BlockType::Basalt
+                                    } else {
+                                        BlockType::Stone
+                                    }; // TODO: noise
                                     Some(if height.saturating_sub(z) < 5 {
                                         biome.get_surface_block()
                                     } else if cave_low < cave_high
