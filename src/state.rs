@@ -200,7 +200,7 @@ impl<'a> State<'a> {
 
         // === CAMERA ===
         let camera = Camera::new(
-            Vec3::new(0.0, 0.0, CHUNK_HEIGHT as f32),
+            Vec3::new(0.0, 0.0, 160.0),
             Vec3::new(0.0, 0.0, 1.0),
             config.width as f32 / config.height as f32,
             (80.0_f32).to_radians(),
