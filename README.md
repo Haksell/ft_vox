@@ -59,7 +59,7 @@
 - animations (water, lava, ...)
 - transparency (water, ...)
 - launch animation (camera drops to block at (0, 0) with proper gravity)
-- block about to be deleted should look a bit darker
+- block about to be deleted should look a bit darker (hard given chunk tree structure)
 - frustum culling during face generation instead of after checking chunks
 - use cubemap instead of panorama for skybox
 - multithreading for mesh generation
