@@ -15,6 +15,7 @@ const CAMERA_MAX_OUT_OF_BOUNDS: f32 = 16.0;
 const MAX_PITCH: f32 = FRAC_PI_2 * 0.99; // avoids gimbal lock
 
 pub const CAMERA_NEAR: f32 = 0.1;
+// const COLLISION_MARGIN: f32 = 2.0 * CAMERA_NEAR;
 
 // not const because of f32::sqrt :(
 pub fn camera_far() -> f32 {
@@ -210,6 +211,15 @@ impl CameraController {
         if movement == Vec3::ZERO {
             return;
         }
+
+        // COLLISIONS WIP
+        // if let Some((t, _, _)) = world.find_block_in_dir(
+        //     camera.position(),
+        //     movement,
+        //     movement_quantity + COLLISION_MARGIN,
+        // ) {
+        //     movement_quantity = t - COLLISION_MARGIN;
+        // }
 
         camera.eye += movement.normalize() * self.speed() * dt;
         camera.eye.z = camera.eye.z.clamp(
