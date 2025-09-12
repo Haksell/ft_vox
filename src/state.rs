@@ -2,7 +2,7 @@ use {
     crate::{
         aabb::AABB,
         camera::{camera_far, Camera, CameraController, CameraUniform, CAMERA_NEAR},
-        chunk::{CHUNK_HEIGHT, CHUNK_WIDTH},
+        chunk::CHUNK_WIDTH,
         coords::{camera_to_chunk_coords, chunk_distance, ChunkCoords},
         texture::Texture,
         vertex::Vertex,
