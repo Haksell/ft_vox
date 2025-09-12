@@ -52,7 +52,6 @@
 
 ## todo ft_minecraft
 
-- use `XxxCoords` types everywhere
 - true gpu sampler mipmaps
 - anisotropic filtering
 - collisions
