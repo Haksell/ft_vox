@@ -26,7 +26,7 @@ use {
 struct Args {
     #[arg(long = "no-fullscreen", action = clap::ArgAction::SetFalse)]
     fullscreen: bool,
-    #[arg(long, default_value_t = 42)]
+    #[arg(long, default_value_t = 0)]
     seed: u64,
     #[arg(long, default_value_t = 1.0)]
     normal_speed: f32,
