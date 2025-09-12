@@ -17,8 +17,8 @@ use {
     },
 };
 
-pub const SURFACE: usize = 64;
-pub const SEA: usize = 62;
+pub const SURFACE: usize = 65;
+pub const SEA: usize = 63;
 pub const MAGMA_CORE: usize = 31;
 
 pub const MAX_DELETE_DISTANCE: f32 = 48.0;
@@ -746,11 +746,11 @@ impl World {
                             // DON'T CHANGE UNTIL FT_VOX PUSH
                             let cave_low =
                                 self.cave_low_noise.noise2d(world_x as f32, world_y as f32) * 20.0
-                                    + 110.0
+                                    + 111.0
                                     - height as f32 * 0.6;
                             let cave_high =
                                 self.cave_high_noise.noise2d(world_x as f32, world_y as f32) * 23.0
-                                    + lerp(56.0, height as f32, 0.3);
+                                    + lerp(57.0, height as f32, 0.3);
 
                             for z in 0..CHUNK_HEIGHT {
                                 column[z] = if z <= MAGMA_CORE {

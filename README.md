@@ -45,7 +45,8 @@
 - [x] Your program must be able to run for hours without eating the whole memory or slowing down. Manage your RAM as well as VRAM very carefully.
 - [x] Full screen mode by default
 - [x] Camera speeds should be 1.0 and 20.0
-- [x] Ctrl+F TODO
+- [ ] Ctrl+F TODO
+- [ ] No warnings
 - [ ] Delete ft_vox README sections
 
 ## todo ft_minecraft
