@@ -701,8 +701,8 @@ impl World {
             .map(|n| n.get())
             .unwrap_or(1)
             .min(CHUNK_WIDTH);
-
         let chunk_size = ceil_div(CHUNK_WIDTH, workers);
+
         thread::scope(|s| {
             let mut remainder: &mut [[[Option<BlockType>; CHUNK_HEIGHT]; CHUNK_WIDTH]] =
                 &mut blocks;
@@ -710,9 +710,8 @@ impl World {
 
             for _ in 0..workers {
                 let len = (CHUNK_WIDTH - start_x).min(chunk_size);
-
                 let (head, tail) = remainder.split_at_mut(len);
-                let start_x_this = start_x; // ???
+                let start_x_this = start_x;
 
                 s.spawn(move || {
                     for (dx, plane) in head.iter_mut().enumerate() {
@@ -728,7 +727,7 @@ impl World {
                             for z in 0..CHUNK_HEIGHT {
                                 if z <= height {
                                     if self.has_cave_at(world_x, world_y, z as i32) {
-                                        column[0] = Some(BlockType::Stone);
+                                        // TODO
                                     }
 
                                     let depth_from_surface = height.saturating_sub(z);
