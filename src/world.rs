@@ -7,7 +7,7 @@ use {
         coords::{camera_to_world_coords, split_coords, BlockCoords, ChunkCoords, WorldCoords},
         noise::{SimplexNoise, SimplexNoiseInfo},
         spline::{Spline, SplinePoint},
-        utils::{ceil_div, lerp, sign},
+        utils::{ceil_div, lerp, prf_i32x3_mod, sign},
         vertex::Vertex,
     },
     glam::Vec3,
@@ -701,6 +701,15 @@ impl World {
         }
     }
 
+    fn get_ore(world_coords: WorldCoords) -> BlockType {
+        match prf_i32x3_mod(world_coords, 100) {
+            0 => BlockType::RedStone,
+            1 => BlockType::GoldOre,
+            2 => BlockType::EmeraldOre,
+            _ => BlockType::Stone,
+        }
+    }
+
     fn generate_chunk_blocks(
         &self,
         (chunk_x, chunk_y): ChunkCoords,
@@ -752,10 +761,15 @@ impl World {
                                 {
                                     None
                                 } else if z <= height {
-                                    let depth_from_surface = height.saturating_sub(z);
-                                    Some(match depth_from_surface {
-                                        0..5 => biome.get_surface_block(), // TODO: 5 -> random
-                                        _ => biome.get_deep_block((world_x, world_y, z as i32)),
+                                    Some(if height.saturating_sub(z) < 5 {
+                                        biome.get_surface_block()
+                                    } else if cave_low < cave_high
+                                        && ((z as f32 - cave_low).abs() < 3.0
+                                            || (z as f32 - cave_high).abs() < 3.0)
+                                    {
+                                        Self::get_ore((world_x, world_y, z as i32))
+                                    } else {
+                                        BlockType::Stone
                                     })
                                 } else if z <= SEA {
                                     Some(BlockType::Water)

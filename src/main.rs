@@ -34,6 +34,8 @@ struct Args {
     boosted_speed: f32,
     #[arg(long = "no-vertical", action = clap::ArgAction::SetFalse)]
     vertical_enabled: bool,
+    #[arg(long, default_value_t = 50)]
+    slow_frame_warning_ms: u64,
 }
 
 async fn run(args: Args) {

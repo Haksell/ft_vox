@@ -2,16 +2,19 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum BlockType {
-    Grass,
-    Snow,
-    Sand,
-    Stone,
     Dirt,
-    Ice,
-    Water,
+    EmeraldOre,
+    GoldOre,
+    Grass,
     Gravel,
-    RedSand,
+    Ice,
     Magma,
+    RedSand,
+    RedStone,
+    Sand,
+    Snow,
+    Stone,
+    Water,
 }
 
 impl BlockType {
@@ -27,6 +30,9 @@ impl BlockType {
             BlockType::Gravel => [31, 3],
             BlockType::RedSand => [27, 25],
             BlockType::Magma => [24, 26],
+            BlockType::RedStone => [24, 0],
+            BlockType::GoldOre => [23, 13],
+            BlockType::EmeraldOre => [23, 12],
         }
     }
 
@@ -42,6 +48,9 @@ impl BlockType {
             BlockType::Gravel => [31, 3],
             BlockType::RedSand => [27, 25],
             BlockType::Magma => [24, 26],
+            BlockType::RedStone => [24, 0],
+            BlockType::GoldOre => [23, 13],
+            BlockType::EmeraldOre => [23, 12],
         }
     }
 
@@ -57,6 +66,9 @@ impl BlockType {
             BlockType::Gravel => [31, 3],
             BlockType::RedSand => [27, 25],
             BlockType::Magma => [24, 26],
+            BlockType::RedStone => [24, 0],
+            BlockType::GoldOre => [23, 13],
+            BlockType::EmeraldOre => [23, 12],
         }
     }
 }

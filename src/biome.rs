@@ -1,4 +1,4 @@
-use crate::{block::BlockType, coords::WorldCoords};
+use crate::block::BlockType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BiomeType {
@@ -81,10 +81,6 @@ impl BiomeType {
             BiomeType::StonyShore => BlockType::Stone,
             _ => BlockType::Grass,
         }
-    }
-
-    pub fn get_deep_block(&self, (x, y, z): WorldCoords) -> BlockType {
-        BlockType::Stone
     }
 
     pub fn is_ocean(&self) -> bool {

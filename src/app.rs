@@ -191,7 +191,7 @@ impl<'a> ApplicationHandler for Application<'a> {
             WindowEvent::RedrawRequested => {
                 let now = Instant::now();
                 let dt = now - self.last_render;
-                if dt > Duration::from_millis(100) {
+                if dt >= Duration::from_millis(self.args.slow_frame_warning_ms) {
                     log::warn!("frame took {}ms to generate", dt.as_millis());
                 }
                 self.last_render = now;
