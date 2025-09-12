@@ -155,13 +155,13 @@ impl World {
     fn generate_height_at(&self, values: &NoiseValues) -> f32 {
         let continentalness_offset = self.continentalness_spline(values.continentalness);
         let pv_offset = self.peaks_valleys_spline(values.pv);
-        let erosion_factor = self.erosion_factor(values.erosion);
-
-        if values.continentalness < -0.2 {
-            SURFACE as f32 + continentalness_offset
+        let erosion_factor = if values.continentalness < -0.2 {
+            self.erosion_factor(values.erosion)
         } else {
-            SURFACE as f32 + continentalness_offset + pv_offset * erosion_factor
-        }
+            1.0
+        };
+
+        SURFACE as f32 + continentalness_offset + pv_offset * erosion_factor
     }
 
     // Continentalness spline: higher continentalness = higher terrain
