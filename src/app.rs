@@ -2,7 +2,7 @@ use {
     crate::{
         chunk::CHUNK_WIDTH,
         coords::{camera_to_chunk_coords, split_coords, ChunkCoords},
-        state::State,
+        state::{State, MEMORY_DISTANCE},
         world::World,
         Args,
     },
@@ -204,6 +204,21 @@ impl<'a> ApplicationHandler for Application<'a> {
                 if self.last_chunk != Some(camera_chunk) {
                     self.last_chunk = Some(camera_chunk);
                     state.update_chunks(&mut self.world);
+                } else {
+                    'preload_chunk: for i in 0..MEMORY_DISTANCE {
+                        for x in camera_chunk.0 - i..=camera_chunk.0 + i {
+                            for y in camera_chunk.1 - i..=camera_chunk.1 + i {
+                                let chunk_coords = (x, y);
+                                if !self.world.chunks.contains_key(&chunk_coords)
+                                    || !state.chunk_render_data.contains_key(&chunk_coords)
+                                {
+                                    self.world.load_chunk(chunk_coords);
+                                    state.generate_chunk_mesh(&mut self.world, chunk_coords);
+                                    break 'preload_chunk;
+                                }
+                            }
+                        }
+                    }
                 }
                 self.world.discard_far_chunks(camera_chunk);
 

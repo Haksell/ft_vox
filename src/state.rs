@@ -24,9 +24,9 @@ use {
 };
 
 pub const RENDER_DISTANCE: f32 = 22.5;
-pub const MEMORY_DISTANCE: f32 = 50.0;
+pub const MEMORY_DISTANCE: i32 = 50;
 
-struct ChunkRenderData {
+pub struct ChunkRenderData {
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
     num_indices: u32,
@@ -54,7 +54,7 @@ pub struct State<'a> {
     pub is_right_clicking: bool,
     pub is_crosshair_active: bool,
 
-    chunk_render_data: HashMap<ChunkCoords, ChunkRenderData>,
+    pub chunk_render_data: HashMap<ChunkCoords, ChunkRenderData>,
     pub chunks_to_rerender: HashSet<ChunkCoords>,
 
     pub camera: Camera,
@@ -515,7 +515,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn generate_chunk_mesh(&mut self, world: &mut World, chunk_coords: ChunkCoords) {
+    pub fn generate_chunk_mesh(&mut self, world: &mut World, chunk_coords: ChunkCoords) {
         let (chunk_x, chunk_y) = chunk_coords;
         let (mut vertices, indices) = world.generate_chunk_mesh(chunk_coords);
         if vertices.is_empty() || indices.is_empty() {

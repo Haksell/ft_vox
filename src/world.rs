@@ -43,7 +43,7 @@ pub struct World {
     cave_low_noise: SimplexNoise,
     cave_high_noise: SimplexNoise,
 
-    chunks: HashMap<ChunkCoords, Chunk>,
+    pub chunks: HashMap<ChunkCoords, Chunk>,
     deleted_blocks: HashMap<ChunkCoords, HashSet<BlockCoords>>,
 }
 impl World {
@@ -162,7 +162,7 @@ impl World {
         self.chunks.retain(|&(coord_x, coord_y), _| {
             let dx = coord_x - current_x;
             let dy = coord_y - current_y;
-            (dx * dx + dy * dy) as f32 <= MEMORY_DISTANCE * MEMORY_DISTANCE
+            dx * dx + dy * dy <= MEMORY_DISTANCE * MEMORY_DISTANCE
         });
     }
 

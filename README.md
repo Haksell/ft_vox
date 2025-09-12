@@ -1,9 +1,5 @@
 # ft_vox
 
-## todo ft_vox
-
-- alternative to stone in layer above magma
-
 ## mandatory ft_vox
 
 - [x] Your program will have to run in full screen mode. Reduce the default frame buffer is prohibited.
