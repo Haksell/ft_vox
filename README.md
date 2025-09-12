@@ -4,8 +4,6 @@
 
 - more cave openings
 - random rare textures in caves
-- """volcanos"""
-- mostly sand under water
 
 ## mandatory ft_vox
 
@@ -52,6 +50,7 @@
 
 ## todo ft_minecraft
 
+- volcanos
 - true gpu sampler mipmaps
 - anisotropic filtering
 - collisions
