@@ -2,6 +2,7 @@
 
 ## todo
 
+- fix trackpad issue on laptop
 - fix vsync issue on lenovo
 - fix fullscreen broken animation (load textures before window creation?)
 - `build.rs` for shaders?
