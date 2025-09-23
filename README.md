@@ -24,6 +24,10 @@
 - fix dead pixels (should be free with ray marching)
 - port to wasm
 - planets? (https://www.bowerbyte.com/posts/blocky-planet/)
+- rings outside some planets
+- resizing the window should properly update camera
+- particles when removing/placing blocks
+- malbolge interpreter with voxels (liam tkt)
 
 ## mandatory
 
