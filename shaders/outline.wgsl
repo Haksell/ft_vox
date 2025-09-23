@@ -8,86 +8,92 @@ struct CameraUniform {
     _pad1: vec2<f32>,
 };
 
-@group(0) @binding(0) var sceneTexture : texture_2d<f32>;
+@group(0) @binding(0) var sceneTexture  : texture_2d<f32>;
 @group(0) @binding(1) var sceneSampler : sampler;
-@group(0) @binding(2) var depthTexture : texture_depth_2d;
+@group(0) @binding(2) var depthTexture  : texture_depth_2d;
 @group(0) @binding(3) var depthSampler : sampler;
 @group(0) @binding(4) var<uniform> cam : CameraUniform;
 
-struct VertexOutput {
+struct VSOut {
     @builtin(position) pos: vec4<f32>,
     @location(0) uv: vec2<f32>,
 };
 
-// Fullscreen triangle
 @vertex
-fn vs_main(@builtin(vertex_index) vi: u32) -> VertexOutput {
+fn vs_main(@builtin(vertex_index) vi: u32) -> VSOut {
     var pos = array<vec2<f32>, 3>(
         vec2<f32>(-1.0, -3.0),
-        vec2<f32>(3.0, 1.0),
         vec2<f32>(-1.0, 1.0),
+        vec2<f32>(3.0, 1.0)
     );
     var uv = array<vec2<f32>, 3>(
         vec2<f32>(0.0, 2.0),
-        vec2<f32>(2.0, 0.0),
         vec2<f32>(0.0, 0.0),
+        vec2<f32>(2.0, 0.0)
     );
 
-    var out: VertexOutput;
+    var out: VSOut;
     out.pos = vec4<f32>(pos[vi], 0.0, 1.0);
     out.uv = uv[vi];
     return out;
 }
 
-fn linearize_depth(d: f32, near: f32, far: f32) -> f32 {
-    // d is depth buffer value in [0,1] (post-projection z)
-    // assumes standard perspective projection mapping
-    return (2.0 * near) / (far + near - d * (far - near));
-}
-
-fn luma(rgb: vec3<f32>) -> f32 {
-    return dot(rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
+// Linearize D3D/WebGPU depth in [0,1] to a positive view-space Z (>0 forward)
+fn linearize_depth(d: f32, n: f32, f: f32) -> f32 {
+    // Derived from perspective projection with [0,1] depth range.
+    // Returns view-space distance (meters) along +Z (magnitude only).
+    return (n * f) / (f - d * (f - n));
 }
 
 @fragment
-fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    let texSize = vec2<f32>(textureDimensions(sceneTexture, 0));
+fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
     let uv = in.uv;
-
-    // Gather depth (linearized) at center + 4-neighborhood
+    let texSize = vec2<f32>(textureDimensions(sceneTexture, 0));
     let duv = 1.0 / texSize;
-    let dC = linearize_depth(textureSample(depthTexture, depthSampler, uv), cam.near, cam.far);
-    let dL = linearize_depth(textureSample(depthTexture, depthSampler, uv + vec2<f32>(-duv.x, 0.0)), cam.near, cam.far);
-    let dR = linearize_depth(textureSample(depthTexture, depthSampler, uv + vec2<f32>(duv.x, 0.0)), cam.near, cam.far);
-    let dT = linearize_depth(textureSample(depthTexture, depthSampler, uv + vec2<f32>(0.0, -duv.y)), cam.near, cam.far);
-    let dB = linearize_depth(textureSample(depthTexture, depthSampler, uv + vec2<f32>(0.0, duv.y)), cam.near, cam.far);
 
-    // Depth edge magnitude (Sobel-ish)
-    let dx = (dR - dL);
-    let dy = (dB - dT);
-    let depthEdge = sqrt(dx * dx + dy * dy);
+    let baseColor = textureSample(sceneTexture, sceneSampler, uv).rgb;
 
-    // Optional: color contrast to catch coplanar albedo edges
-    let cC = textureSample(sceneTexture, sceneSampler, uv).rgb;
-    let cL = textureSample(sceneTexture, sceneSampler, uv + vec2<f32>(-duv.x, 0.0)).rgb;
-    let cR = textureSample(sceneTexture, sceneSampler, uv + vec2<f32>(duv.x, 0.0)).rgb;
-    let cT = textureSample(sceneTexture, sceneSampler, uv + vec2<f32>(0.0, -duv.y)).rgb;
-    let cB = textureSample(sceneTexture, sceneSampler, uv + vec2<f32>(0.0, duv.y)).rgb;
+    // Center depth; if it's background, pass through (prevents skybox outlines)
+    let dC_ndc = textureSample(depthTexture, depthSampler, uv);
+    if dC_ndc >= 0.9995 {
+        return vec4<f32>(baseColor, 1.0);
+    }
 
-    let lumC = luma(cC);
-    let colorEdge = abs(luma(cR) - luma(cL)) + abs(luma(cB) - luma(cT));
+    // Neighbor depths
+    let dL_ndc = textureSample(depthTexture, depthSampler, uv + vec2<f32>(-duv.x, 0.0));
+    let dR_ndc = textureSample(depthTexture, depthSampler, uv + vec2<f32>(duv.x, 0.0));
+    let dT_ndc = textureSample(depthTexture, depthSampler, uv + vec2<f32>(0.0, -duv.y));
+    let dB_ndc = textureSample(depthTexture, depthSampler, uv + vec2<f32>(0.0, duv.y));
 
-    // Tunables
-    let depthThreshold: f32 = 0.002;  // increase for fewer outlines
-    let colorThreshold: f32 = 0.20;   // increase to rely less on color edges
-    let outlineStrength: f32 = 1.0;    // 0..1 mix of black
+    // Treat background neighbors as "same depth" as center so edges don't appear next to sky.
+    let dL_lin = linearize_depth(select(dC_ndc, dL_ndc, dL_ndc < 0.999999), cam.near, cam.far);
+    let dR_lin = linearize_depth(select(dC_ndc, dR_ndc, dR_ndc < 0.999999), cam.near, cam.far);
+    let dT_lin = linearize_depth(select(dC_ndc, dT_ndc, dT_ndc < 0.999999), cam.near, cam.far);
+    let dB_lin = linearize_depth(select(dC_ndc, dB_ndc, dB_ndc < 0.999999), cam.near, cam.far);
+    let dC_lin = linearize_depth(dC_ndc, cam.near, cam.far);
 
-    let isDepthEdge = depthEdge > depthThreshold;
-    let isColorEdge = colorEdge > colorThreshold;
+    // Simple gradient magnitude on linear depth
+    let dx = dR_lin - dL_lin;
+    let dy = dB_lin - dT_lin;
+    let edgeMag = sqrt(dx * dx + dy * dy);
 
-    let edge = select(0.0, 1.0, isDepthEdge || isColorEdge);
+    if edgeMag >= 1.0 {
+        return vec4<f32>(0.0, 0.0, 0.0, 1.0);
+    } else {
+        return vec4<f32>(baseColor, 1.0);
+    }
 
-    let base = cC;
-    let outlined = mix(base, vec3<f32>(0.0), edge * outlineStrength);
+    // Depth-aware thresholding:
+    // normalize center depth to [0,1] across clip range to relax threshold with distance
+    let dC_norm = clamp((dC_lin - cam.near) / (cam.far - cam.near), 0.0, 1.0);
+    let baseThreshold = 0.002;      // near-field sensitivity
+    let farScale = 6.0;        // how much easier to pass threshold up close than far away
+    let threshold = baseThreshold * mix(1.0, farScale, dC_norm);
+
+    // Outline only on foreground pixels (center valid)
+    let edge = select(0.0, 1.0, edgeMag > threshold);
+
+    let outlineStrength = 1.0;
+    let outlined = mix(baseColor, vec3<f32>(0.0), edge * outlineStrength);
     return vec4<f32>(outlined, 1.0);
 }
