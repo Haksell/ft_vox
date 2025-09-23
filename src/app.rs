@@ -20,11 +20,11 @@ use {
     },
 };
 
-pub struct Application<'a> {
+pub struct Application {
     args: Args,
     window_attributes: WindowAttributes,
     window: Option<Arc<Window>>,
-    state: Option<State<'a>>,
+    state: Option<State>,
     world: World,
     last_chunk: Option<ChunkCoords>,
     last_render: Instant,
@@ -32,7 +32,7 @@ pub struct Application<'a> {
     frames_since_log: u32,
 }
 
-impl<'a> Application<'a> {
+impl Application {
     pub fn new(args: Args) -> Self {
         let mut window_attributes = Window::default_attributes()
             .with_title("ft_vox")
@@ -57,7 +57,7 @@ impl<'a> Application<'a> {
     }
 }
 
-impl<'a> ApplicationHandler for Application<'a> {
+impl ApplicationHandler for Application {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let window = Arc::new(
             event_loop

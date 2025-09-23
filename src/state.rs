@@ -41,8 +41,8 @@ struct CrosshairUniform {
     _pad: [u8; 4],
 }
 
-pub struct State<'a> {
-    surface: wgpu::Surface<'a>,
+pub struct State {
+    surface: wgpu::Surface<'static>,
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
@@ -69,15 +69,15 @@ pub struct State<'a> {
     skybox_pipeline: wgpu::RenderPipeline,
     skybox_bind_group: wgpu::BindGroup,
 
-    text_brush: TextBrush<FontRef<'a>>,
+    text_brush: TextBrush<FontRef<'static>>,
 
     crosshair_pipeline: wgpu::RenderPipeline,
     crosshair_bind_group: wgpu::BindGroup,
     crosshair_uniform: wgpu::Buffer,
 }
 
-impl<'a> State<'a> {
-    pub async fn new(window: Arc<Window>, args: &Args) -> State<'a> {
+impl State {
+    pub async fn new(window: Arc<Window>, args: &Args) -> Self {
         let size = window.inner_size();
         let center = PhysicalSize::new(size.width / 2, size.height / 2);
 
