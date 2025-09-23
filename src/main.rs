@@ -38,7 +38,8 @@ struct Args {
     slow_frame_warning_ms: u64,
 }
 
-async fn run(args: Args) {
+fn main() {
+    let args = Args::parse();
     env_logger::init();
     log::info!("Running {} with {:?}", env!("CARGO_CRATE_NAME"), args);
 
@@ -48,10 +49,5 @@ async fn run(args: Args) {
     event_loop.set_control_flow(ControlFlow::Poll);
 
     let mut app = Application::new(args);
-    event_loop.run_app(&mut app).expect("Failed to run app");
-}
-
-fn main() {
-    let args = Args::parse();
-    let _ = pollster::block_on(run(args));
+    event_loop.run_app(&mut app).unwrap();
 }
