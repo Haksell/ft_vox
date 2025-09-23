@@ -74,6 +74,13 @@ pub struct State {
     crosshair_pipeline: wgpu::RenderPipeline,
     crosshair_bind_group: wgpu::BindGroup,
     crosshair_uniform: wgpu::Buffer,
+
+    // NEW: outline pass
+    scene_color: Texture,
+    outline_pipeline: wgpu::RenderPipeline,
+    outline_bind_group: wgpu::BindGroup,
+    outline_bgl: wgpu::BindGroupLayout,
+    outline_sampler: wgpu::Sampler,
 }
 
 impl State {
@@ -239,6 +246,132 @@ impl State {
         });
 
         let camera_controller = CameraController::new(args);
+
+        // === OUTLINE ===
+        let scene_color = Texture::create_color_attachment(&device, &config);
+        let depth_texture = Texture::create_depth_texture(&device, &config);
+
+        let outline_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("outline_bgl"),
+            entries: &[
+                // scene color
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                // scene color sampler
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+                // depth texture (sampled as depth)
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Depth,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                // depth sampler (non-comparison)
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                    count: None,
+                },
+                // camera uniform (for near/far to linearize depth)
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        let outline_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("outline_bg"),
+            layout: &outline_bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&scene_color.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&scene_color.sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(&depth_texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::Sampler(&depth_texture.sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: camera_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // sampler for completeness if you want a dedicated one (we’ll also just use scene_color.sampler)
+        let outline_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("outline_sampler"),
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
+
+        let outline_shader =
+            device.create_shader_module(wgpu::include_wgsl!("../shaders/outline.wgsl"));
+        let outline_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("outline_pipeline"),
+            layout: Some(
+                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("outline_pipeline_layout"),
+                    bind_group_layouts: &[&outline_bgl],
+                    push_constant_ranges: &[],
+                }),
+            ),
+            vertex: wgpu::VertexState {
+                module: &outline_shader,
+                entry_point: Some("vs_main"),
+                buffers: &[],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &outline_shader,
+                entry_point: Some("fs_main"),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            }),
+            primitive: wgpu::PrimitiveState::default(),
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        });
 
         // === VOXELS ===
         let voxels_shader =
@@ -456,6 +589,11 @@ impl State {
             crosshair_pipeline,
             crosshair_bind_group,
             crosshair_uniform,
+            scene_color,
+            outline_pipeline,
+            outline_bind_group,
+            outline_bgl,
+            outline_sampler,
         }
     }
 
@@ -476,7 +614,36 @@ impl State {
         self.text_brush
             .resize_view(new_size.width as f32, new_size.height as f32, &self.queue);
 
+        self.scene_color = Texture::create_color_attachment(&self.device, &self.config);
         self.depth_texture = Texture::create_depth_texture(&self.device, &self.config);
+
+        // Rebuild outline bind group to point at new views
+        self.outline_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("outline_bg"),
+            layout: &self.outline_bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&self.scene_color.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&self.scene_color.sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(&self.depth_texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::Sampler(&self.depth_texture.sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: self.camera_buffer.as_entire_binding(),
+                },
+            ],
+        });
     }
 
     pub fn update_chunks(&mut self, world: &mut World) {
@@ -595,12 +762,12 @@ impl State {
         fn render_skybox(
             state: &State,
             encoder: &mut wgpu::CommandEncoder,
-            texture_view: &wgpu::TextureView,
+            target_view: &wgpu::TextureView, // now generic
         ) {
             let mut skybox_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("skybox_pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &texture_view,
+                    view: target_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
@@ -612,25 +779,24 @@ impl State {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
-
             skybox_pass.set_pipeline(&state.skybox_pipeline);
             skybox_pass.set_bind_group(0, &state.skybox_bind_group, &[]);
             skybox_pass.set_bind_group(1, &state.camera_bind_group, &[]);
-            skybox_pass.draw(0..3, 0..1); // fullscreen triangle: 3 vertices, 1 instance.
+            skybox_pass.draw(0..3, 0..1);
         }
 
         fn render_voxels(
             state: &State,
             encoder: &mut wgpu::CommandEncoder,
-            texture_view: &wgpu::TextureView,
+            target_view: &wgpu::TextureView,
         ) {
             let mut voxels_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("voxels_pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &texture_view,
+                    view: target_view, // <-- scene_color
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load, // load previous color (the skybox)
+                        load: wgpu::LoadOp::Load, // keep skybox
                         store: wgpu::StoreOp::Store,
                     },
                     depth_slice: None,
@@ -665,6 +831,31 @@ impl State {
                     voxels_pass.draw_indexed(0..render_data.num_indices, 0, 0..1);
                 }
             }
+        }
+
+        fn render_outline(
+            state: &State,
+            encoder: &mut wgpu::CommandEncoder,
+            swapchain_view: &wgpu::TextureView,
+        ) {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("outline_pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: swapchain_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK), // we will write full-screen
+                        store: wgpu::StoreOp::Store,
+                    },
+                    depth_slice: None,
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&state.outline_pipeline);
+            pass.set_bind_group(0, &state.outline_bind_group, &[]);
+            pass.draw(0..3, 0..1); // fullscreen triangle
         }
 
         fn make_text<'a>(text: &'a str, corner_offset: f32, [r, g, b]: [f32; 3]) -> Section<'a> {
@@ -732,7 +923,7 @@ impl State {
             Err(e) => return Err(e),
         };
 
-        let texture_view = output
+        let swap_view = output
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
         let mut encoder = self
@@ -741,9 +932,10 @@ impl State {
                 label: Some("encoder"),
             });
 
-        render_skybox(self, &mut encoder, &texture_view);
-        render_voxels(self, &mut encoder, &texture_view);
-        render_overlay(self, &mut encoder, &texture_view);
+        render_skybox(self, &mut encoder, &self.scene_color.view);
+        render_voxels(self, &mut encoder, &self.scene_color.view);
+        render_outline(self, &mut encoder, &swap_view);
+        render_overlay(self, &mut encoder, &swap_view);
 
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();

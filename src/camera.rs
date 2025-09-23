@@ -29,6 +29,9 @@ pub struct CameraUniform {
     view_proj_skybox_inverse: [[f32; 4]; 4],
     pos: [f32; 3],
     _pad0: f32,
+    near: f32,
+    far: f32,
+    _pad1: [f32; 2],
 }
 impl CameraUniform {
     pub fn new(camera: &Camera) -> Self {
@@ -44,7 +47,10 @@ impl CameraUniform {
             view_proj: view_proj.to_cols_array_2d(),
             view_proj_skybox_inverse: view_proj_skybox_inverse.to_cols_array_2d(),
             pos: camera.position().to_array(),
-            _pad0: 0.0,
+            _pad0: 0.,
+            near: camera.near,
+            far: camera_far(),
+            _pad1: [0.; 2],
         }
     }
 }
