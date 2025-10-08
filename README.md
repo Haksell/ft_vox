@@ -27,6 +27,8 @@
 - rings outside some planets
 - resizing the window should properly update camera
 - particles when removing/placing blocks
+- black holes (it’s already raymarching)
+- raytraced audio (or raymarched if it makes sense)
 - malbolge interpreter with voxels (liam tkt)
 
 ## mandatory
