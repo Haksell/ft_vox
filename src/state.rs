@@ -97,7 +97,7 @@ impl State {
             })
             .await;
 
-        if !adapter.is_ok() {
+        if adapter.is_err() {
             adapter = instance
                 .request_adapter(&wgpu::RequestAdapterOptions {
                     power_preference: wgpu::PowerPreference::default(),
@@ -600,7 +600,7 @@ impl State {
             let mut skybox_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("skybox_pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &texture_view,
+                    view: texture_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
@@ -627,7 +627,7 @@ impl State {
             let mut voxels_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("voxels_pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &texture_view,
+                    view: texture_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Load, // load previous color (the skybox)
@@ -675,7 +675,7 @@ impl State {
                         .v_align(VerticalAlign::Top),
                 )
                 .with_screen_position((corner_offset, corner_offset))
-                .add_text(Text::new(&text).with_scale(24.0).with_color([r, g, b, 1.0]))
+                .add_text(Text::new(text).with_scale(24.0).with_color([r, g, b, 1.0]))
         }
 
         fn render_overlay(

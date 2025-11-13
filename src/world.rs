@@ -11,7 +11,7 @@ use {
         noise::{SimplexNoise, SimplexNoiseInfo},
         spline::{Spline, SplinePoint},
         state::{MEMORY_DISTANCE, RENDER_DISTANCE},
-        utils::{ceil_div, lerp, prf_i32x3_mod, sign},
+        utils::{lerp, prf_i32x3_mod, sign},
         vertex::Vertex,
     },
     glam::Vec3,
@@ -231,56 +231,51 @@ impl World {
     }
 
     pub fn determine_biome(&self, values: &NoiseValues) -> BiomeType {
-        #[rustfmt::skip]
         let temperature_level = match values.temperature {
-            x if x >= -1.0  && x < -0.45 => 0,
-            x if x >= -0.45 && x < -0.15 => 1,
-            x if x >= -0.15 && x <  0.2  => 2,
-            x if x >=  0.2  && x <  0.55 => 3,
-            x if x >=  0.55 && x <  1.0  => 4,
+            x if (-1.0..-0.45).contains(&x) => 0,
+            x if (-0.45..-0.15).contains(&x) => 1,
+            x if (-0.15..0.2).contains(&x) => 2,
+            x if (0.2..0.55).contains(&x) => 3,
+            x if (0.55..1.0).contains(&x) => 4,
             _ => 4,
         };
 
-        #[rustfmt::skip]
         let humidity_level = match values.humidity {
-            x if x >= -1.0  && x < -0.35 => 0,
-            x if x >= -0.35 && x < -0.1  => 1,
-            x if x >= -0.1  && x <  0.1  => 2,
-            x if x >=  0.1  && x <  0.3  => 3,
-            x if x >=  0.3  && x <  1.0  => 4,
+            x if (-1.0..-0.35).contains(&x) => 0,
+            x if (-0.35..-0.1).contains(&x) => 1,
+            x if (-0.1..0.1).contains(&x) => 2,
+            x if (0.1..0.3).contains(&x) => 3,
+            x if (0.3..1.0).contains(&x) => 4,
             _ => 4,
         };
 
-        #[rustfmt::skip]
         let continentalness_level = match values.continentalness {
-            x if x >= -1.0  && x < -0.45 => 0,
-            x if x >= -0.45 && x < -0.2  => 1,
-            x if x >= -0.2  && x < -0.1  => 2,
-            x if x >= -0.1  && x <  0.05 => 3,
-            x if x >=  0.05 && x <  0.3  => 4,
-            x if x >=  0.3  && x <  1.0  => 5,
+            x if (-1.0..-0.45).contains(&x) => 0,
+            x if (-0.45..-0.2).contains(&x) => 1,
+            x if (-0.2..-0.1).contains(&x) => 2,
+            x if (-0.1..0.05).contains(&x) => 3,
+            x if (0.05..0.3).contains(&x) => 4,
+            x if (0.3..1.0).contains(&x) => 5,
             _ => 5,
         };
 
-        #[rustfmt::skip]
         let erosion_level = match values.erosion {
-            x if x >= -1.0  && x < -0.8  => 0,
-            x if x >= -0.8  && x < -0.38 => 1,
-            x if x >= -0.38 && x < -0.22 => 2,
-            x if x >= -0.22 && x <  0.05 => 3,
-            x if x >=  0.05 && x <  0.45 => 4,
-            x if x >=  0.45 && x <  0.55 => 5,
-            x if x >=  0.55 && x <  1.0  => 6,
+            x if (-1.0..-0.8).contains(&x) => 0,
+            x if (-0.8..-0.38).contains(&x) => 1,
+            x if (-0.38..-0.22).contains(&x) => 2,
+            x if (-0.22..0.05).contains(&x) => 3,
+            x if (0.05..0.45).contains(&x) => 4,
+            x if (0.45..0.55).contains(&x) => 5,
+            x if (0.55..1.0).contains(&x) => 6,
             _ => 6,
         };
 
-        #[rustfmt::skip]
         let pv_level = match values.pv {
-            x if x >= -1.0  && x < -0.85 => 0,
-            x if x >= -0.85 && x < -0.2  => 1,
-            x if x >= -0.2  && x <  0.2  => 2,
-            x if x >=  0.2  && x <  0.7  => 3,
-            x if x >=  0.7  && x <  1.0  => 4,
+            x if (-1.0..-0.85).contains(&x) => 0,
+            x if (-0.85..-0.2).contains(&x) => 1,
+            x if (-0.2..0.2).contains(&x) => 2,
+            x if (0.2..0.7).contains(&x) => 3,
+            x if (0.7..1.0).contains(&x) => 4,
             _ => 6,
         };
 
@@ -727,7 +722,7 @@ impl World {
             .map(|n| n.get())
             .unwrap_or(1)
             .min(CHUNK_WIDTH);
-        let chunk_size = ceil_div(CHUNK_WIDTH, workers);
+        let chunk_size = CHUNK_WIDTH.div_ceil(workers);
 
         thread::scope(|s| {
             let mut remainder: &mut [[[Option<BlockType>; CHUNK_HEIGHT]; CHUNK_WIDTH]] =

@@ -26,8 +26,8 @@ pub struct SimplexNoise {
 
 impl SimplexNoise {
     // Constants for 2D simplex noise
-    const F2: f32 = 0.3660254037844387; // (sqrt(3) - 1) / 2
-    const G2: f32 = 0.21132486540518713; // (3 - sqrt(3)) / 6
+    const F2: f32 = 0.36602542; // (sqrt(3) - 1) / 2
+    const G2: f32 = 0.21132487; // (3 - sqrt(3)) / 6
 
     pub fn new(seed: u64, info: SimplexNoiseInfo) -> Self {
         let mut permutations = [0u8; 512];
@@ -76,7 +76,7 @@ impl SimplexNoise {
         }
 
         if max_value > 0.0 {
-            value = value / max_value;
+            value /= max_value;
         }
 
         value.clamp(-1.0, 1.0)

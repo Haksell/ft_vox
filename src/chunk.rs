@@ -424,7 +424,7 @@ fn uniform(
     let first = blocks[x0][y0][z0];
     (x0..x1)
         .all(|x| (y0..y1).all(|y| (z0..z1).all(|z| blocks[x][y][z] == first)))
-        .then(|| first)
+        .then_some(first)
 }
 
 fn create_face_vertices(face: Face, block: BlockType, pos: &ChunkNodePos) -> [Vertex; 4] {
