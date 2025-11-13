@@ -83,7 +83,7 @@ impl Chunk {
 
     pub fn generate_mesh(&self, adjacent: &AdjacentChunks) -> (Vec<Vertex>, Vec<u16>) {
         let (vertices, indices, _) = self.root.generate_mesh(self, adjacent);
-        return (vertices, indices);
+        (vertices, indices)
     }
 
     fn is_face_visible(&self, pos: &ChunkNodePos, face: Face, adjacent: &AdjacentChunks) -> bool {
@@ -227,7 +227,7 @@ impl ChunkNode {
 
                 for face in FACES {
                     if chunk.is_face_visible(pos, face, adjacent) {
-                        vertices.extend(create_face_vertices(face, *block_type, &pos));
+                        vertices.extend(create_face_vertices(face, *block_type, pos));
                         indices.extend([
                             index_offset,
                             index_offset + 1,
@@ -266,17 +266,17 @@ impl ChunkNode {
             let mid = pos.z0 + sz / 2;
             let a = Box::new(Self::from_region(blocks, ChunkNodePos { z1: mid, ..pos }));
             let b = Box::new(Self::from_region(blocks, ChunkNodePos { z0: mid, ..pos }));
-            return merge_if_same(a, b, SplitDir::TopBottom, pos);
+            merge_if_same(a, b, SplitDir::TopBottom, pos)
         } else if sy >= sx {
             let mid = pos.y0 + sy / 2;
             let a = Box::new(Self::from_region(blocks, ChunkNodePos { y1: mid, ..pos }));
             let b = Box::new(Self::from_region(blocks, ChunkNodePos { y0: mid, ..pos }));
-            return merge_if_same(a, b, SplitDir::FrontBack, pos);
+            merge_if_same(a, b, SplitDir::FrontBack, pos)
         } else {
             let mid = pos.x0 + sx / 2;
             let a = Box::new(Self::from_region(blocks, ChunkNodePos { x1: mid, ..pos }));
             let b = Box::new(Self::from_region(blocks, ChunkNodePos { x0: mid, ..pos }));
-            return merge_if_same(a, b, SplitDir::LeftRight, pos);
+            merge_if_same(a, b, SplitDir::LeftRight, pos)
         }
     }
 

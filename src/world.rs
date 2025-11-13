@@ -759,8 +759,8 @@ impl World {
                                 self.cave_high_noise.noise2d(world_x as f32, world_y as f32) * 23.0
                                     + lerp(57.0, height as f32, 0.3);
 
-                            for z in 0..CHUNK_HEIGHT {
-                                column[z] = if z <= MAGMA_CORE {
+                            for (z, block) in column.iter_mut().enumerate().take(CHUNK_HEIGHT) {
+                                *block = if z <= MAGMA_CORE {
                                     Some(BlockType::Magma)
                                 } else if !biome.is_ocean()
                                     && cave_low < z as f32
@@ -838,6 +838,7 @@ impl World {
     }
 
     // TODO: update DDA to use the tree structure of Chunk
+    #[expect(clippy::collapsible_else_if)]
     pub fn find_block_in_dir(
         &self,
         pos: Vec3,
@@ -938,7 +939,7 @@ impl World {
         chunk.delete_block(block_coords);
         self.deleted_blocks
             .entry(chunk_coords)
-            .or_insert_with(HashSet::new)
+            .or_default()
             .insert(block_coords);
     }
 }

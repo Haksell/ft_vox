@@ -1,5 +1,6 @@
 use glam::Vec3;
 
+#[expect(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone)]
 pub struct AABB {
     pub min: Vec3,
