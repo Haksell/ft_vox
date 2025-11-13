@@ -339,7 +339,9 @@ impl ChunkNode {
 
     fn fill_blocks(&self, blocks: &mut Blocks) {
         match self {
-            ChunkNode::Leaf(block, pos) => {
+            ChunkNode::Leaf(block, pos) =>
+            {
+                #[expect(clippy::needless_range_loop)]
                 for x in pos.x0..pos.x1 {
                     for y in pos.y0..pos.y1 {
                         for z in pos.z0..pos.z1 {
