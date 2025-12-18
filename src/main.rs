@@ -17,7 +17,7 @@ mod world;
 
 use {
     crate::app::Application,
-    clap::{arg, command, Parser},
+    clap::Parser,
     winit::event_loop::{ControlFlow, EventLoop},
 };
 
