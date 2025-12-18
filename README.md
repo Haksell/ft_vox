@@ -30,6 +30,7 @@
 - black holes (it’s already raymarching)
 - raytraced audio (or raymarched if it makes sense)
 - malbolge interpreter with voxels (liam tkt)
+- randomize texture orientation
 
 ## mandatory
 
