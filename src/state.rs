@@ -1,13 +1,13 @@
 use {
     crate::{
+        Args,
         aabb::AABB,
-        camera::{camera_far, Camera, CameraController, CameraUniform, CAMERA_NEAR},
+        camera::{CAMERA_NEAR, Camera, CameraController, CameraUniform, camera_far},
         chunk::CHUNK_WIDTH,
-        coords::{camera_to_chunk_coords, chunk_distance, ChunkCoords},
+        coords::{ChunkCoords, camera_to_chunk_coords, chunk_distance},
         texture::Texture,
         vertex::Vertex,
-        world::{World, MAX_DELETE_DISTANCE},
-        Args,
+        world::{MAX_DELETE_DISTANCE, World},
     },
     glam::Vec3,
     std::{
@@ -15,10 +15,10 @@ use {
         sync::Arc,
         time::Duration,
     },
-    wgpu::util::DeviceExt as _,
+    wgpu::{ExperimentalFeatures, util::DeviceExt as _},
     wgpu_text::{
-        glyph_brush::{ab_glyph::FontRef, HorizontalAlign, Layout, Section, Text, VerticalAlign},
         BrushBuilder, TextBrush,
+        glyph_brush::{HorizontalAlign, Layout, Section, Text, VerticalAlign, ab_glyph::FontRef},
     },
     winit::{dpi::PhysicalSize, window::Window},
 };
@@ -116,6 +116,7 @@ impl State {
                 label: None,
                 memory_hints: Default::default(),
                 trace: wgpu::Trace::Off,
+                experimental_features: ExperimentalFeatures::disabled(),
             })
             .await
             .unwrap();
