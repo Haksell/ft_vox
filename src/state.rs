@@ -88,26 +88,24 @@ impl State {
 
         let surface = instance.create_surface(window).unwrap();
 
-        // TODO: make the code cleaner
-        let mut adapter = instance
+        let adapter = match instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 compatible_surface: Some(&surface),
                 force_fallback_adapter: false,
             })
-            .await;
-
-        if adapter.is_err() {
-            adapter = instance
+            .await
+        {
+            Ok(adapter) => adapter,
+            Err(_) => instance
                 .request_adapter(&wgpu::RequestAdapterOptions {
                     power_preference: wgpu::PowerPreference::default(),
                     compatible_surface: Some(&surface),
                     force_fallback_adapter: true,
                 })
-                .await;
-        }
-
-        let adapter = adapter.expect("No suitable GPU adapters found on the system!");
+                .await
+                .expect("No suitable GPU adapters found on the system!"),
+        };
 
         let (device, queue) = adapter
             .request_device(&wgpu::DeviceDescriptor {
