@@ -248,7 +248,7 @@ impl State {
                 &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("voxels_pipeline_layout"),
                     bind_group_layouts: &[&texture_bind_group_layout, &camera_bind_group_layout],
-                    push_constant_ranges: &[],
+                    immediate_size: 0,
                 }),
             ),
             vertex: wgpu::VertexState {
@@ -288,7 +288,7 @@ impl State {
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
@@ -324,7 +324,7 @@ impl State {
                 &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("skybox_pipeline_layout"),
                     bind_group_layouts: &[&texture_bind_group_layout, &camera_bind_group_layout],
-                    push_constant_ranges: &[],
+                    immediate_size: 0,
                 }),
             ),
             vertex: wgpu::VertexState {
@@ -349,7 +349,7 @@ impl State {
             },
             depth_stencil: None, // infinite depth
             multisample: wgpu::MultisampleState::default(),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
@@ -396,7 +396,7 @@ impl State {
                 &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("crosshair_pipeline_layout"),
                     bind_group_layouts: &[&crosshair_bgl],
-                    push_constant_ranges: &[],
+                    immediate_size: 0,
                 }),
             ),
             vertex: wgpu::VertexState {
@@ -418,8 +418,8 @@ impl State {
             primitive: wgpu::PrimitiveState::default(),
             depth_stencil: None, // overlay = no depth
             multisample: wgpu::MultisampleState::default(),
-            multiview: None,
             cache: None,
+            multiview_mask: None,
         });
 
         // === FPS ===
@@ -610,6 +610,7 @@ impl State {
                 depth_stencil_attachment: None,
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
 
             skybox_pass.set_pipeline(&state.skybox_pipeline);
@@ -644,6 +645,7 @@ impl State {
                 }),
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
 
             voxels_pass.set_pipeline(&state.voxels_pipeline);
@@ -696,6 +698,7 @@ impl State {
                 depth_stencil_attachment: None,
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
 
             if state.show_fps {
