@@ -3,10 +3,10 @@ use {
         biome::BiomeType,
         block::BlockType,
         camera::Camera,
-        chunk::{AdjacentChunks, Chunk, CHUNK_HEIGHT, CHUNK_WIDTH},
+        chunk::{AdjacentChunks, CHUNK_HEIGHT, CHUNK_WIDTH, Chunk},
         coords::{
-            camera_to_world_coords, chunk_distance, chunk_distance_squared, split_coords,
-            BlockCoords, ChunkCoords, WorldCoords,
+            BlockCoords, ChunkCoords, WorldCoords, camera_to_world_coords, chunk_distance,
+            chunk_distance_squared, split_coords,
         },
         noise::{SimplexNoise, SimplexNoiseInfo},
         spline::{Spline, SplinePoint},
@@ -833,7 +833,6 @@ impl World {
     }
 
     // TODO: update DDA to use the tree structure of Chunk
-    #[expect(clippy::collapsible_else_if)]
     pub fn find_block_in_dir(
         &self,
         pos: Vec3,
