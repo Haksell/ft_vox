@@ -73,7 +73,7 @@ pub struct State {
 
     crosshair_pipeline: wgpu::RenderPipeline,
     crosshair_bind_group: wgpu::BindGroup,
-    crosshair_uniform: wgpu::Buffer,
+    crosshair_buffer: wgpu::Buffer,
 }
 
 impl State {
@@ -347,7 +347,7 @@ impl State {
         });
 
         // === CROSSHAIR ===
-        let crosshair_uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let crosshair_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("crosshair_uniform"),
             contents: bytemuck::bytes_of(&CrosshairUniform {
                 center: [center.width as f32, center.height as f32],
@@ -376,7 +376,7 @@ impl State {
             layout: &crosshair_bgl,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: crosshair_uniform.as_entire_binding(),
+                resource: crosshair_buffer.as_entire_binding(),
             }],
         });
 
@@ -447,7 +447,7 @@ impl State {
             is_crosshair_active: false,
             crosshair_pipeline,
             crosshair_bind_group,
-            crosshair_uniform,
+            crosshair_buffer,
         }
     }
 
@@ -562,7 +562,7 @@ impl State {
             bytemuck::bytes_of(&CameraUniform::new(&self.camera)),
         );
         self.queue.write_buffer(
-            &self.crosshair_uniform,
+            &self.crosshair_buffer,
             0,
             bytemuck::bytes_of(&CrosshairUniform {
                 center: [self.center.width as f32, self.center.height as f32],
