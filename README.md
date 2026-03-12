@@ -104,15 +104,12 @@
 - [x] you can use a library to load 3d objects and pictures (image)
 - [x] you can use a windowing library (winit)
 - [x] you can use a mathematics library for your calculations (glam)
-- [x] using pre-built libraries for terrain or biome generation is strictly forbidden. you
-must implement everything from scratch
+- [x] using pre-built libraries for terrain or biome generation is strictly forbidden. you must implement everything from scratch
 - [ ] the render should always be smooth with a minimum of 60 fps
 - [ ] any crash (uncaught exception, segfault, abort ...) will disqualify you
 - [ ] your program must be able to run for hours without eating the whole memory or slowing down. manage your ram as well as vram very carefully
-- [ ] your program must run at 1080p or higher. reducing the framebuffer resolution is
-not allowed
-- [ ] if your assets exceed 42 mb, you must provide a script to download or manually copy
-them
+- [ ] your program must run at 1080p or higher. reducing the framebuffer resolution is not allowed
+- [ ] if your assets exceed 42 mb, you must provide a script to download or manually copy them
 - [ ] camera speeds should be 1.0 (walking), 2.0 (sprinting) and 20.0 (flying)
 - [ ] ctrl+f todo
 - [ ] no warnings
