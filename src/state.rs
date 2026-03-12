@@ -411,8 +411,8 @@ impl State {
             primitive: wgpu::PrimitiveState::default(),
             depth_stencil: None, // overlay = no depth
             multisample: wgpu::MultisampleState::default(),
-            cache: None,
             multiview_mask: None,
+            cache: None,
         });
 
         // === FPS ===
@@ -740,7 +740,7 @@ impl State {
         render_voxels(self, &mut encoder, &texture_view);
         render_overlay(self, &mut encoder, &texture_view);
 
-        self.queue.submit(std::iter::once(encoder.finish()));
+        self.queue.submit([encoder.finish()]);
         output.present();
         Ok(())
     }
