@@ -559,7 +559,7 @@ impl State {
         self.queue.write_buffer(
             &self.camera_buffer,
             0,
-            bytemuck::cast_slice(&[CameraUniform::new(&self.camera)]),
+            bytemuck::bytes_of(&CameraUniform::new(&self.camera)),
         );
         self.queue.write_buffer(
             &self.crosshair_uniform,
