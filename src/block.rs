@@ -18,60 +18,60 @@ pub enum BlockType {
 }
 
 impl BlockType {
-    pub fn atlas_offset_top(&self) -> [u32; 2] {
+    pub const fn atlas_offset_top(&self) -> [u32; 2] {
         match self {
-            BlockType::Basalt => [12, 6],
-            BlockType::Dirt => [25, 2],
-            BlockType::EmeraldOre => [23, 12],
-            BlockType::GoldOre => [23, 13],
-            BlockType::Grass => [31, 2],
-            BlockType::Ice => [4, 22],
-            BlockType::Magma => [24, 26],
-            BlockType::RedSand => [29, 25],
-            BlockType::RedStone => [24, 0],
-            BlockType::Sand => [6, 27],
-            BlockType::Snow => [19, 24],
-            BlockType::Stone => [30, 29],
-            BlockType::WarpedNylium => [33, 20],
-            BlockType::Water => [6, 4],
+            Self::Basalt => [12, 6],
+            Self::Dirt => [25, 2],
+            Self::EmeraldOre => [23, 12],
+            Self::GoldOre => [23, 13],
+            Self::Grass => [31, 2],
+            Self::Ice => [4, 22],
+            Self::Magma => [24, 26],
+            Self::RedSand => [29, 25],
+            Self::RedStone => [24, 0],
+            Self::Sand => [6, 27],
+            Self::Snow => [19, 24],
+            Self::Stone => [30, 29],
+            Self::WarpedNylium => [33, 20],
+            Self::Water => [6, 4],
         }
     }
 
     pub fn atlas_offset_side(&self) -> [u32; 2] {
         match self {
-            BlockType::Basalt => [12, 5],
-            BlockType::Dirt => [25, 2],
-            BlockType::EmeraldOre => [23, 12],
-            BlockType::GoldOre => [23, 13],
-            BlockType::Grass => [30, 15],
-            BlockType::Ice => [4, 22],
-            BlockType::Magma => [24, 26],
-            BlockType::Sand => [6, 27],
-            BlockType::Snow => [31, 1],
-            BlockType::Stone => [30, 29],
-            BlockType::RedSand => [28, 25],
-            BlockType::RedStone => [24, 0],
-            BlockType::WarpedNylium => [33, 21],
-            BlockType::Water => [6, 4],
+            Self::Basalt => [12, 5],
+            Self::Dirt => [25, 2],
+            Self::EmeraldOre => [23, 12],
+            Self::GoldOre => [23, 13],
+            Self::Grass => [30, 15],
+            Self::Ice => [4, 22],
+            Self::Magma => [24, 26],
+            Self::Sand => [6, 27],
+            Self::Snow => [31, 1],
+            Self::Stone => [30, 29],
+            Self::RedSand => [28, 25],
+            Self::RedStone => [24, 0],
+            Self::WarpedNylium => [33, 21],
+            Self::Water => [6, 4],
         }
     }
 
     pub fn atlas_offset_bottom(&self) -> [u32; 2] {
         match self {
-            BlockType::Basalt => [12, 6],
-            BlockType::Dirt => [25, 2],
-            BlockType::EmeraldOre => [23, 12],
-            BlockType::GoldOre => [23, 13],
-            BlockType::Grass => [25, 2],
-            BlockType::Ice => [4, 22],
-            BlockType::Magma => [24, 26],
-            BlockType::RedSand => [27, 25],
-            BlockType::RedStone => [24, 0],
-            BlockType::Sand => [6, 27],
-            BlockType::Snow => [25, 2],
-            BlockType::Stone => [30, 29],
-            BlockType::WarpedNylium => [25, 20],
-            BlockType::Water => [6, 4],
+            Self::Basalt => [12, 6],
+            Self::Dirt => [25, 2],
+            Self::EmeraldOre => [23, 12],
+            Self::GoldOre => [23, 13],
+            Self::Grass => [25, 2],
+            Self::Ice => [4, 22],
+            Self::Magma => [24, 26],
+            Self::RedSand => [27, 25],
+            Self::RedStone => [24, 0],
+            Self::Sand => [6, 27],
+            Self::Snow => [25, 2],
+            Self::Stone => [30, 29],
+            Self::WarpedNylium => [25, 20],
+            Self::Water => [6, 4],
         }
     }
 }

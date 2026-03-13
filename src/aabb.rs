@@ -8,7 +8,7 @@ pub struct AABB {
 }
 
 impl AABB {
-    pub fn new(min: Vec3, max: Vec3) -> Self {
+    pub const fn new(min: Vec3, max: Vec3) -> Self {
         Self { min, max }
     }
 

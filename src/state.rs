@@ -202,7 +202,7 @@ impl State {
             Vec3::new(0.0, 0.0, 160.0),
             Vec3::new(0.0, 0.0, 1.0),
             config.width as f32 / config.height as f32,
-            (80.0_f32).to_radians(),
+            (80f32).to_radians(),
             CAMERA_NEAR,
             camera_far(),
         );

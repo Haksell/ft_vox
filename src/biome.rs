@@ -52,39 +52,39 @@ pub enum BiomeType {
     SavannaPlateau,
 }
 impl BiomeType {
-    pub fn get_surface_block(&self) -> BlockType {
+    pub const fn get_surface_block(&self) -> BlockType {
         match self {
-            BiomeType::Desert => BlockType::Sand,
-            BiomeType::Plains => BlockType::Grass,
-            BiomeType::Forest => BlockType::Grass,
-            BiomeType::Taiga => BlockType::Snow,
-            BiomeType::Swamp => BlockType::Dirt,
-            BiomeType::Beach => BlockType::Sand,
-            BiomeType::River => BlockType::Sand,
-            BiomeType::FrozenRiver => BlockType::Snow,
-            BiomeType::SnowyBeach => BlockType::Sand,
-            BiomeType::SnowyPlains => BlockType::Snow,
-            BiomeType::SnowyTaiga => BlockType::Snow,
-            BiomeType::SnowySlopes => BlockType::Snow,
-            BiomeType::SunflowerForest => BlockType::Grass,
-            BiomeType::Ocean => BlockType::Sand,
-            BiomeType::ColdOcean => BlockType::Sand,
-            BiomeType::FrozenOcean => BlockType::Sand,
-            BiomeType::WarmOcean => BlockType::Sand,
-            BiomeType::DeepOcean => BlockType::Sand,
-            BiomeType::DeepColdOcean => BlockType::Sand,
-            BiomeType::DeepFrozenOcean => BlockType::Sand,
-            BiomeType::IceSpikes => BlockType::Ice,
-            BiomeType::ErodedBadlands => BlockType::RedSand,
-            BiomeType::Badlands => BlockType::RedSand,
-            BiomeType::StonyPeaks => BlockType::Stone,
-            BiomeType::StonyShore => BlockType::Stone,
-            BiomeType::Mangrove => BlockType::WarpedNylium,
+            Self::Desert => BlockType::Sand,
+            Self::Plains => BlockType::Grass,
+            Self::Forest => BlockType::Grass,
+            Self::Taiga => BlockType::Snow,
+            Self::Swamp => BlockType::Dirt,
+            Self::Beach => BlockType::Sand,
+            Self::River => BlockType::Sand,
+            Self::FrozenRiver => BlockType::Snow,
+            Self::SnowyBeach => BlockType::Sand,
+            Self::SnowyPlains => BlockType::Snow,
+            Self::SnowyTaiga => BlockType::Snow,
+            Self::SnowySlopes => BlockType::Snow,
+            Self::SunflowerForest => BlockType::Grass,
+            Self::Ocean => BlockType::Sand,
+            Self::ColdOcean => BlockType::Sand,
+            Self::FrozenOcean => BlockType::Sand,
+            Self::WarmOcean => BlockType::Sand,
+            Self::DeepOcean => BlockType::Sand,
+            Self::DeepColdOcean => BlockType::Sand,
+            Self::DeepFrozenOcean => BlockType::Sand,
+            Self::IceSpikes => BlockType::Ice,
+            Self::ErodedBadlands => BlockType::RedSand,
+            Self::Badlands => BlockType::RedSand,
+            Self::StonyPeaks => BlockType::Stone,
+            Self::StonyShore => BlockType::Stone,
+            Self::Mangrove => BlockType::WarpedNylium,
             _ => BlockType::Grass,
         }
     }
 
-    pub fn is_ocean(&self) -> bool {
+    pub const fn is_ocean(&self) -> bool {
         matches!(
             self,
             Self::FrozenOcean

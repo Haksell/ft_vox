@@ -18,7 +18,7 @@ pub fn prf_i32x3_mod((x, y, z): WorldCoords, m: u64) -> u64 {
     debug_assert!(m > 0);
 
     #[inline]
-    fn mix64(mut x: u64) -> u64 {
+    const fn mix64(mut x: u64) -> u64 {
         x ^= x >> 30;
         x = x.wrapping_mul(0xBF58_476D_1CE4_E5B9);
         x ^= x >> 27;

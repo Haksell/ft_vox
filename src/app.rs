@@ -1,10 +1,10 @@
 use {
     crate::{
-        chunk::CHUNK_WIDTH,
-        coords::{camera_to_chunk_coords, split_coords, ChunkCoords},
-        state::{State, MEMORY_DISTANCE},
-        world::World,
         Args,
+        chunk::CHUNK_WIDTH,
+        coords::{ChunkCoords, camera_to_chunk_coords, split_coords},
+        state::{MEMORY_DISTANCE, State},
+        world::World,
     },
     std::{
         sync::Arc,
@@ -65,7 +65,7 @@ impl ApplicationHandler for Application {
                 .unwrap(),
         );
         window.set_cursor_visible(false);
-        let state = pollster::block_on(State::new(window.clone(), &self.args));
+        let state = pollster::block_on(State::new(Arc::clone(&window), &self.args));
 
         self.window = Some(window);
         self.state = Some(state);
@@ -94,7 +94,7 @@ impl ApplicationHandler for Application {
                         if let Some((world_coords, block)) =
                             self.world.delete_center_block(&state.camera)
                         {
-                            log::debug!("Deleted {:?}", block);
+                            log::debug!("Deleted {block:?}");
 
                             let ((cx, cy), (bx, by, _)) = split_coords(world_coords).unwrap();
 
@@ -120,6 +120,7 @@ impl ApplicationHandler for Application {
         }
     }
 
+    #[expect(clippy::too_many_lines)]
     fn window_event(
         &mut self,
         event_loop: &ActiveEventLoop,

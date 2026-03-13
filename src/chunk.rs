@@ -3,7 +3,7 @@ use {
         aabb::AABB,
         block::BlockType,
         coords::{BlockCoords, ChunkCoords},
-        face::{Face, FACES},
+        face::{FACES, Face},
         vertex::Vertex,
     },
     glam::Vec3,

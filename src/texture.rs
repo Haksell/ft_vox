@@ -1,4 +1,4 @@
-use image::GenericImageView;
+use image::GenericImageView as _;
 
 pub struct Texture {
     pub view: wgpu::TextureView,
@@ -53,7 +53,7 @@ impl Texture {
         label: &str,
     ) -> Result<Self, String> {
         let img = image::load_from_memory(bytes).map_err(|e| e.to_string())?;
-        Self::from_image(device, queue, &img, label)
+        Ok(Self::from_image(device, queue, &img, label))
     }
 
     pub fn from_image(
@@ -61,7 +61,7 @@ impl Texture {
         queue: &wgpu::Queue,
         img: &image::DynamicImage,
         label: &str,
-    ) -> Result<Self, String> {
+    ) -> Self {
         let rgba = img.to_rgba8();
         let (width, height) = img.dimensions();
 
@@ -110,6 +110,6 @@ impl Texture {
             ..Default::default()
         });
 
-        Ok(Self { view, sampler })
+        Self { view, sampler }
     }
 }

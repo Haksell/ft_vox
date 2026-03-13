@@ -1,3 +1,5 @@
+#![expect(clippy::unused_self)] // FIXME
+
 use {
     crate::{
         biome::BiomeType,
@@ -17,6 +19,7 @@ use {
     glam::Vec3,
     std::{
         collections::{HashMap, HashSet},
+        num::NonZero,
         thread,
     },
 };
@@ -160,7 +163,7 @@ impl World {
             self.chunks.insert(chunk_coords, chunk);
         }
 
-        self.chunks.get(&chunk_coords).unwrap()
+        &self.chunks[&chunk_coords]
     }
 
     pub fn discard_far_chunks(&mut self, current_chunk: ChunkCoords) {
@@ -230,6 +233,8 @@ impl World {
         spline.sample(peak_and_valley)
     }
 
+    #[expect(clippy::cognitive_complexity)]
+    #[expect(clippy::too_many_lines)]
     pub fn determine_biome(&self, values: &NoiseValues) -> BiomeType {
         let temperature_level = match values.temperature {
             x if (-1.0..-0.45).contains(&x) => 0,
@@ -299,318 +304,154 @@ impl World {
             (0..=1, 4, _, _, _, _) => BiomeType::WarmOcean,
 
             // Valleys Biomes
-            (2, 0, _, _, 0, _) => BiomeType::FrozenRiver,
-            (2, _, _, _, 0, _) => BiomeType::River,
-            (3, 0, _, 0..=5, 0, _) => BiomeType::FrozenRiver,
-            (3, _, _, 0..=5, 0, _) => BiomeType::River,
-            (3..=5, 0, _, 6, 0, _) => BiomeType::FrozenRiver,
-            (3..=5, 1..=2, _, 6, 0, _) => BiomeType::Swamp,
-            (3..=5, 3..=4, _, 6, 0, _) => BiomeType::Mangrove,
-            (4..=5, 0..=3, _, 0..=5, 0, _) => {
+            (2, 0, _, _, 0, _) | (3, 0, _, 0..=5, 0, _) | (3..=5, 0, _, 6, 0, _) => {
+                BiomeType::FrozenRiver
+            }
+            (2, _, _, _, 0, _) | (3, _, _, 0..=5, 0, _) => BiomeType::River,
+            (3..=5, 1..=2, _, 6, 0..=2, _) => BiomeType::Swamp,
+            (3..=5, 3..=4, _, 6, 0..=2, _) => BiomeType::Mangrove,
+            (4..=5, 0..=3, _, 0..=5, 0, _)
+            | (2, 0..=1, _, 5, 1 | 2, 1)
+            | (2, _, 4, 5, 1 | 2, 1)
+            | (3, 0..=3, _, 0..=1, 1, _)
+            | (3, _, _, 2..=4, 1..=3, _)
+            | (3, 0..=1, _, 5, 1, _)
+            | (3, _, 4, 5, 1, _)
+            | (3, _, _, 5, 1, 0)
+            | (3..=5, 0, _, 6, 1 | 2, _)
+            | (4..=5, 1..=3, _, 0..=1, 1, _)
+            | (4..=5, _, _, 4..=5, 1, _)
+            | (2, _, _, 3, 2, _)
+            | (2, _, _, 4 | 6, 2, 1)
+            | (3..=4, 1..=3, _, 1, 2, _)
+            | (4, 0..=3, _, 2..=3, 2, _)
+            | (5, 0..=3, _, 3, 2, _)
+            | (4..=5, _, _, 4, 2 | 4, _)
+            | (3, 0..=1, _, 5, 2, 0)
+            | (3, _, 4, 5, 2, 0)
+            | (2, _, _, 0..=4, 3, _)
+            | (3, 1..=3, _, 1, 3, _)
+            | (2..=3, 0..=1, _, 5, 3, _)
+            | (2..=3, _, 4, 5, 3, _)
+            | (2..=3, _, _, 5, 3, 0)
+            | (4, 0..=3, _, 3, 3, _)
+            | (5, _, _, 4, 3, _)
+            | (2..=5, _, _, 6, 3 | 4, _)
+            | (2..=3, 1..=3, _, 1, 4, _)
+            | (2..=3, _, _, 2..=4, 4, _)
+            | (4, 0..=3, _, 3..=4, 4, _) => {
                 self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
             }
-            (4..=5, 4, _, 0..=5, 0, _) => {
-                self.determine_badlands_biome(humidity_level, weirdness_level)
-            }
+            (4..=5, 4, _, 0..=5, 0, _)
+            | (3..=5, 4, _, 0..=1, 1, _)
+            | (4..=5, 0..=4, _, 2..=3, 1, _)
+            | (3..=4, 4, _, 1, 2, _)
+            | (4, 4, _, 2..=3, 2, _)
+            | (4..=5, 4, _, 0, 3, _)
+            | (2..=3, 4, _, 0 | 1, 4, _)
+            | (4..=5, 4, _, 0..=1, 4, _)
+            | (4, 4, _, 3..=4, 4, _)
+            | (5, 4, _, 3, 2, _)
+            | (3, 4, _, 1, 3, _)
+            | (4, 4, _, 3, 3, _) => self.determine_badlands_biome(humidity_level, weirdness_level),
 
             // Low Biomes
-            (2, _, _, 0..=2, 1, _) => BiomeType::StonyShore,
-            (2, _, _, 3..=4, 1, _) => self.determine_beach_biome(temperature_level),
-            (2, _, _, 5, 1, 0) => self.determine_beach_biome(temperature_level),
-            (2, 0..=1, _, 5, 1, 1) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
+            (2, _, _, 0..=2, 1 | 2, _) => BiomeType::StonyShore,
+            (2, _, _, 3..=4 | 6, 1, _) | (2, _, _, 5, 1 | 2, 0) | (2, _, _, 4 | 6, 2, 0) => {
+                self.determine_beach_biome(temperature_level)
             }
-            (2, _, 4, 5, 1, 1) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
+            (2 | 3, 2..=4, 0..=3, 5, 1 | 2, 1) | (2..=3, 2..=4, 0..=3, 5, 3 | 4, 1) => {
+                BiomeType::WindsweptSavanna
             }
-            (2, 2..=4, 0..=3, 5, 1, 1) => BiomeType::WindsweptSavanna,
-            (2, _, _, 6, 1, _) => self.determine_beach_biome(temperature_level),
-
-            (3, 0..=3, _, 0..=1, 1, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (3, 4, _, 0..=1, 1, _) => {
-                self.determine_badlands_biome(humidity_level, weirdness_level)
-            }
-            (3, _, _, 2..=4, 1, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (3, 0..=1, _, 5, 1, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (3, _, 4, 5, 1, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (3, _, _, 5, 1, 0) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (3, 2..=4, 0..=3, 5, 1, 1) => BiomeType::WindsweptSavanna,
-            (3..=5, 0, _, 6, 1, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (3..=5, 1..=2, _, 6, 1, _) => BiomeType::Swamp,
-            (3..=5, 3..=4, _, 6, 1, _) => BiomeType::Mangrove,
-            (4..=5, 0, 0..=1, 0..=1, 1, _) => BiomeType::SnowySlopes,
-            (4..=5, 0, 2..=4, 0..=1, 1, _) => BiomeType::Grove,
-            (4..=5, 1..=3, _, 0..=1, 1, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (4..=5, 4, _, 0..=1, 1, _) => {
-                self.determine_badlands_biome(humidity_level, weirdness_level)
-            }
-            (4..=5, 0..=3, _, 2..=3, 1, _) => {
-                self.determine_badlands_biome(humidity_level, weirdness_level)
-            }
-            (4..=5, 4, _, 2..=3, 1, _) => {
-                self.determine_badlands_biome(humidity_level, weirdness_level)
-            }
-            (4..=5, _, _, 4..=5, 1, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-
+            (4..=5, 0, 0..=1, 0..=1, 1, _)
+            | (3..=5, 0..=2, 0..=1, 0, 2, _)
+            | (3..=5, 0, 0..=1, 1, 2, _)
+            | (3, 0..=2, 0..=1, 0, 3, _)
+            | (3, 0, 0..=1, 1, 3, _)
+            | (4..=5, 0..=2, 0..=1, 1, 3, _)
+            | (2..=3, 0, 0..=1, 1, 4, _) => BiomeType::SnowySlopes,
+            (4..=5, 0, 2..=4, 0..=1, 1, _)
+            | (3..=5, 0..=2, 2..=4, 0, 2, _)
+            | (3..=5, 0, 2..=4, 1, 2, _)
+            | (3, 0..=2, 2..=4, 0, 3, _)
+            | (3, 0, 2..=4, 1, 3, _)
+            | (4..=5, 0..=2, 2..=4, 1, 3, _)
+            | (2..=3, 0, 2..=4, 1, 4, _) => BiomeType::Grove,
             // Mid Biomes
-            (2, _, _, 0..=2, 2, _) => BiomeType::StonyShore,
-            (2, _, _, 3, 2, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (2, _, _, 4, 2, 0) => self.determine_beach_biome(temperature_level),
-            (2, _, _, 4, 2, 1) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (2, _, _, 5, 2, 0) => self.determine_beach_biome(temperature_level),
-            (2, 0..=1, _, 5, 2, 1) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (2, _, 4, 5, 2, 1) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (2, 2..=4, 0..=3, 5, 2, 1) => BiomeType::WindsweptSavanna,
-            (2, _, _, 6, 2, 0) => self.determine_beach_biome(temperature_level),
-            (2, _, _, 6, 2, 1) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (3..=5, 0..=2, 0..=1, 0, 2, _) => BiomeType::SnowySlopes,
-            (3..=5, 0..=2, 2..=4, 0, 2, _) => BiomeType::Grove,
-            (3..=5, 3..=4, _, 0, 2, _) => {
+            (3..=5, 3..=4, _, 0, 2, _)
+            | (5, 1..=4, _, 1, 2, _)
+            | (5, _, _, 2, 2, _)
+            | (3, 3..=4, _, 0, 3, _)
+            | (4..=5, 3..=4, _, 1, 3, _)
+            | (4, _, _, 2, 3 | 4, _)
+            | (5, _, _, 2..=3, 3, _)
+            | (5, _, _, 2..=4, 4, _) => {
                 self.determine_plateau_biome(temperature_level, humidity_level, weirdness_level)
             }
-            (3..=4, 0, 0..=1, 1, 2, _) => BiomeType::SnowySlopes,
-            (3..=4, 0, 2..=4, 1, 2, _) => BiomeType::Grove,
-            (3..=4, 1..=3, _, 1, 2, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (3..=4, 4, _, 1, 2, _) => {
-                self.determine_badlands_biome(humidity_level, weirdness_level)
-            }
-            (5, 0, 0..=1, 1, 2, _) => BiomeType::SnowySlopes,
-            (5, 0, 2..=4, 1, 2, _) => BiomeType::Grove,
-            (5, 1..=4, _, 1, 2, _) => {
-                self.determine_plateau_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (3, _, _, 2..=4, 2, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (4, 0..=3, _, 2..=3, 2, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (4, 4, _, 2..=3, 2, _) => {
-                self.determine_badlands_biome(humidity_level, weirdness_level)
-            }
-            (5, _, _, 2, 2, _) => {
-                self.determine_plateau_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (5, 0..=3, _, 3, 2, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (5, 4, _, 3, 2, _) => self.determine_badlands_biome(humidity_level, weirdness_level),
-            (4..=5, _, _, 4, 2, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (3, 0..=1, _, 5, 2, 0) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (3, _, 4, 5, 2, 0) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (3, 2..=4, 0..=3, 5, 2, 1) => BiomeType::WindsweptSavanna,
-            (4..=5, _, _, 5, 2, _) => {
+            (4..=5, _, _, 5, 2..=4, _)
+            | (2..=3, _, _, 5, 4, 0)
+            | (2..=3, 0..=1, _, 5, 4, _)
+            | (2..=3, _, 4, 5, 4, _) => {
                 self.determine_shattered_biome(temperature_level, humidity_level, weirdness_level)
             }
-            (3..=5, 0, _, 6, 2, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (3..=5, 1..=2, _, 6, 2, _) => BiomeType::Swamp,
-            (3..=5, 3..=4, _, 6, 2, _) => BiomeType::Mangrove,
-
             //High Biomes
-            (2, _, _, 0..=4, 3, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
+            (4..=5, 0..=2, _, 0, 3, 0)
+            | (2..=3, 0..=2, _, 0, 4, 0)
+            | (4..=5, 0..=2, _, 0..=1, 4, 0) => BiomeType::JaggedPeaks,
+            (4..=5, 0..=2, _, 0, 3, 1)
+            | (2..=3, 0..=2, _, 0, 4, 1)
+            | (4..=5, 0..=2, _, 0..=1, 4, 1) => BiomeType::FrozenPeaks,
+            (4..=5, 3, _, 0, 3, _) | (2..=3, 3, _, 0, 4, _) | (4..=5, 3, _, 0..=1, 4, _) => {
+                BiomeType::StonyPeaks
             }
-            (3, 0..=2, 0..=1, 0, 3, _) => BiomeType::SnowySlopes,
-            (3, 0..=2, 2..=4, 0, 3, _) => BiomeType::Grove,
-            (3, 3..=4, _, 0, 3, _) => {
-                self.determine_plateau_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (3, 0, 0..=1, 1, 3, _) => BiomeType::SnowySlopes,
-            (3, 0, 2..=4, 1, 3, _) => BiomeType::Grove,
-            (3, 1..=3, _, 1, 3, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (3, 4, _, 1, 3, _) => self.determine_badlands_biome(humidity_level, weirdness_level),
-            (3, _, _, 2..=4, 3, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (2..=3, 0..=1, _, 5, 3, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (2..=3, _, 4, 5, 3, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (2..=3, _, _, 5, 3, 0) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (2..=3, 2..=4, 0..=3, 5, 3, 1) => BiomeType::WindsweptSavanna,
-            (4..=5, 0..=2, _, 0, 3, 0) => BiomeType::JaggedPeaks,
-            (4..=5, 0..=2, _, 0, 3, 1) => BiomeType::FrozenPeaks,
-            (4..=5, 3, _, 0, 3, _) => BiomeType::StonyPeaks,
-            (4..=5, 4, _, 0, 3, _) => {
-                self.determine_badlands_biome(humidity_level, weirdness_level)
-            }
-            (4..=5, 0..=2, 0..=1, 1, 3, _) => BiomeType::SnowySlopes,
-            (4..=5, 0..=2, 2..=4, 1, 3, _) => BiomeType::Grove,
-            (4..=5, 3..=4, _, 1, 3, _) => {
-                self.determine_plateau_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (4, _, _, 2, 3, _) => {
-                self.determine_plateau_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (4, 0..=3, _, 3, 3, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (4, 4, _, 3, 3, _) => self.determine_badlands_biome(humidity_level, weirdness_level),
-            (5, _, _, 2..=3, 3, _) => {
-                self.determine_plateau_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (5, _, _, 4, 3, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (4..=5, _, _, 5, 3, _) => {
-                self.determine_shattered_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (2..=5, _, _, 6, 3, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-
             // Peaks Biomes
-            (2..=3, 0..=2, _, 0, 4, 0) => BiomeType::JaggedPeaks,
-            (2..=3, 0..=2, _, 0, 4, 1) => BiomeType::FrozenPeaks,
-            (2..=3, 3, _, 0, 4, _) => BiomeType::StonyPeaks,
-            (2..=3, 4, _, 0, 4, _) => {
-                self.determine_badlands_biome(humidity_level, weirdness_level)
-            }
-            (2..=3, 0, 0..=1, 1, 4, _) => BiomeType::SnowySlopes,
-            (2..=3, 0, 2..=4, 1, 4, _) => BiomeType::Grove,
-            (2..=3, 1..=3, _, 1, 4, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (2..=3, 4, _, 1, 4, _) => {
-                self.determine_badlands_biome(humidity_level, weirdness_level)
-            }
-            (2..=3, _, _, 2..=4, 4, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (2..=3, _, _, 5, 4, 0) => {
-                self.determine_shattered_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (2..=3, 0..=1, _, 5, 4, _) => {
-                self.determine_shattered_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (2..=3, _, 4, 5, 4, _) => {
-                self.determine_shattered_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (2..=3, 2..=4, 0..=3, 5, 4, 1) => BiomeType::WindsweptSavanna,
-            (4..=5, 0..=2, _, 0..=1, 4, 0) => BiomeType::JaggedPeaks,
-            (4..=5, 0..=2, _, 0..=1, 4, 1) => BiomeType::FrozenPeaks,
-            (4..=5, 3, _, 0..=1, 4, _) => BiomeType::StonyPeaks,
-            (4..=5, 4, _, 0..=1, 4, _) => {
-                self.determine_badlands_biome(humidity_level, weirdness_level)
-            }
-            (4, _, _, 2, 4, _) => {
-                self.determine_plateau_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (4, 0..=3, _, 3..=4, 4, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (4, 4, _, 3..=4, 4, _) => {
-                self.determine_badlands_biome(humidity_level, weirdness_level)
-            }
-            (5, _, _, 2..=4, 4, _) => {
-                self.determine_plateau_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (4..=5, _, _, 4, 4, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (4..=5, _, _, 5, 4, _) => {
-                self.determine_shattered_biome(temperature_level, humidity_level, weirdness_level)
-            }
-            (2..=5, _, _, 6, 4, _) => {
-                self.determine_middle_biome(temperature_level, humidity_level, weirdness_level)
-            }
-
             // Default
             _ => BiomeType::Plains,
         }
     }
 
-    fn determine_beach_biome(&self, temperature_level: i32) -> BiomeType {
+    const fn determine_beach_biome(&self, temperature_level: i32) -> BiomeType {
         match temperature_level {
             0 => BiomeType::SnowyBeach,
-            1..=3 => BiomeType::Beach,
             4 => BiomeType::Desert,
             _ => BiomeType::Beach,
         }
     }
 
-    fn determine_badlands_biome(&self, humidity_level: i32, weirdness_level: i32) -> BiomeType {
+    const fn determine_badlands_biome(
+        &self,
+        humidity_level: i32,
+        weirdness_level: i32,
+    ) -> BiomeType {
         match (humidity_level, weirdness_level) {
-            (0..=1, 0) => BiomeType::Badlands,
             (0..=1, 1) => BiomeType::ErodedBadlands,
-            (2, _) => BiomeType::Badlands,
+            (0..=1, 0) | (2, _) => BiomeType::Badlands,
             _ => BiomeType::WoodedBadlands,
         }
     }
 
-    fn determine_middle_biome(
+    const fn determine_middle_biome(
         &self,
         temperature_level: i32,
         humidity_level: i32,
         weirdness_level: i32,
     ) -> BiomeType {
         match (temperature_level, humidity_level, weirdness_level) {
-            (0, 0, 0) => BiomeType::SnowyPlains,
             (0, 0, 1) => BiomeType::IceSpikes,
-            (0, 1, _) => BiomeType::SnowyPlains,
-            (0, 2, 0) => BiomeType::SnowyPlains,
-            (0, 2, 1) => BiomeType::SnowyTaiga,
-            (0, 3, _) => BiomeType::SnowyTaiga,
-            (0, 4, _) => BiomeType::Taiga,
-            (1, 0..=1, _) => BiomeType::Plains,
-            (1, 3, _) => BiomeType::Taiga,
+            (0, 0 | 2, 0) | (0, 1, _) => BiomeType::SnowyPlains,
+            (0, 2, 1) | (0, 3, _) => BiomeType::SnowyTaiga,
+            (0, 4, _) | (1, 3, _) => BiomeType::Taiga,
             (1, 4, 0) => BiomeType::OldGrowthSpruceTaiga,
             (1, 4, 1) => BiomeType::OldGrowthPineTaiga,
             (2, 0, 0) => BiomeType::FlowerForest,
             (2, 0, 1) => BiomeType::SunflowerForest,
-            (2, 1, _) => BiomeType::Plains,
-            (1..=2, 2, _) => BiomeType::Forest,
+            (1..=2, 2, _) | (3, 2, 0) => BiomeType::Forest,
             (2, 3, 0) => BiomeType::BirchForest,
             (2, 3, 1) => BiomeType::OldGrowthBirchForest,
             (2, 4, _) => BiomeType::DarkForest,
             (3, 0..=1, _) => BiomeType::Savanna,
-            (3, 2, 0) => BiomeType::Forest,
-            (3, 2, 1) => BiomeType::Plains,
-            (3, 3, 0) => BiomeType::Jungle,
+            (3, 3 | 4, 0) => BiomeType::Jungle,
             (3, 3, 1) => BiomeType::SparseJungle,
-            (3, 4, 0) => BiomeType::Jungle,
             (3, 4, 1) => BiomeType::BambooJungle,
             (4, _, _) => BiomeType::Desert,
 
@@ -618,46 +459,35 @@ impl World {
         }
     }
 
-    fn determine_plateau_biome(
+    const fn determine_plateau_biome(
         &self,
         temperature_level: i32,
         humidity_level: i32,
         weirdness_level: i32,
     ) -> BiomeType {
         match (temperature_level, humidity_level, weirdness_level) {
-            (0, 0, 0) => BiomeType::SnowyPlains,
             (0, 0, 1) => BiomeType::IceSpikes,
-            (0, 1..=2, _) => BiomeType::SnowyPlains,
+            (0, 0, 0) | (0, 1..=2, _) => BiomeType::SnowyPlains,
             (0, 3..=4, _) => BiomeType::SnowyTaiga,
-            (1, 0, 0) => BiomeType::Meadow,
-            (1, 0, 1) => BiomeType::CherryGrove,
-            (1, 1, _) => BiomeType::Meadow,
-            (1, 2, 0) => BiomeType::Forest,
-            (1, 2, 1) => BiomeType::Meadow,
+            (1, 0, 0) | (1, 1, _) | (1, 2 | 3, 1) | (2, 0..=3, 0) => BiomeType::Meadow,
+            (1, 0, 1) | (2, 0..=1, 1) => BiomeType::CherryGrove,
+            (1, 2, 0) | (2, 2, 1) | (3, 2..=3, _) => BiomeType::Forest,
             (1, 3, 0) => BiomeType::Taiga,
-            (1, 3, 1) => BiomeType::Meadow,
             (1, 4, 0) => BiomeType::OldGrowthSpruceTaiga,
             (1, 4, 1) => BiomeType::OldGrowthPineTaiga,
-            (2, 0..=1, 0) => BiomeType::Meadow,
-            (2, 0..=1, 1) => BiomeType::CherryGrove,
-            (2, 2, 0) => BiomeType::Meadow,
-            (2, 2, 1) => BiomeType::Forest,
-            (2, 3, 0) => BiomeType::Meadow,
             (2, 3, 1) => BiomeType::BirchForest,
             (2, 4, _) => BiomeType::PaleGarden,
             (3, 0..=1, _) => BiomeType::SavannaPlateau,
-            (3, 2..=3, _) => BiomeType::Forest,
             (3, 4, _) => BiomeType::Jungle,
-            (4, 0..=1, 0) => BiomeType::Badlands,
+            (4, 0..=1, 0) | (4, 2, _) => BiomeType::Badlands,
             (4, 0..=1, 1) => BiomeType::ErodedBadlands,
-            (4, 2, _) => BiomeType::Badlands,
             (4, 3..=4, _) => BiomeType::WoodedBadlands,
 
             _ => BiomeType::Plains,
         }
     }
 
-    fn determine_shattered_biome(
+    const fn determine_shattered_biome(
         &self,
         temperature_level: i32,
         humidity_level: i32,
@@ -665,18 +495,14 @@ impl World {
     ) -> BiomeType {
         match (temperature_level, humidity_level, weirdness_level) {
             (0..=1, 0..=1, _) => BiomeType::WindsweptGravellyHills,
-            (0..=1, 2, _) => BiomeType::WindsweptHills,
-            (2, 0..=2, _) => BiomeType::WindsweptHills,
+            (0..=1, 2, _) | (2, 0..=2, _) => BiomeType::WindsweptHills,
             (0..=2, 3..=4, _) => BiomeType::WindsweptForest,
             (3, 0..=1, _) => BiomeType::Savanna,
             (3, 2, 0) => BiomeType::Forest,
-            (3, 2, 1) => BiomeType::Plains,
-            (3, 3, 0) => BiomeType::Jungle,
+            (3, 3 | 4, 0) => BiomeType::Jungle,
             (3, 3, 1) => BiomeType::SparseJungle,
-            (3, 4, 0) => BiomeType::Jungle,
             (3, 4, 1) => BiomeType::BambooJungle,
             (4, _, _) => BiomeType::Desert,
-
             _ => BiomeType::Plains,
         }
     }
@@ -719,7 +545,7 @@ impl World {
         let mut blocks = [[[None; CHUNK_HEIGHT]; CHUNK_WIDTH]; CHUNK_WIDTH];
 
         let workers = thread::available_parallelism()
-            .map(|n| n.get())
+            .map(NonZero::get)
             .unwrap_or(1)
             .min(CHUNK_WIDTH);
         let chunk_size = CHUNK_WIDTH.div_ceil(workers);
