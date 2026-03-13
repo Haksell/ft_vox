@@ -745,7 +745,7 @@ impl State {
         Ok(())
     }
 
-    pub fn toggle_show_fps(&mut self) {
+    pub const fn toggle_show_fps(&mut self) {
         self.show_fps = !self.show_fps;
     }
 }

@@ -1,9 +1,9 @@
 use {
     crate::{
+        Args,
         chunk::{CHUNK_HEIGHT, CHUNK_WIDTH},
         frustum::Frustum,
         state::RENDER_DISTANCE,
-        Args,
     },
     glam::{Mat4, Vec3, Vec4},
     std::f32::consts::{FRAC_PI_2, SQRT_2},
@@ -96,7 +96,7 @@ impl Camera {
         )
     }
 
-    pub fn projection(&self) -> Mat4 {
+    pub const fn projection(&self) -> Mat4 {
         self.projection
     }
 
@@ -109,7 +109,7 @@ impl Camera {
         .normalize()
     }
 
-    pub fn position(&self) -> Vec3 {
+    pub const fn position(&self) -> Vec3 {
         self.eye
     }
 
@@ -139,7 +139,7 @@ pub struct CameraController {
     mouse_delta: (f32, f32),
 }
 impl CameraController {
-    pub fn new(args: &Args) -> Self {
+    pub const fn new(args: &Args) -> Self {
         Self {
             normal_speed: args.normal_speed,
             boosted_speed: args.boosted_speed,
@@ -161,7 +161,7 @@ impl CameraController {
         self.mouse_delta.1 += delta_y;
     }
 
-    pub fn process_boost(&mut self, is_pressed: bool) {
+    pub const fn process_boost(&mut self, is_pressed: bool) {
         self.is_boosted = is_pressed;
     }
 
@@ -221,7 +221,7 @@ impl CameraController {
     }
 
     #[inline]
-    fn speed(&self) -> f32 {
+    const fn speed(&self) -> f32 {
         if self.is_boosted {
             self.boosted_speed
         } else {

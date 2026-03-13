@@ -3,7 +3,7 @@ use {
         aabb::AABB,
         block::BlockType,
         coords::{BlockCoords, ChunkCoords},
-        face::{FACES, Face},
+        face::Face,
         vertex::Vertex,
     },
     glam::Vec3,
@@ -210,7 +210,7 @@ enum SplitDir {
 
 enum ChunkNode {
     Leaf(Option<BlockType>, ChunkNodePos),
-    Inner(Box<ChunkNode>, Box<ChunkNode>, SplitDir, ChunkNodePos),
+    Inner(Box<Self>, Box<Self>, SplitDir, ChunkNodePos),
 }
 impl ChunkNode {
     fn generate_mesh(
@@ -225,7 +225,7 @@ impl ChunkNode {
                 let mut indices = Vec::new();
                 let mut index_offset = 0;
 
-                for face in FACES {
+                for face in Face::ALL {
                     if chunk.is_face_visible(pos, face, adjacent) {
                         vertices.extend(create_face_vertices(face, *block_type, pos));
                         indices.extend([
@@ -368,7 +368,7 @@ struct ChunkNodePos {
     z1: usize,
 }
 impl ChunkNodePos {
-    fn new(x0: usize, x1: usize, y0: usize, y1: usize, z0: usize, z1: usize) -> Self {
+    const fn new(x0: usize, x1: usize, y0: usize, y1: usize, z0: usize, z1: usize) -> Self {
         Self {
             x0,
             x1,
@@ -380,22 +380,22 @@ impl ChunkNodePos {
     }
 
     #[inline]
-    fn size_x(&self) -> usize {
+    const fn size_x(&self) -> usize {
         self.x1 - self.x0
     }
 
     #[inline]
-    fn size_y(&self) -> usize {
+    const fn size_y(&self) -> usize {
         self.y1 - self.y0
     }
 
     #[inline]
-    fn size_z(&self) -> usize {
+    const fn size_z(&self) -> usize {
         self.z1 - self.z0
     }
 
     #[inline]
-    fn size(&self) -> (usize, usize, usize) {
+    const fn size(&self) -> (usize, usize, usize) {
         (self.size_x(), self.size_y(), self.size_z())
     }
 }
@@ -453,6 +453,6 @@ fn create_face_vertices(face: Face, block: BlockType, pos: &ChunkNodePos) -> [Ve
 }
 
 #[inline]
-fn intersects(a: &ChunkNodePos, b: &ChunkNodePos) -> bool {
+const fn intersects(a: &ChunkNodePos, b: &ChunkNodePos) -> bool {
     a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0 && a.z0 < b.z1 && a.z1 > b.z0
 }

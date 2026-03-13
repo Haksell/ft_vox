@@ -8,60 +8,60 @@ pub enum Face {
     Back,
 }
 
-pub const FACES: [Face; 6] = [
-    Face::Top,
-    Face::Bottom,
-    Face::Left,
-    Face::Right,
-    Face::Front,
-    Face::Back,
-];
-
 impl Face {
-    pub fn normal(&self) -> [f32; 3] {
+    pub const ALL: [Self; 6] = [
+        Self::Top,
+        Self::Bottom,
+        Self::Left,
+        Self::Right,
+        Self::Front,
+        Self::Back,
+    ];
+
+    pub const fn normal(&self) -> [f32; 3] {
         match self {
-            Face::Top => [0., 0., 1.],
-            Face::Bottom => [0., 0., -1.],
-            Face::Left => [-1., 0., 0.],
-            Face::Right => [1., 0., 0.],
-            Face::Front => [0., -1., 0.],
-            Face::Back => [0., 1., 0.],
+            Self::Top => [0., 0., 1.],
+            Self::Bottom => [0., 0., -1.],
+            Self::Left => [-1., 0., 0.],
+            Self::Right => [1., 0., 0.],
+            Self::Front => [0., -1., 0.],
+            Self::Back => [0., 1., 0.],
         }
     }
 
-    pub fn positions(&self) -> [[f32; 3]; 4] {
+    pub const fn positions(&self) -> [[f32; 3]; 4] {
         match self {
-            Face::Right => [
+            Self::Right => [
                 [1.0, 0.0, 0.0],
                 [1.0, 1.0, 0.0],
                 [1.0, 1.0, 1.0],
                 [1.0, 0.0, 1.0],
             ],
-            Face::Left => [
+            Self::Left => [
                 [0.0, 1.0, 0.0],
                 [0.0, 0.0, 0.0],
                 [0.0, 0.0, 1.0],
                 [0.0, 1.0, 1.0],
             ],
-            Face::Back => [
+            Self::Back => [
                 [1.0, 1.0, 0.0],
                 [0.0, 1.0, 0.0],
                 [0.0, 1.0, 1.0],
                 [1.0, 1.0, 1.0],
             ],
-            Face::Front => [
+            Self::Front => [
                 [0.0, 0.0, 0.0],
                 [1.0, 0.0, 0.0],
                 [1.0, 0.0, 1.0],
                 [0.0, 0.0, 1.0],
             ],
-            Face::Top => [
+            Self::Top => [
                 [0.0, 0.0, 1.0],
                 [1.0, 0.0, 1.0],
                 [1.0, 1.0, 1.0],
                 [0.0, 1.0, 1.0],
             ],
-            Face::Bottom => [
+            Self::Bottom => [
                 [0.0, 1.0, 0.0],
                 [1.0, 1.0, 0.0],
                 [1.0, 0.0, 0.0],
@@ -73,9 +73,9 @@ impl Face {
     pub const fn uvs(&self, (sx, sy, sz): (usize, usize, usize)) -> [[f32; 2]; 4] {
         let (sx, sy, sz) = (sx as f32, sy as f32, sz as f32);
         match self {
-            Face::Top | Face::Bottom => [[0.0, sy], [sx, sy], [sx, 0.0], [0.0, 0.0]],
-            Face::Left | Face::Right => [[0.0, sz], [sy, sz], [sy, 0.0], [0.0, 0.0]],
-            Face::Front | Face::Back => [[0.0, sz], [sx, sz], [sx, 0.0], [0.0, 0.0]],
+            Self::Top | Self::Bottom => [[0.0, sy], [sx, sy], [sx, 0.0], [0.0, 0.0]],
+            Self::Left | Self::Right => [[0.0, sz], [sy, sz], [sy, 0.0], [0.0, 0.0]],
+            Self::Front | Self::Back => [[0.0, sz], [sx, sz], [sx, 0.0], [0.0, 0.0]],
         }
     }
 }

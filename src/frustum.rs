@@ -10,7 +10,7 @@ pub struct Plane {
 }
 
 impl Plane {
-    pub fn new(normal: Vec3, distance: f32) -> Self {
+    pub const fn new(normal: Vec3, distance: f32) -> Self {
         Self { normal, distance }
     }
 

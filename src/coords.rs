@@ -18,7 +18,7 @@ pub fn split_coords((x, y, z): WorldCoords) -> Option<(ChunkCoords, BlockCoords)
     Some(((chunk_x, chunk_y), (block_x, block_y, block_z)))
 }
 
-pub fn camera_to_world_coords(camera_coords: Vec3) -> WorldCoords {
+pub const fn camera_to_world_coords(camera_coords: Vec3) -> WorldCoords {
     (
         camera_coords.x.floor() as i32,
         camera_coords.y.floor() as i32,
@@ -32,7 +32,7 @@ pub fn camera_to_chunk_coords(camera_coords: Vec3) -> ChunkCoords {
     (chunk_x, chunk_y)
 }
 
-pub fn chunk_distance_squared((cx1, cy1): ChunkCoords, (cx2, cy2): ChunkCoords) -> i32 {
+pub const fn chunk_distance_squared((cx1, cy1): ChunkCoords, (cx2, cy2): ChunkCoords) -> i32 {
     (cx1 - cx2).pow(2) + (cy1 - cy2).pow(2)
 }
 
