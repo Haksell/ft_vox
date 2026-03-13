@@ -26,6 +26,7 @@ pub struct Chunk {
     root: ChunkNode,
 }
 impl Chunk {
+    #[expect(clippy::large_types_passed_by_value)]
     pub fn new(coords: ChunkCoords, blocks: Blocks) -> Self {
         let root = ChunkNode::from_region(
             &blocks,
@@ -86,6 +87,7 @@ impl Chunk {
         (vertices, indices)
     }
 
+    #[expect(clippy::too_many_lines)]
     fn is_face_visible(&self, pos: &ChunkNodePos, face: Face, adjacent: &AdjacentChunks) -> bool {
         // build the 1-voxel-thick neighbor "slab" touching `pos` on `face`.
         // if the slab is inside this chunk, query `self`. If it lies outside, query the
@@ -307,8 +309,8 @@ impl ChunkNode {
         oz: usize,
     ) -> Option<BlockType> {
         match self {
-            ChunkNode::Leaf(v, _size) => *v,
-            ChunkNode::Inner(a, b, dir, pos) => match dir {
+            Self::Leaf(v, _size) => *v,
+            Self::Inner(a, b, dir, pos) => match dir {
                 SplitDir::LeftRight => {
                     let midx = ox + pos.size_x() / 2;
                     if x < midx {
@@ -339,7 +341,7 @@ impl ChunkNode {
 
     fn fill_blocks(&self, blocks: &mut Blocks) {
         match self {
-            ChunkNode::Leaf(block, pos) =>
+            Self::Leaf(block, pos) =>
             {
                 #[expect(clippy::needless_range_loop)]
                 for x in pos.x0..pos.x1 {
@@ -350,7 +352,7 @@ impl ChunkNode {
                     }
                 }
             }
-            ChunkNode::Inner(a, b, _, _) => {
+            Self::Inner(a, b, _, _) => {
                 a.fill_blocks(blocks);
                 b.fill_blocks(blocks);
             }
@@ -412,6 +414,7 @@ fn merge_if_same(
     }
 }
 
+#[expect(clippy::option_option)]
 fn uniform(
     blocks: &Blocks,
     &ChunkNodePos {

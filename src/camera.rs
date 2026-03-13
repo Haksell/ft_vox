@@ -19,7 +19,7 @@ pub const CAMERA_NEAR: f32 = 0.1;
 // not const because of f32::sqrt :(
 pub fn camera_far() -> f32 {
     let camera_far_xy = (RENDER_DISTANCE + 1.0) * SQRT_2 * CHUNK_WIDTH as f32;
-    (camera_far_xy.powi(2) + (CHUNK_HEIGHT as f32).powi(2)).sqrt()
+    f32::hypot(camera_far_xy, CHUNK_HEIGHT as f32)
 }
 
 #[repr(C)]

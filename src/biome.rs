@@ -54,31 +54,26 @@ pub enum BiomeType {
 impl BiomeType {
     pub const fn get_surface_block(&self) -> BlockType {
         match self {
-            Self::Desert => BlockType::Sand,
-            Self::Plains => BlockType::Grass,
-            Self::Forest => BlockType::Grass,
-            Self::Taiga => BlockType::Snow,
             Self::Swamp => BlockType::Dirt,
-            Self::Beach => BlockType::Sand,
-            Self::River => BlockType::Sand,
-            Self::FrozenRiver => BlockType::Snow,
-            Self::SnowyBeach => BlockType::Sand,
-            Self::SnowyPlains => BlockType::Snow,
-            Self::SnowyTaiga => BlockType::Snow,
-            Self::SnowySlopes => BlockType::Snow,
-            Self::SunflowerForest => BlockType::Grass,
-            Self::Ocean => BlockType::Sand,
-            Self::ColdOcean => BlockType::Sand,
-            Self::FrozenOcean => BlockType::Sand,
-            Self::WarmOcean => BlockType::Sand,
-            Self::DeepOcean => BlockType::Sand,
-            Self::DeepColdOcean => BlockType::Sand,
-            Self::DeepFrozenOcean => BlockType::Sand,
+            Self::Taiga
+            | Self::FrozenRiver
+            | Self::SnowyPlains
+            | Self::SnowyTaiga
+            | Self::SnowySlopes => BlockType::Snow,
+            Self::Desert
+            | Self::Beach
+            | Self::River
+            | Self::SnowyBeach
+            | Self::Ocean
+            | Self::ColdOcean
+            | Self::FrozenOcean
+            | Self::WarmOcean
+            | Self::DeepOcean
+            | Self::DeepColdOcean
+            | Self::DeepFrozenOcean => BlockType::Sand,
             Self::IceSpikes => BlockType::Ice,
-            Self::ErodedBadlands => BlockType::RedSand,
-            Self::Badlands => BlockType::RedSand,
-            Self::StonyPeaks => BlockType::Stone,
-            Self::StonyShore => BlockType::Stone,
+            Self::ErodedBadlands | Self::Badlands => BlockType::RedSand,
+            Self::StonyPeaks | Self::StonyShore => BlockType::Stone,
             Self::Mangrove => BlockType::WarpedNylium,
             _ => BlockType::Grass,
         }

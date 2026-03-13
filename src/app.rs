@@ -202,10 +202,7 @@ impl ApplicationHandler for Application {
                 state.rerender_chunks(&mut self.world);
 
                 let camera_chunk = camera_to_chunk_coords(state.camera.position());
-                if self.last_chunk != Some(camera_chunk) {
-                    self.last_chunk = Some(camera_chunk);
-                    state.update_chunks(&mut self.world);
-                } else {
+                if self.last_chunk == Some(camera_chunk) {
                     'preload_chunk: for i in 0..MEMORY_DISTANCE {
                         for x in camera_chunk.0 - i..=camera_chunk.0 + i {
                             for y in camera_chunk.1 - i..=camera_chunk.1 + i {
@@ -220,6 +217,9 @@ impl ApplicationHandler for Application {
                             }
                         }
                     }
+                } else {
+                    self.last_chunk = Some(camera_chunk);
+                    state.update_chunks(&mut self.world);
                 }
                 self.world.discard_far_chunks(camera_chunk);
 
@@ -229,7 +229,7 @@ impl ApplicationHandler for Application {
                 window.set_cursor_position(center).unwrap();
 
                 match state.render() {
-                    Ok(_) => {
+                    Ok(()) => {
                         self.frames_since_log += 1;
                         let elapsed = self.last_fps_log.elapsed();
                         if elapsed >= Duration::from_secs(1) {
@@ -249,14 +249,14 @@ impl ApplicationHandler for Application {
                         }
                     }
                     Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
-                        state.resize(state.size)
+                        state.resize(state.size);
                     }
                     Err(wgpu::SurfaceError::OutOfMemory | wgpu::SurfaceError::Other) => {
                         log::error!("OutOfMemory");
                         event_loop.exit();
                     }
                     Err(wgpu::SurfaceError::Timeout) => {
-                        log::warn!("Surface timeout")
+                        log::warn!("Surface timeout");
                     }
                 }
 

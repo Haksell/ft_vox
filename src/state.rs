@@ -77,6 +77,7 @@ pub struct State {
 }
 
 impl State {
+    #[expect(clippy::too_many_lines)]
     pub async fn new(window: Arc<Window>, args: &Args) -> Self {
         let size = window.inner_size();
         let center = PhysicalSize::new(size.width / 2, size.height / 2);
@@ -112,7 +113,7 @@ impl State {
                 required_features: wgpu::Features::empty(),
                 required_limits: wgpu::Limits::default(),
                 label: None,
-                memory_hints: Default::default(),
+                memory_hints: wgpu::MemoryHints::default(),
                 trace: wgpu::Trace::Off,
                 experimental_features: ExperimentalFeatures::disabled(),
             })
@@ -150,6 +151,7 @@ impl State {
 
         surface.configure(&device, &config);
 
+        #[expect(clippy::large_include_file)] // FIXME
         let diffuse_texture = Texture::from_bytes(
             &device,
             &queue,
@@ -289,6 +291,7 @@ impl State {
         });
 
         // === SKYBOX ===
+        #[expect(clippy::large_include_file)] // FIXME
         let skybox_texture = Texture::from_bytes(
             &device,
             &queue,
@@ -526,7 +529,7 @@ impl State {
         let vertex_buffer = self
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some(&format!("Chunk ({}, {}) Vertex Buffer", chunk_x, chunk_y)),
+                label: Some(&format!("Chunk ({chunk_x}, {chunk_y}) Vertex Buffer")),
                 contents: bytemuck::cast_slice(&vertices),
                 usage: wgpu::BufferUsages::VERTEX,
             });
@@ -534,7 +537,7 @@ impl State {
         let index_buffer = self
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some(&format!("Chunk ({}, {}) Index Buffer", chunk_x, chunk_y)),
+                label: Some(&format!("Chunk ({chunk_x}, {chunk_y}) Index Buffer")),
                 contents: bytemuck::cast_slice(&indices),
                 usage: wgpu::BufferUsages::INDEX,
             });
@@ -583,6 +586,7 @@ impl State {
                 .is_some();
     }
 
+    #[expect(clippy::too_many_lines)]
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         fn render_skybox(
             state: &State,
@@ -661,7 +665,7 @@ impl State {
             }
         }
 
-        fn make_text<'a>(text: &'a str, corner_offset: f32, [r, g, b]: [f32; 3]) -> Section<'a> {
+        fn make_text(text: &str, corner_offset: f32, [r, g, b]: [f32; 3]) -> Section<'_> {
             Section::default()
                 .with_layout(
                     Layout::default()
@@ -701,7 +705,7 @@ impl State {
                 let _ = state
                     .text_brush
                     .queue(&state.device, &state.queue, [shadow, core])
-                    .inspect_err(|brush_error| log::warn!("Brush error: {:?}", brush_error));
+                    .inspect_err(|brush_error| log::warn!("Brush error: {brush_error:?}"));
                 state.text_brush.draw(&mut overlay_pass);
             }
 

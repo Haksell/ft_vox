@@ -29,6 +29,7 @@ impl SimplexNoise {
     const F2: f32 = 0.36602542; // (sqrt(3) - 1) / 2
     const G2: f32 = 0.21132487; // (3 - sqrt(3)) / 6
 
+    #[expect(clippy::needless_pass_by_value)]
     pub fn new(seed: u64, info: SimplexNoiseInfo) -> Self {
         let mut permutations = [0u8; 512];
         let mut temp = (0i32..256).map(|x| x as u8).collect::<Vec<u8>>();
@@ -48,7 +49,7 @@ impl SimplexNoise {
             permutations[i] = temp[i % 256];
         }
 
-        SimplexNoise {
+        Self {
             permutations,
             frequency: info.frequency,
             octaves: info.octaves,
@@ -117,21 +118,21 @@ impl SimplexNoise {
         let t0 = 0.5 - x0 * x0 - y0 * y0;
         if t0 >= 0.0 {
             let t0_sq = t0 * t0;
-            n0 = t0_sq * t0_sq * self.dot2d(gi0, x0, y0);
+            n0 = t0_sq * t0_sq * Self::dot2d(gi0, x0, y0);
         }
 
         let mut n1 = 0.0;
         let t1 = 0.5 - x1 * x1 - y1 * y1;
         if t1 >= 0.0 {
             let t1_sq = t1 * t1;
-            n1 = t1_sq * t1_sq * self.dot2d(gi1, x1, y1);
+            n1 = t1_sq * t1_sq * Self::dot2d(gi1, x1, y1);
         }
 
         let mut n2 = 0.0;
         let t2 = 0.5 - x2 * x2 - y2 * y2;
         if t2 >= 0.0 {
             let t2_sq = t2 * t2;
-            n2 = t2_sq * t2_sq * self.dot2d(gi2, x2, y2);
+            n2 = t2_sq * t2_sq * Self::dot2d(gi2, x2, y2);
         }
 
         70.0 * (n0 + n1 + n2)
@@ -152,7 +153,7 @@ impl SimplexNoise {
         (0.0, -1.0),
     ];
 
-    fn dot2d(&self, gi: usize, x: f32, y: f32) -> f32 {
+    fn dot2d(gi: usize, x: f32, y: f32) -> f32 {
         let grad = Self::GRADIENT_2D[gi];
         grad.0 * x + grad.1 * y
     }
