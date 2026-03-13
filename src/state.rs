@@ -702,10 +702,13 @@ impl State {
                 let fps_text = format!("FPS:{:.0}", state.fps);
                 let core = make_text(&fps_text, 12.0, [1.0, 0.1, 0.1]);
                 let shadow = make_text(&fps_text, 14.0, [0.0; 3]);
-                let _ = state
-                    .text_brush
-                    .queue(&state.device, &state.queue, [shadow, core])
-                    .inspect_err(|brush_error| log::warn!("Brush error: {brush_error:?}"));
+                if let Err(brush_error) =
+                    state
+                        .text_brush
+                        .queue(&state.device, &state.queue, [shadow, core])
+                {
+                    log::warn!("Brush error: {brush_error:?}");
+                }
                 state.text_brush.draw(&mut overlay_pass);
             }
 
