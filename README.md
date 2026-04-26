@@ -31,6 +31,7 @@
 - raytraced audio (or raymarched if it makes sense)
 - malbolge interpreter with voxels (liam tkt)
 - randomize texture orientation
+- implement this biome: https://youtu.be/biGJ_5t30Lk?is=Cv8sBxVSkZnOD_Bk
 
 ## mandatory
 
